@@ -10,6 +10,10 @@ export default defineConfig({
   // Para domínio customizado (digitalstoregames.com.br), deixe vazio.
   base: process.env.VITE_BASE_PATH || '/',
 
+  build: {
+    outDir: 'docs', // GitHub Pages aceita apenas / (root) ou /docs como fonte
+  },
+
   plugins: [
     tailwindcss(),
     react(),
