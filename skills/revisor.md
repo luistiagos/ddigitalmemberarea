@@ -1,0 +1,1 @@
+revise todo o código do frontend, verifique se não temos nenhuma falha, possivel bug, erro de lógica, duplicações de código, tudo deve estar de maneira de fácil entendimento, fácil manutenção e robusto, sem falhas, sem erros sem possíveis bugs. A cada nova alteração sempre checar se o novo código não quebrou o existente.

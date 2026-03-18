@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Digital Store Games</title>
+    <script>
+      /**
+       * GitHub Pages SPA redirect trick.
+       *
+       * GitHub Pages returns this 404.html for any path it doesn't recognise.
+       * We save the full URL (path + query string + hash) into sessionStorage
+       * and redirect to the app root (/). The main index.html then reads
+       * sessionStorage and uses history.replaceState to restore the original URL
+       * before React Router mounts, so the correct page is rendered.
+       *
+       * Works correctly with query params like:
+       *   /criar-senha?email=x@y.com&store_id=20000
+       *   /redefinir-senha?token=abc&store_id=20000
+       */
+      sessionStorage.setItem('spa_redirect', window.location.href);
+    </script>
+    <meta http-equiv="refresh" content="0;URL='/'" />
+  </head>
+  <body></body>
+</html>
