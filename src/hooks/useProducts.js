@@ -6,9 +6,9 @@ import { clearAuth } from '@/utils/auth';
 /**
  * Hook para buscar e gerenciar os produtos do usuário logado.
  * @param {string | null} userEmail - Email do usuário logado
- * @param {number} [storeId=1] - ID da loja (padrão: 1)
+ * @param {number | null} [storeId] - ID da loja (opcional — backend resolve pelo JWT)
  */
-export function useProducts(userEmail, storeId = 1) {
+export function useProducts(userEmail, storeId = null) {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,9 +30,10 @@ export function useProducts(userEmail, storeId = 1) {
       setError(null);
 
       try {
-        const response = await api.get(
-          `/list_store_catalog?email=${encodeURIComponent(userEmail)}&storeid=${storeId}`
-        );
+        // storeid é omitido quando null — o backend usa o store_id do JWT como fallback
+        const params = new URLSearchParams({ email: userEmail });
+        if (storeId != null) params.set('storeid', storeId);
+        const response = await api.get(`/list_store_catalog?${params}`);
 
         if (!cancelled) {
           setProducts(response.data || []);

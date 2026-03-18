@@ -26,7 +26,7 @@ function EmptyState() {
 
 export function CustomerArea() {
   const user = getStoredUser();
-  const { products, loading, error, refetch } = useProducts(user?.email, user?.storeId ?? 1);
+  const { products, loading, error, refetch } = useProducts(user?.email, user?.storeId ?? null);
 
   const [promoData, setPromoData] = useState(null); // { products: [...] }
   const [promoSeen, setPromoSeen] = useState(false);
