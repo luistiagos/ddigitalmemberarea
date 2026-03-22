@@ -47,7 +47,7 @@ export function ProductCard({ product, userEmail, storeId }) {
           {image
             ? <img src={image} alt={title} className="w-full h-full object-cover" />
             : <div className="w-full h-full flex items-center justify-center"><Gamepad2 className="h-16 w-16 text-gray-600" /></div>}
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/70 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-gray-900/70 via-transparent to-transparent" />
         </div>
 
         {/* Conteúdo */}
@@ -95,7 +95,7 @@ export function ProductCard({ product, userEmail, storeId }) {
           ? <img src={image} alt={title} className="w-full h-full object-cover opacity-55" />
           : <div className="w-full h-full flex items-center justify-center"><Gamepad2 className="h-16 w-16 text-gray-600" /></div>}
         {/* Gradiente escuro na base */}
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-900/70 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-gray-900/70 via-transparent to-transparent" />
         {/* Cadeado central */}
         <div className="absolute inset-0 flex items-center justify-center">
           <Lock className="h-12 w-12 text-white/75 drop-shadow-lg" />

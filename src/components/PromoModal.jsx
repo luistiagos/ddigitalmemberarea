@@ -56,7 +56,7 @@ export default function PromoModal({ products, onClose, onAccepted }) {
       <div className="relative w-full max-w-lg rounded-2xl bg-gray-900 border border-gray-700 shadow-2xl overflow-hidden">
 
         {/* Header gradient bar */}
-        <div className={`h-1.5 w-full ${is25 ? 'bg-gradient-to-r from-amber-400 to-orange-500' : 'bg-gradient-to-r from-red-500 to-pink-600'}`} />
+        <div className={`h-1.5 w-full ${is25 ? 'bg-linear-to-r from-amber-400 to-orange-500' : 'bg-linear-to-r from-red-500 to-pink-600'}`} />
 
         <div className="p-6 space-y-5">
 
@@ -94,7 +94,7 @@ export default function PromoModal({ products, onClose, onAccepted }) {
                     <img
                       src={p.image}
                       alt={p.title}
-                      className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                      className="w-10 h-10 rounded-lg object-cover shrink-0"
                     />
                   )}
                   <span className="flex-1 text-sm text-white line-clamp-1">{p.title}</span>
