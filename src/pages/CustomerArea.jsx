@@ -33,12 +33,14 @@ export function CustomerArea() {
 
   // Registra o acesso à área do cliente
   useEffect(() => {
-    api.post('/area-cliente/access').catch(() => {/* silencioso — não bloqueia a UI */});
+    const body = user?.storeId ? { store_id: user.storeId } : {};
+    api.post('/area-cliente/access', body).catch(() => {/* silencioso — não bloqueia a UI */});
   }, []);
 
   // Verifica se o modal promocional deve ser exibido
   useEffect(() => {
-    api.get('/area-cliente/promo')
+    const params = user?.storeId ? { store_id: user.storeId } : {};
+    api.get('/area-cliente/promo', { params })
       .then(({ data }) => {
         if (data.show && data.products?.length > 0) {
           setPromoData(data);
