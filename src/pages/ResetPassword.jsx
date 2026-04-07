@@ -8,6 +8,7 @@ import { Alert } from '@/components/ui/Alert';
 import api from '@/services/api';
 import { persistStoreId } from '@/utils/auth';
 import { calcStrength, STRENGTH_LABELS, STRENGTH_COLORS } from '@/utils/password';
+import { logError } from '@/utils/logError';
 
 export function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -69,6 +70,7 @@ export function ResetPassword() {
     } catch (err) {
       const message = err.response?.data?.error || 'Erro ao redefinir senha. Tente novamente.';
       setError(message);
+      logError('ResetPassword.jsx', 'handleSubmit', message);
     } finally {
       setLoading(false);
     }

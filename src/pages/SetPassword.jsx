@@ -8,6 +8,7 @@ import { Alert } from '@/components/ui/Alert';
 import api from '@/services/api';
 import { storeUser, persistStoreId } from '@/utils/auth';
 import { calcStrength, STRENGTH_LABELS, STRENGTH_COLORS } from '@/utils/password';
+import { logError } from '@/utils/logError';
 
 /**
  * Página de criação/redefinição de senha.
@@ -74,6 +75,7 @@ export function SetPassword() {
     } catch (err) {
       const message = err.response?.data?.error || 'Erro ao definir senha. Tente novamente.';
       setError(message);
+      logError('SetPassword.jsx', 'handleSubmit', message);
     } finally {
       setLoading(false);
     }

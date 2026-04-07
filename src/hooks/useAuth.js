@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { storeUser, clearAuth, getStoredUser, getPersistedStoreId } from '@/utils/auth';
+import { logError } from '@/utils/logError';
 
 /**
  * Hook de autenticação.
@@ -42,6 +43,7 @@ export function useAuth() {
       } else {
         const message = err.response?.data?.error || 'Ocorreu um erro ao fazer login.';
         setError(message);
+        logError('useAuth.js', 'login', message);
       }
     } finally {
       setLoading(false);
