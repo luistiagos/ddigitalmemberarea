@@ -6,7 +6,7 @@ import { InputField } from '@/components/ui/InputField';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import api from '@/services/api';
-import { storeUser, persistStoreId } from '@/utils/auth';
+import { storeUser, persistStoreId, isTokenExpired } from '@/utils/auth';
 import { calcStrength, STRENGTH_LABELS, STRENGTH_COLORS } from '@/utils/password';
 import { logError } from '@/utils/logError';
 
@@ -25,6 +25,13 @@ export function SetPassword() {
   useEffect(() => {
     if (storeId != null) persistStoreId(storeId);
   }, [storeId]);
+
+  // Se o usuário já tem sessão válida, redireciona diretamente para a área do cliente
+  useEffect(() => {
+    if (!isTokenExpired()) {
+      navigate('/area-cliente', { replace: true });
+    }
+  }, []);
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -73,6 +80,11 @@ export function SetPassword() {
         setTimeout(() => navigate('/area-cliente'), 1500);
       }
     } catch (err) {
+      if (err.response?.status === 409) {
+        // Usuário já criou senha antes — manda para o login
+        navigate(`/login?email=${encodeURIComponent(email)}`, { replace: true });
+        return;
+      }
       const message = err.response?.data?.error || 'Erro ao definir senha. Tente novamente.';
       setError(message);
       logError('SetPassword.jsx', 'handleSubmit', message);
