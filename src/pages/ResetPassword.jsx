@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link, Navigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { InputField } from '@/components/ui/InputField';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import api from '@/services/api';
-import { persistStoreId } from '@/utils/auth';
+import { persistStoreId, isAuthenticated } from '@/utils/auth';
 import { calcStrength, STRENGTH_LABELS, STRENGTH_COLORS } from '@/utils/password';
 import { logError } from '@/utils/logError';
 
@@ -25,6 +25,10 @@ export function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+
+  if (isAuthenticated()) {
+    return <Navigate to="/area-cliente" replace />;
+  }
 
   const strength = calcStrength(password);
   const strengthWidth = `${(strength / 4) * 100}%`;

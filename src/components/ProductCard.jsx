@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Gamepad2, ExternalLink, Lock, Loader2 } from 'lucide-react';
+import { Gamepad2, ExternalLink, Lock, Loader2, X, CreditCard, QrCode, Wallet } from 'lucide-react';
 import api from '@/services/api';
 
 function formatBRL(val) {
@@ -17,17 +17,28 @@ export function ProductCard({ product, userEmail, storeId }) {
   const { productid, title, image, owned, price, relprice, description, deliverlink } = product;
   const [buying, setBuying] = useState(false);
   const [buyError, setBuyError] = useState(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [pixModalOpen, setPixModalOpen] = useState(false);
+  const [pixData, setPixData] = useState(null);
+  const [pixCopyMsg, setPixCopyMsg] = useState('');
 
-  const handleBuy = async () => {
+  const getSids = () => String(productid);
+
+  const createCheckoutLink = async () => {
+    const params = new URLSearchParams({ sids: getSids() });
+    if (userEmail) params.set('email', userEmail);
+    if (storeId) params.set('storeid', storeId);
+    const res = await api.get(`/createMLlink_v2?${params}`);
+    return res.data?.checkout_url || null;
+  };
+
+  const handleBuyMercadoPago = async () => {
     setBuying(true);
     setBuyError(null);
     try {
-      const params = new URLSearchParams({ sids: productid });
-      if (userEmail) params.set('email', userEmail);
-      if (storeId)   params.set('storeid', storeId);
-      const res = await api.get(`/createMLlink_v2?${params}`);
-      if (res.data?.checkout_url) {
-        window.location.href = res.data.checkout_url;
+      const checkoutUrl = await createCheckoutLink();
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
       } else {
         setBuyError('Não foi possível gerar o link. Tente novamente.');
       }
@@ -35,6 +46,43 @@ export function ProductCard({ product, userEmail, storeId }) {
       setBuyError('Erro ao processar. Tente novamente.');
     } finally {
       setBuying(false);
+    }
+  };
+
+  const handleBuyCard = async () => {
+    // Abre checkout do Mercado Pago, onde o cliente pode pagar com cartão.
+    await handleBuyMercadoPago();
+  };
+
+  const handleBuyPix = async () => {
+    setBuying(true);
+    setBuyError(null);
+    setPixCopyMsg('');
+    try {
+      const body = { sids: getSids(), email: userEmail, storeid: storeId };
+      const res = await api.post('/create_pix_payment', body);
+      if (res.data?.error) {
+        setBuyError(res.data.error || 'Erro ao gerar PIX.');
+      } else if (res.data?.qr_code) {
+        setPixData(res.data);
+        setPixModalOpen(true);
+      } else {
+        setBuyError('Não foi possível gerar o PIX. Tente novamente.');
+      }
+    } catch {
+      setBuyError('Erro ao gerar PIX. Tente novamente.');
+    } finally {
+      setBuying(false);
+    }
+  };
+
+  const copyPixCode = async () => {
+    if (!pixData?.qr_code) return;
+    try {
+      await navigator.clipboard.writeText(pixData.qr_code);
+      setPixCopyMsg('Código PIX copiado!');
+    } catch {
+      setPixCopyMsg('Não foi possível copiar automaticamente.');
     }
   };
 
@@ -135,19 +183,98 @@ export function ProductCard({ product, userEmail, storeId }) {
 
         {/* Botão */}
         <button
-          onClick={handleBuy}
+          onClick={() => { setBuyError(null); setPaymentModalOpen(true); }}
           disabled={buying}
           className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-900 font-bold text-sm py-2.5 px-4 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {buying
             ? <Loader2 className="h-4 w-4 animate-spin" />
             : <Lock className="h-4 w-4" />}
-          {buying ? 'Aguarde...' : 'Desbloquear'}
+          {buying ? 'Aguarde...' : 'Pagar'}
         </button>
         {buyError && (
           <p className="text-xs text-red-400 text-center mt-1">{buyError}</p>
         )}
       </div>
+
+      {paymentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+              <h3 className="text-white font-semibold">Escolha como pagar</h3>
+              <button onClick={() => setPaymentModalOpen(false)} className="text-gray-400 hover:text-white">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3">
+              <button
+                onClick={async () => { setPaymentModalOpen(false); await handleBuyMercadoPago(); }}
+                disabled={buying}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
+              >
+                <Wallet className="h-4 w-4" />
+                Link Mercado Pago
+              </button>
+
+              <button
+                onClick={async () => { setPaymentModalOpen(false); await handleBuyPix(); }}
+                disabled={buying}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
+              >
+                <QrCode className="h-4 w-4" />
+                PIX
+              </button>
+
+              <button
+                onClick={async () => { setPaymentModalOpen(false); await handleBuyCard(); }}
+                disabled={buying}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
+              >
+                <CreditCard className="h-4 w-4" />
+                Cartão
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pixModalOpen && pixData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-gray-900 font-semibold">Pagar com PIX</h3>
+              <button onClick={() => setPixModalOpen(false)} className="text-gray-500 hover:text-gray-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {pixData.qr_code_base64 && (
+              <img
+                src={pixData.qr_code_base64.startsWith('data:') ? pixData.qr_code_base64 : `data:image/png;base64,${pixData.qr_code_base64}`}
+                alt="QR Code PIX"
+                className="mx-auto w-48 h-48 border border-emerald-500 rounded-lg"
+              />
+            )}
+
+            {pixData.amount != null && (
+              <p className="text-center text-gray-900 font-bold text-lg mt-3">{formatBRL(pixData.amount)}</p>
+            )}
+
+            <p className="text-[11px] text-gray-600 mt-3 break-all bg-gray-100 rounded-lg p-2.5">
+              {pixData.qr_code}
+            </p>
+
+            <button
+              onClick={copyPixCode}
+              className="mt-3 w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-semibold text-sm py-2.5"
+            >
+              Copiar código PIX
+            </button>
+            {pixCopyMsg && <p className="text-xs text-center text-gray-600 mt-2">{pixCopyMsg}</p>}
+          </div>
+        </div>
+      )}
     </article>
   );
 }

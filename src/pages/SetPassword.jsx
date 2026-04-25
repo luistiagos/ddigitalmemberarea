@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Navigate } from 'react-router-dom';
 import { Lock, Mail } from 'lucide-react';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { InputField } from '@/components/ui/InputField';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import api from '@/services/api';
-import { storeUser, persistStoreId, isTokenExpired } from '@/utils/auth';
+import { storeUser, persistStoreId, isAuthenticated } from '@/utils/auth';
 import { calcStrength, STRENGTH_LABELS, STRENGTH_COLORS } from '@/utils/password';
 import { logError } from '@/utils/logError';
 
@@ -26,12 +26,9 @@ export function SetPassword() {
     if (storeId != null) persistStoreId(storeId);
   }, [storeId]);
 
-  // Se o usuário já tem sessão válida, redireciona diretamente para a área do cliente
-  useEffect(() => {
-    if (!isTokenExpired()) {
-      navigate('/area-cliente', { replace: true });
-    }
-  }, []);
+  if (isAuthenticated()) {
+    return <Navigate to="/area-cliente" replace />;
+  }
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');

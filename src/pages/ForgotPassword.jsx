@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { Mail } from 'lucide-react';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { InputField } from '@/components/ui/InputField';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import api from '@/services/api';
-import { getPersistedStoreId } from '@/utils/auth';
+import { getPersistedStoreId, isAuthenticated } from '@/utils/auth';
 
 export function ForgotPassword() {
   const [searchParams] = useSearchParams();
@@ -14,6 +14,10 @@ export function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sent, setSent] = useState(false);
+
+  if (isAuthenticated()) {
+    return <Navigate to="/area-cliente" replace />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
