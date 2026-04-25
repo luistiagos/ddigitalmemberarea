@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Gamepad2, ExternalLink, Lock, Loader2, X, CreditCard, QrCode, Wallet } from 'lucide-react';
 import api from '@/services/api';
 
@@ -85,6 +86,8 @@ export function ProductCard({ product, userEmail, storeId }) {
       setPixCopyMsg('Não foi possível copiar automaticamente.');
     }
   };
+
+  const renderPortal = (node) => (typeof document !== 'undefined' ? createPortal(node, document.body) : null);
 
   /* ── Produto adquirido ── */
   if (owned) {
@@ -197,7 +200,7 @@ export function ProductCard({ product, userEmail, storeId }) {
         )}
       </div>
 
-      {paymentModalOpen && (
+      {paymentModalOpen && renderPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
           <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
@@ -239,7 +242,7 @@ export function ProductCard({ product, userEmail, storeId }) {
         </div>
       )}
 
-      {pixModalOpen && pixData && (
+      {pixModalOpen && pixData && renderPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5">
             <div className="flex items-center justify-between mb-3">
