@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Gamepad2, ExternalLink, Lock, Loader2, X, CreditCard, QrCode, Wallet } from 'lucide-react';
 import api from '@/services/api';
+
+const CUSTOMER_AREA_REFRESH_KEY = 'customerAreaNeedsRefresh';
 
 function formatBRL(val) {
   return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -12,9 +14,9 @@ function formatBRL(val) {
  * - owned=true  → imagem + "Aqui está o que você comprou, divirta-se!" + botão verde Acessar
  * - owned=false → imagem em cinza com cadeado + badge de preço + botão neon Desbloquear
  *
- * @param {{ product, userEmail, storeId }}
+ * @param {{ product, userEmail, storeId, onPaymentFlowClosed }}
  */
-export function ProductCard({ product, userEmail, storeId }) {
+export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }) {
   const { productid, title, image, owned, price, relprice, description, deliverlink } = product;
   const [buying, setBuying] = useState(false);
   const [buyError, setBuyError] = useState(null);
@@ -45,6 +47,8 @@ export function ProductCard({ product, userEmail, storeId }) {
     try {
       const checkoutUrl = await createCheckoutLink();
       if (checkoutUrl) {
+        // Mark that customer area should force a refresh when user returns from external checkout.
+        sessionStorage.setItem(CUSTOMER_AREA_REFRESH_KEY, '1');
         window.location.href = checkoutUrl;
       } else {
         setBuyError('Não foi possível gerar o link. Tente novamente.');
@@ -91,6 +95,18 @@ export function ProductCard({ product, userEmail, storeId }) {
     } catch {
       setPixCopyMsg('Não foi possível copiar automaticamente.');
     }
+  };
+
+  const closePaymentModal = (shouldRefresh = true) => {
+    setPaymentModalOpen(false);
+    if (shouldRefresh) {
+      onPaymentFlowClosed?.();
+    }
+  };
+
+  const closePixModal = () => {
+    setPixModalOpen(false);
+    onPaymentFlowClosed?.();
   };
 
   /* ── Produto adquirido ── */
@@ -211,14 +227,14 @@ export function ProductCard({ product, userEmail, storeId }) {
           <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
               <h3 className="text-white font-semibold">Escolha como pagar</h3>
-              <button onClick={() => setPaymentModalOpen(false)} className="text-gray-400 hover:text-white">
+              <button onClick={closePaymentModal} className="text-gray-400 hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="p-5 space-y-3">
               <button
-                onClick={async () => { setPaymentModalOpen(false); await handleBuyMercadoPago(); }}
+                onClick={async () => { closePaymentModal(false); await handleBuyMercadoPago(); }}
                 disabled={buying}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
               >
@@ -227,7 +243,7 @@ export function ProductCard({ product, userEmail, storeId }) {
               </button>
 
               <button
-                onClick={async () => { setPaymentModalOpen(false); await handleBuyPix(); }}
+                onClick={async () => { closePaymentModal(false); await handleBuyPix(); }}
                 disabled={buying}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
               >
@@ -236,7 +252,7 @@ export function ProductCard({ product, userEmail, storeId }) {
               </button>
 
               <button
-                onClick={async () => { setPaymentModalOpen(false); await handleBuyCard(); }}
+                onClick={async () => { closePaymentModal(false); await handleBuyCard(); }}
                 disabled={buying}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
               >
@@ -254,7 +270,7 @@ export function ProductCard({ product, userEmail, storeId }) {
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-gray-900 font-semibold">Pagar com PIX</h3>
-              <button onClick={() => setPixModalOpen(false)} className="text-gray-500 hover:text-gray-700">
+              <button onClick={closePixModal} className="text-gray-500 hover:text-gray-700">
                 <X className="h-5 w-5" />
               </button>
             </div>

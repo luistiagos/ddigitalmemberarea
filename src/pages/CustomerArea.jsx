@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Package, Gamepad2, Sparkles } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProductCard } from '@/components/ProductCard';
@@ -9,6 +9,8 @@ import { useProducts } from '@/hooks/useProducts';
 import { getStoredUser } from '@/utils/auth';
 import api from '@/services/api';
 import PromoModal from '@/components/PromoModal';
+
+const CUSTOMER_AREA_REFRESH_KEY = 'customerAreaNeedsRefresh';
 
 function EmptyState() {
   return (
@@ -30,6 +32,19 @@ export function CustomerArea() {
 
   const [promoData, setPromoData] = useState(null); // { products: [...] }
   const [promoSeen, setPromoSeen] = useState(false);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+
+  const triggerAutoRefresh = useCallback(() => {
+    setIsAutoRefreshing(true);
+    refetch();
+  }, [refetch]);
+
+  const triggerPageReload = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(CUSTOMER_AREA_REFRESH_KEY);
+      window.location.reload();
+    }
+  }, []);
 
   // Registra o acesso à área do cliente
   useEffect(() => {
@@ -57,6 +72,40 @@ export function CustomerArea() {
     }
   }, [promoData, promoSeen]);
 
+  useEffect(() => {
+    if (sessionStorage.getItem(CUSTOMER_AREA_REFRESH_KEY) === '1') {
+      triggerPageReload();
+      return;
+    }
+
+    const handleReturnToCustomerArea = () => {
+      if (sessionStorage.getItem(CUSTOMER_AREA_REFRESH_KEY) === '1') {
+        triggerPageReload();
+        return;
+      }
+
+      if (document.visibilityState === 'visible') {
+        triggerAutoRefresh();
+      }
+    };
+
+    window.addEventListener('focus', handleReturnToCustomerArea);
+    window.addEventListener('pageshow', handleReturnToCustomerArea);
+    document.addEventListener('visibilitychange', handleReturnToCustomerArea);
+
+    return () => {
+      window.removeEventListener('focus', handleReturnToCustomerArea);
+      window.removeEventListener('pageshow', handleReturnToCustomerArea);
+      document.removeEventListener('visibilitychange', handleReturnToCustomerArea);
+    };
+  }, [triggerAutoRefresh, triggerPageReload]);
+
+  useEffect(() => {
+    if (!loading && isAutoRefreshing) {
+      setIsAutoRefreshing(false);
+    }
+  }, [loading, isAutoRefreshing]);
+
   const ownedProducts = products.filter((p) => p.owned);
   const availableProducts = products.filter((p) => !p.owned);
 
@@ -75,6 +124,11 @@ export function CustomerArea() {
               : 'Jogos e produtos digitais da sua conta'}
           </p>
         </div>
+        {isAutoRefreshing && (
+          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/35 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300 animate-pulse">
+            Atualizando seus produtos...
+          </div>
+        )}
       </div>
 
       {loading && <LoadingSpinner message="Carregando produtos..." />}
@@ -101,7 +155,13 @@ export function CustomerArea() {
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {ownedProducts.map((product) => (
-                  <ProductCard key={product.productid ?? product.title} product={product} userEmail={user?.email} storeId={user?.storeId ?? 1} />
+                  <ProductCard
+                    key={product.productid ?? product.title}
+                    product={product}
+                    userEmail={user?.email}
+                    storeId={user?.storeId ?? 1}
+                    onPaymentFlowClosed={triggerPageReload}
+                  />
                 ))}
               </div>
             </section>
@@ -116,7 +176,13 @@ export function CustomerArea() {
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {availableProducts.map((product) => (
-                  <ProductCard key={product.productid ?? product.title} product={product} userEmail={user?.email} storeId={user?.storeId ?? 1} />
+                  <ProductCard
+                    key={product.productid ?? product.title}
+                    product={product}
+                    userEmail={user?.email}
+                    storeId={user?.storeId ?? 1}
+                    onPaymentFlowClosed={triggerPageReload}
+                  />
                 ))}
               </div>
             </section>

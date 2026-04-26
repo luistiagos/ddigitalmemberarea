@@ -33,7 +33,16 @@ export function useProducts(userEmail, storeId = null) {
         // storeid é omitido quando null — o backend usa o store_id do JWT como fallback
         const params = new URLSearchParams({ email: userEmail });
         if (storeId != null) params.set('storeid', storeId);
-        const response = await api.get(`/list_store_catalog?${params}`);
+        // Cache-buster: garante que cada refetch/reload consulte o estado mais recente no backend.
+        params.set('_ts', String(Date.now()));
+        params.set('_fk', String(fetchKey));
+
+        const response = await api.get(`/list_store_catalog?${params}`, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            Pragma: 'no-cache',
+          },
+        });
 
         if (!cancelled) {
           setProducts(response.data || []);
