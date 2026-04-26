@@ -207,7 +207,7 @@ export function ProductCard({ product, userEmail, storeId }) {
       </article>
 
       {isMounted && paymentModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
           <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
               <h3 className="text-white font-semibold">Escolha como pagar</h3>
@@ -250,7 +250,7 @@ export function ProductCard({ product, userEmail, storeId }) {
       )}
 
       {isMounted && pixModalOpen && pixData && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-gray-900 font-semibold">Pagar com PIX</h3>
