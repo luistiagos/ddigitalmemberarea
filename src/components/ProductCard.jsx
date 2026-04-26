@@ -87,8 +87,6 @@ export function ProductCard({ product, userEmail, storeId }) {
     }
   };
 
-  const renderPortal = (node) => (typeof document !== 'undefined' ? createPortal(node, document.body) : null);
-
   /* ── Produto adquirido ── */
   if (owned) {
     return (
@@ -139,69 +137,71 @@ export function ProductCard({ product, userEmail, storeId }) {
       : null;
 
   return (
-    <article className="flex flex-col rounded-xl border border-gray-700/60 bg-gray-800/50 overflow-hidden animate-fade-in transition-all duration-200 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/5">
-      {/* Imagem com overlay e cadeado */}
-      <div className="relative w-full h-44 bg-gray-900 overflow-hidden shrink-0">
-        {image
-          ? <img src={image} alt={title} className="w-full h-full object-cover opacity-55" />
-          : <div className="w-full h-full flex items-center justify-center"><Gamepad2 className="h-16 w-16 text-gray-600" /></div>}
-        {/* Gradiente escuro na base */}
-        <div className="absolute inset-0 bg-linear-to-t from-gray-900/70 via-transparent to-transparent" />
-        {/* Cadeado central */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Lock className="h-12 w-12 text-white/75 drop-shadow-lg" />
-        </div>
-        {/* Badge de desconto */}
-        {discount && (
-          <span className="absolute top-3 right-3 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-gray-900">
-            -{discount}%
-          </span>
-        )}
-      </div>
-
-      {/* Conteúdo textual */}
-      <div className="flex flex-col flex-1 p-4 gap-3">
-        {/* Título */}
-        <h2 className="font-semibold text-white text-sm leading-tight line-clamp-2">{title}</h2>
-
-        {/* Descrição */}
-        {description && (
-          <p className="text-xs text-gray-400 leading-relaxed line-clamp-3">{description}</p>
-        )}
-
-        {/* Preços */}
-        {displayPrice != null && (
-          <div className="flex items-baseline gap-2 flex-wrap mt-auto">
-            {displayRelPrice && displayRelPrice > displayPrice && (
-              <span className="text-xs text-gray-500 line-through">{formatBRL(displayRelPrice)}</span>
-            )}
-            <span className="text-base font-bold text-white">{formatBRL(displayPrice)}</span>
-            {discount && (
-              <span className="text-xs text-green-400 font-medium">
-                economia {formatBRL(displayRelPrice - displayPrice)}
-              </span>
-            )}
+    <>
+      <article className="flex flex-col rounded-xl border border-gray-700/60 bg-gray-800/50 overflow-hidden animate-fade-in transition-all duration-200 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/5">
+        {/* Imagem com overlay e cadeado */}
+        <div className="relative w-full h-44 bg-gray-900 overflow-hidden shrink-0">
+          {image
+            ? <img src={image} alt={title} className="w-full h-full object-cover opacity-55" />
+            : <div className="w-full h-full flex items-center justify-center"><Gamepad2 className="h-16 w-16 text-gray-600" /></div>}
+          {/* Gradiente escuro na base */}
+          <div className="absolute inset-0 bg-linear-to-t from-gray-900/70 via-transparent to-transparent" />
+          {/* Cadeado central */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Lock className="h-12 w-12 text-white/75 drop-shadow-lg" />
           </div>
-        )}
+          {/* Badge de desconto */}
+          {discount && (
+            <span className="absolute top-3 right-3 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-gray-900">
+              -{discount}%
+            </span>
+          )}
+        </div>
 
-        {/* Botão */}
-        <button
-          onClick={() => { setBuyError(null); setPaymentModalOpen(true); }}
-          disabled={buying}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-900 font-bold text-sm py-2.5 px-4 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {buying
-            ? <Loader2 className="h-4 w-4 animate-spin" />
-            : <Lock className="h-4 w-4" />}
-          {buying ? 'Aguarde...' : 'Pagar'}
-        </button>
-        {buyError && (
-          <p className="text-xs text-red-400 text-center mt-1">{buyError}</p>
-        )}
-      </div>
+        {/* Conteúdo textual */}
+        <div className="flex flex-col flex-1 p-4 gap-3">
+          {/* Título */}
+          <h2 className="font-semibold text-white text-sm leading-tight line-clamp-2">{title}</h2>
 
-      {paymentModalOpen && renderPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          {/* Descrição */}
+          {description && (
+            <p className="text-xs text-gray-400 leading-relaxed line-clamp-3">{description}</p>
+          )}
+
+          {/* Preços */}
+          {displayPrice != null && (
+            <div className="flex items-baseline gap-2 flex-wrap mt-auto">
+              {displayRelPrice && displayRelPrice > displayPrice && (
+                <span className="text-xs text-gray-500 line-through">{formatBRL(displayRelPrice)}</span>
+              )}
+              <span className="text-base font-bold text-white">{formatBRL(displayPrice)}</span>
+              {discount && (
+                <span className="text-xs text-green-400 font-medium">
+                  economia {formatBRL(displayRelPrice - displayPrice)}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Botão */}
+          <button
+            onClick={() => { setBuyError(null); setPaymentModalOpen(true); }}
+            disabled={buying}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-900 font-bold text-sm py-2.5 px-4 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {buying
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Lock className="h-4 w-4" />}
+            {buying ? 'Aguarde...' : 'Pagar'}
+          </button>
+          {buyError && (
+            <p className="text-xs text-red-400 text-center mt-1">{buyError}</p>
+          )}
+        </div>
+      </article>
+
+      {paymentModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70">
           <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
               <h3 className="text-white font-semibold">Escolha como pagar</h3>
@@ -239,11 +239,12 @@ export function ProductCard({ product, userEmail, storeId }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {pixModalOpen && pixData && renderPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+      {pixModalOpen && pixData && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-gray-900 font-semibold">Pagar com PIX</h3>
@@ -276,8 +277,9 @@ export function ProductCard({ product, userEmail, storeId }) {
             </button>
             {pixCopyMsg && <p className="text-xs text-center text-gray-600 mt-2">{pixCopyMsg}</p>}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </article>
+    </>
   );
 }
