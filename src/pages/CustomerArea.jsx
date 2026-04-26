@@ -35,7 +35,7 @@ export function CustomerArea() {
   useEffect(() => {
     const body = user?.storeId ? { store_id: user.storeId } : {};
     api.post('/area-cliente/access', body).catch(() => {/* silencioso — não bloqueia a UI */});
-  }, []);
+  }, [user?.storeId]);
 
   // Verifica se o modal promocional deve ser exibido
   useEffect(() => {
@@ -47,7 +47,7 @@ export function CustomerArea() {
         }
       })
       .catch(() => {/* silencioso */});
-  }, []);
+  }, [user?.storeId]);
 
   // Registra a exibição do modal ao apresentar pela primeira vez
   useEffect(() => {
