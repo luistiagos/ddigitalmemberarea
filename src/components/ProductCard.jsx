@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Gamepad2, ExternalLink, Lock, Loader2, X, CreditCard, QrCode, Wallet } from 'lucide-react';
 import api from '@/services/api';
@@ -25,6 +25,10 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
   const [pixData, setPixData] = useState(null);
   const [pixCopyMsg, setPixCopyMsg] = useState('');
   const [isMounted, setIsMounted] = useState(false);
+  const [paymentModalLoading, setPaymentModalLoading] = useState(false);
+  const [paymentActionLabel, setPaymentActionLabel] = useState('');
+  const checkoutUrlRef = useRef(null);
+  const checkoutUrlPromiseRef = useRef(null);
 
   // Ensure component is mounted before rendering portals
   useEffect(() => {
@@ -41,27 +45,69 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
     return res.data?.checkout_url || null;
   };
 
+  const ensureCheckoutLink = async () => {
+    if (checkoutUrlRef.current) {
+      return checkoutUrlRef.current;
+    }
+
+    if (!checkoutUrlPromiseRef.current) {
+      checkoutUrlPromiseRef.current = createCheckoutLink()
+        .then((checkoutUrl) => {
+          checkoutUrlRef.current = checkoutUrl;
+          return checkoutUrl;
+        })
+        .finally(() => {
+          checkoutUrlPromiseRef.current = null;
+        });
+    }
+
+    return checkoutUrlPromiseRef.current;
+  };
+
+  const openPaymentModal = () => {
+    setBuyError(null);
+    setPaymentModalOpen(true);
+    setPaymentModalLoading(true);
+    setPaymentActionLabel('Preparando formas de pagamento...');
+
+    ensureCheckoutLink()
+      .catch(() => {
+        // O fluxo ainda pode seguir com nova tentativa ao clicar em Cartao/Link.
+      })
+      .finally(() => {
+        setPaymentModalLoading(false);
+        setPaymentActionLabel('');
+      });
+  };
+
   const handleBuyMercadoPago = async () => {
     setBuying(true);
     setBuyError(null);
+    setPaymentModalLoading(true);
+    setPaymentActionLabel('Redirecionando para o Mercado Pago...');
     try {
-      const checkoutUrl = await createCheckoutLink();
+      const checkoutUrl = await ensureCheckoutLink();
       if (checkoutUrl) {
         // Mark that customer area should force a refresh when user returns from external checkout.
         sessionStorage.setItem(CUSTOMER_AREA_REFRESH_KEY, '1');
         window.location.href = checkoutUrl;
       } else {
+        checkoutUrlRef.current = null;
         setBuyError('Não foi possível gerar o link. Tente novamente.');
       }
     } catch {
+      checkoutUrlRef.current = null;
       setBuyError('Erro ao processar. Tente novamente.');
     } finally {
+      setPaymentModalLoading(false);
+      setPaymentActionLabel('');
       setBuying(false);
     }
   };
 
   const handleBuyCard = async () => {
     // Abre checkout do Mercado Pago, onde o cliente pode pagar com cartão.
+    setPaymentActionLabel('Redirecionando para o checkout com cartão...');
     await handleBuyMercadoPago();
   };
 
@@ -69,12 +115,15 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
     setBuying(true);
     setBuyError(null);
     setPixCopyMsg('');
+    setPaymentModalLoading(true);
+    setPaymentActionLabel('Gerando QR Code PIX...');
     try {
       const body = { sids: getSids(), email: userEmail, storeid: storeId };
       const res = await api.post('/create_pix_payment', body);
       if (res.data?.error) {
         setBuyError(res.data.error || 'Erro ao gerar PIX.');
       } else if (res.data?.qr_code) {
+        setPaymentModalOpen(false);
         setPixData(res.data);
         setPixModalOpen(true);
       } else {
@@ -83,6 +132,8 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
     } catch {
       setBuyError('Erro ao gerar PIX. Tente novamente.');
     } finally {
+      setPaymentModalLoading(false);
+      setPaymentActionLabel('');
       setBuying(false);
     }
   };
@@ -98,7 +149,12 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
   };
 
   const closePaymentModal = (shouldRefresh = true) => {
+    if (paymentModalLoading || buying) {
+      return;
+    }
+
     setPaymentModalOpen(false);
+    setPaymentActionLabel('');
     if (shouldRefresh) {
       onPaymentFlowClosed?.();
     }
@@ -207,7 +263,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
 
           {/* Botão */}
           <button
-            onClick={() => { setBuyError(null); setPaymentModalOpen(true); }}
+            onClick={openPaymentModal}
             disabled={buying}
             className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-900 font-bold text-sm py-2.5 px-4 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
@@ -227,38 +283,52 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
           <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
               <h3 className="text-white font-semibold">Escolha como pagar</h3>
-              <button onClick={closePaymentModal} className="text-gray-400 hover:text-white">
+              <button onClick={() => closePaymentModal()} disabled={paymentModalLoading || buying} className="text-gray-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="p-5 space-y-3">
-              <button
-                onClick={async () => { closePaymentModal(false); await handleBuyMercadoPago(); }}
-                disabled={buying}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
-              >
-                <Wallet className="h-4 w-4" />
-                Link Mercado Pago
-              </button>
+              {paymentModalLoading ? (
+                <div className="flex flex-col items-center justify-center rounded-xl border border-gray-700 bg-gray-900/60 px-4 py-8 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+                  <p className="mt-4 text-sm font-medium text-white">{paymentActionLabel || 'Preparando pagamento...'}</p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    {paymentActionLabel === 'Gerando QR Code PIX...'
+                      ? 'Estamos preparando o PIX para voce copiar ou escanear.'
+                      : 'Isso costuma levar apenas alguns segundos.'}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={handleBuyMercadoPago}
+                    disabled={buying}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
+                  >
+                    <Wallet className="h-4 w-4" />
+                    Link Mercado Pago
+                  </button>
 
-              <button
-                onClick={async () => { closePaymentModal(false); await handleBuyPix(); }}
-                disabled={buying}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
-              >
-                <QrCode className="h-4 w-4" />
-                PIX
-              </button>
+                  <button
+                    onClick={handleBuyPix}
+                    disabled={buying}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
+                  >
+                    <QrCode className="h-4 w-4" />
+                    PIX
+                  </button>
 
-              <button
-                onClick={async () => { closePaymentModal(false); await handleBuyCard(); }}
-                disabled={buying}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
-              >
-                <CreditCard className="h-4 w-4" />
-                Cartão
-              </button>
+                  <button
+                    onClick={handleBuyCard}
+                    disabled={buying}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Cartão
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>,
