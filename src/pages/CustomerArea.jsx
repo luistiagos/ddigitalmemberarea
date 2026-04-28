@@ -209,6 +209,7 @@ export function CustomerArea() {
       {promoData && (
         <PromoModal
           products={promoData.products}
+          storeId={user?.storeId ?? null}
           onClose={() => setPromoData(null)}
           onAccepted={(url) => {
             setPromoData(null);

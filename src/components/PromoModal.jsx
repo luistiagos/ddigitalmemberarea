@@ -13,7 +13,7 @@ import api from '@/services/api';
  *   onClose    — called when the user rejects both offers
  *   onAccepted — called with the checkout URL after a successful promo checkout
  */
-export default function PromoModal({ products, onClose, onAccepted }) {
+export default function PromoModal({ products, storeId = null, onClose, onAccepted }) {
   const [step, setStep]             = useState('25');
   const [loading, setLoading]       = useState(false);
   const [loadingLabel, setLoadingLabel] = useState('');
@@ -36,10 +36,9 @@ export default function PromoModal({ products, onClose, onAccepted }) {
     setLoadingLabel('Gerando link de pagamento...');
     setError('');
     try {
-      const { data } = await api.post('/area-cliente/promo-checkout', {
-        product_ids:  productIds,
-        discount_pct: discountPct,
-      });
+      const body = { product_ids: productIds, discount_pct: discountPct };
+      if (storeId != null) body.store_id = storeId;
+      const { data } = await api.post('/area-cliente/promo-checkout', body);
       if (data.checkout_url) {
         onAccepted(data.checkout_url);
       } else {
@@ -59,10 +58,9 @@ export default function PromoModal({ products, onClose, onAccepted }) {
     setError('');
     setPixCopyMsg('');
     try {
-      const { data } = await api.post('/area-cliente/promo-checkout-pix', {
-        product_ids:  productIds,
-        discount_pct: discountPct,
-      });
+      const body = { product_ids: productIds, discount_pct: discountPct };
+      if (storeId != null) body.store_id = storeId;
+      const { data } = await api.post('/area-cliente/promo-checkout-pix', body);
       if (data.error) {
         setError(data.error);
       } else if (data.qr_code) {
