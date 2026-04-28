@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Gamepad2, ExternalLink, Lock, Loader2, X, CreditCard, QrCode, Wallet } from 'lucide-react';
+import CardModal from '@/components/ui/CardModal';
 import api from '@/services/api';
 
 const CUSTOMER_AREA_REFRESH_KEY = 'customerAreaNeedsRefresh';
@@ -452,30 +453,14 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
         document.body
       )}
 
-      {isMounted && cardModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 py-4">
-          <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl my-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700 sticky top-0 bg-gray-800 z-10 rounded-t-2xl">
-              <h3 className="text-white font-semibold">Pagar com Cartão</h3>
-              <button onClick={closeCardModal} aria-label="Fechar" className="text-gray-400 hover:text-white">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-5 space-y-3">
-              {cardStatus === 'success' && (
-                <p className="text-emerald-400 text-sm text-center font-semibold">{cardStatusMsg}</p>
-              )}
-              {cardStatus === 'pending' && (
-                <p className="text-amber-400 text-sm text-center font-semibold">{cardStatusMsg}</p>
-              )}
-              {cardStatus === 'error' && (
-                <p className="text-red-400 text-sm text-center">{cardStatusMsg}</p>
-              )}
-              <div id={`card-brick-product-${productid}`} />
-            </div>
-          </div>
-        </div>,
-        document.body
+      {isMounted && (
+        <CardModal
+          isOpen={cardModalOpen}
+          onClose={closeCardModal}
+          containerId={`card-brick-product-${productid}`}
+          status={cardStatus}
+          statusMsg={cardStatusMsg}
+        />
       )}
 
       {isMounted && pixModalOpen && pixData && typeof document !== 'undefined' && createPortal(

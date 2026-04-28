@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { CreditCard, Loader2, QrCode, Wallet } from 'lucide-react';
+import CardModal from '@/components/ui/CardModal';
 import api from '@/services/api';
 
 const MP_PUBLIC_KEY = 'APP_USR-f344722f-528a-459f-8949-8e50f7db0e03';
@@ -201,12 +202,14 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
   const totalShown    = is25 ? total25 : total50;
 
   // Compact payment screen (choosing method, PIX QR, or card form)
-  const isCompact = choosingMethod || paymentStep === 'pix' || paymentStep === 'card';
+  const isCompact = choosingMethod || paymentStep === 'pix';
 
   return (
-    /* Backdrop */
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 backdrop-blur-sm py-4 px-4">
-      <div className="relative w-full max-w-sm rounded-2xl bg-gray-900 border border-gray-700 shadow-2xl my-auto">
+    <>
+    {/* Backdrop */}
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm">
+      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="relative w-full max-w-sm rounded-2xl bg-gray-900 border border-gray-700 shadow-2xl">
 
         {/* Header gradient bar */}
         <div className={`h-1.5 w-full ${is25 ? 'bg-linear-to-r from-amber-400 to-orange-500' : 'bg-linear-to-r from-red-500 to-pink-600'}`} />
@@ -259,39 +262,7 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
                   Voltar
                 </button>
               </div>
-            ) : paymentStep === 'card' ? (
-              /* Card Brick */
-              <div className="space-y-3">
-                <div className="flex items-center justify-between sticky top-0 bg-gray-900 pb-2 border-b border-gray-700 z-10">
-                  <p className="text-sm font-semibold text-white">Pagar com Cartão</p>
-                  <button
-                    onClick={() => { setPaymentStep('options'); setChoosingMethod(true); }}
-                    aria-label="Voltar"
-                    className="text-gray-500 hover:text-gray-300 transition-colors p-1"
-                  >
-                    ✕
-                  </button>
-                </div>
-                {cardStatus === 'success' && (
-                  <p className="text-emerald-400 text-sm text-center font-semibold">{cardStatusMsg}</p>
-                )}
-                {cardStatus === 'pending' && (
-                  <p className="text-amber-400 text-sm text-center font-semibold">{cardStatusMsg}</p>
-                )}
-                {cardStatus === 'error' && (
-                  <p className="text-red-400 text-sm text-center">{cardStatusMsg}</p>
-                )}
-                <div id="promo-card-brick-container" />
-                {!loading && cardStatus === '' && (
-                  <button
-                    onClick={() => { setPaymentStep('options'); setChoosingMethod(true); }}
-                    className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                  >
-                    Voltar
-                  </button>
-                )}
-              </div>
-            ) : (
+            ) : paymentStep === 'card' ? null : (
               /* 3 payment method buttons */
               <>
                 {/* Compact total */}
@@ -433,6 +404,28 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
         )}
 
       </div>
+      </div>
     </div>
+
+    {/* Modal de cartão — sobrepõe o PromoModal via portal com z-index 60 */}
+    <CardModal
+      isOpen={paymentStep === 'card'}
+      onClose={() => { setPaymentStep('options'); setChoosingMethod(true); }}
+      containerId="promo-card-brick-container"
+      status={cardStatus}
+      statusMsg={cardStatusMsg}
+      zIndex={60}
+      footer={
+        !loading && cardStatus === '' ? (
+          <button
+            onClick={() => { setPaymentStep('options'); setChoosingMethod(true); }}
+            className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            Voltar
+          </button>
+        ) : null
+      }
+    />
+    </>
   );
 }
