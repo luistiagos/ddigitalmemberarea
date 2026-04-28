@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CreditCard, Loader2, QrCode, Wallet } from 'lucide-react';
 import api from '@/services/api';
+
+const MP_PUBLIC_KEY = 'APP_USR-f344722f-528a-459f-8949-8e50f7db0e03';
 
 /**
  * Promotional upsell modal shown in the customer area.
@@ -22,6 +24,112 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
   const [paymentStep, setPaymentStep] = useState('options'); // 'options' | 'pix'
   const [pixData, setPixData]       = useState(null);
   const [pixCopyMsg, setPixCopyMsg] = useState('');
+  const [cardStatus, setCardStatus] = useState(''); // '' | 'success' | 'pending' | 'error'
+  const [cardStatusMsg, setCardStatusMsg] = useState('');
+  const mpBricksCtrl = useRef(null);
+
+  // Mount / unmount the MP CardPayment Brick
+  useEffect(() => {
+    if (paymentStep !== 'card') {
+      if (mpBricksCtrl.current) {
+        try { mpBricksCtrl.current.unmount(); } catch (_) {}
+        mpBricksCtrl.current = null;
+      }
+      return;
+    }
+
+    setCardStatus('');
+    setCardStatusMsg('');
+
+    function initBrick() {
+      const container = document.getElementById('promo-card-brick-container');
+      if (!container) return;
+      container.innerHTML = '';
+      try {
+        const mp = new window.MercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });
+        mp.bricks().create('cardPayment', 'promo-card-brick-container', {
+          initialization: { amount: totalShown },
+          callbacks: {
+            onReady: () => {},
+            onSubmit: async (cardData) => {
+              setLoading(true);
+              setLoadingLabel('Processando pagamento...');
+              setCardStatus('');
+              setCardStatusMsg('');
+              try {
+                const body = {
+                  product_ids: productIds,
+                  discount_pct: discountPct,
+                  token: cardData.token,
+                  installments: cardData.installments,
+                  payment_method_id: cardData.payment_method_id,
+                };
+                if (cardData.payer?.identification?.number) {
+                  body.identification_type = cardData.payer.identification.type || 'CPF';
+                  body.identification_number = cardData.payer.identification.number;
+                }
+                if (storeId != null) body.store_id = storeId;
+                const { data } = await api.post('/area-cliente/promo-checkout-card', body);
+                if (data.error) {
+                  setCardStatus('error');
+                  setCardStatusMsg(data.error);
+                } else if (data.status === 'approved') {
+                  setCardStatus('success');
+                  setCardStatusMsg('✅ Pagamento aprovado! Sua compra foi concluída.');
+                  if (mpBricksCtrl.current) {
+                    try { mpBricksCtrl.current.unmount(); } catch (_) {}
+                    mpBricksCtrl.current = null;
+                  }
+                  setTimeout(() => onClose(), 2500);
+                } else if (data.status === 'in_process' || data.status === 'pending') {
+                  setCardStatus('pending');
+                  setCardStatusMsg('⏳ Pagamento em análise. Você receberá um e-mail de confirmação em breve.');
+                  setTimeout(() => onClose(), 3000);
+                } else {
+                  setCardStatus('error');
+                  setCardStatusMsg(`Pagamento não aprovado (${data.status_detail || data.status}). Verifique os dados e tente novamente.`);
+                }
+              } catch {
+                setCardStatus('error');
+                setCardStatusMsg('Erro ao processar pagamento. Tente novamente.');
+              } finally {
+                setLoading(false);
+                setLoadingLabel('');
+              }
+            },
+            onError: (err) => {
+              console.error('PromoModal CardBrick error:', err);
+            },
+          },
+        }).then(ctrl => { mpBricksCtrl.current = ctrl; });
+      } catch (e) {
+        console.error('PromoModal initBrick error:', e);
+        const el = document.getElementById('promo-card-brick-container');
+        if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">Erro ao carregar formulário. Use PIX ou Mercado Pago.</p>';
+      }
+    }
+
+    if (window.MercadoPago) {
+      initBrick();
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://sdk.mercadopago.com/js/v2';
+      script.onload = initBrick;
+      script.onerror = () => {
+        const el = document.getElementById('promo-card-brick-container');
+        if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">Não foi possível carregar o formulário. Use PIX ou Mercado Pago.</p>';
+      };
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      if (mpBricksCtrl.current) {
+        try { mpBricksCtrl.current.unmount(); } catch (_) {}
+        mpBricksCtrl.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentStep]);
 
   const productIds  = products.map((p) => p.productid);
   const total25     = products.reduce((s, p) => s + p.price_25, 0);
@@ -92,8 +200,8 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
   const discountPct   = is25 ? 25 : 50;
   const totalShown    = is25 ? total25 : total50;
 
-  // Compact payment screen (choosing method or PIX QR)
-  const isCompact = choosingMethod || paymentStep === 'pix';
+  // Compact payment screen (choosing method, PIX QR, or card form)
+  const isCompact = choosingMethod || paymentStep === 'pix' || paymentStep === 'card';
 
   return (
     /* Backdrop */
@@ -151,6 +259,29 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
                   Voltar
                 </button>
               </div>
+            ) : paymentStep === 'card' ? (
+              /* Card Brick */
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-white text-center">Pagar com Cartão</p>
+                {cardStatus === 'success' && (
+                  <p className="text-emerald-400 text-sm text-center font-semibold">{cardStatusMsg}</p>
+                )}
+                {cardStatus === 'pending' && (
+                  <p className="text-amber-400 text-sm text-center font-semibold">{cardStatusMsg}</p>
+                )}
+                {cardStatus === 'error' && (
+                  <p className="text-red-400 text-sm text-center">{cardStatusMsg}</p>
+                )}
+                <div id="promo-card-brick-container" />
+                {!loading && cardStatus === '' && (
+                  <button
+                    onClick={() => { setPaymentStep('options'); setChoosingMethod(true); }}
+                    className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    Voltar
+                  </button>
+                )}
+              </div>
             ) : (
               /* 3 payment method buttons */
               <>
@@ -189,7 +320,7 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
                   </button>
 
                   <button
-                    onClick={() => handleMercadoPago(discountPct, 'Redirecionando para o checkout com cartão...')}
+                    onClick={() => { setPaymentStep('card'); }}
                     disabled={loading}
                     className="w-full py-3 rounded-xl font-bold bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
