@@ -18,6 +18,7 @@ export default function PromoModal({ products, onClose, onAccepted }) {
   const [loading, setLoading]       = useState(false);
   const [loadingLabel, setLoadingLabel] = useState('');
   const [error, setError]           = useState('');
+  const [choosingMethod, setChoosingMethod] = useState(false); // false = botão único | true = 3 métodos
   const [paymentStep, setPaymentStep] = useState('options'); // 'options' | 'pix'
   const [pixData, setPixData]       = useState(null);
   const [pixCopyMsg, setPixCopyMsg] = useState('');
@@ -178,7 +179,7 @@ export default function PromoModal({ products, onClose, onAccepted }) {
                 <div className="flex items-center justify-between w-full">
                   <p className="text-sm font-semibold text-white">Pagar com PIX</p>
                   <button
-                    onClick={() => { setPaymentStep('options'); setPixData(null); }}
+                    onClick={() => { setPaymentStep('options'); setPixData(null); setChoosingMethod(true); }}
                     className="text-gray-500 hover:text-gray-300 text-xs underline"
                   >
                     Voltar
@@ -192,9 +193,7 @@ export default function PromoModal({ products, onClose, onAccepted }) {
                   />
                 )}
                 {pixData.amount != null && (
-                  <p className="text-white font-bold text-lg">
-                    {fmt(pixData.amount)}
-                  </p>
+                  <p className="text-white font-bold text-lg">{fmt(pixData.amount)}</p>
                 )}
                 <p className="text-[11px] text-gray-400 break-all bg-gray-800 rounded-lg p-2.5 w-full">
                   {pixData.qr_code}
@@ -209,19 +208,18 @@ export default function PromoModal({ products, onClose, onAccepted }) {
                   <p className="text-xs text-center text-gray-400">{pixCopyMsg}</p>
                 )}
               </div>
-            ) : (
-              /* ── Selecionar forma de pagamento ── */
+            ) : choosingMethod ? (
+              /* ── 3 métodos (aparece apenas após clicar no botão principal) ── */
               <>
                 <p className="text-center text-sm text-gray-400 pb-1">Escolha como pagar</p>
 
                 <button
                   onClick={() => handleMercadoPago(discountPct)}
                   disabled={loading}
-                  className={`w-full py-3 rounded-xl font-bold text-gray-900 transition-all disabled:opacity-50 flex items-center justify-center gap-2
-                    ${is25 ? 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600' : 'bg-red-500 hover:bg-red-400 active:bg-red-600 text-white'}`}
+                  className="w-full py-3 rounded-xl font-bold bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-gray-900 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <Wallet className="h-4 w-4" />
-                  🚀 Link Mercado Pago — {discountLabel} off
+                  Link Mercado Pago
                 </button>
 
                 <button
@@ -230,7 +228,7 @@ export default function PromoModal({ products, onClose, onAccepted }) {
                   className="w-full py-3 rounded-xl font-bold bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-gray-900 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <QrCode className="h-4 w-4" />
-                  PIX — {discountLabel} off
+                  PIX
                 </button>
 
                 <button
@@ -239,12 +237,33 @@ export default function PromoModal({ products, onClose, onAccepted }) {
                   className="w-full py-3 rounded-xl font-bold bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <CreditCard className="h-4 w-4" />
-                  Cartão — {discountLabel} off
+                  Cartão
+                </button>
+
+                <button
+                  onClick={() => setChoosingMethod(false)}
+                  className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  Voltar
                 </button>
               </>
+            ) : (
+              /* ── Botão principal único ── */
+              <button
+                onClick={() => setChoosingMethod(true)}
+                disabled={loading}
+                className={`w-full py-3 rounded-xl font-bold text-white transition-all disabled:opacity-50
+                  ${is25
+                    ? 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600'
+                    : 'bg-red-500 hover:bg-red-400 active:bg-red-600'}`}
+              >
+                {is25
+                  ? `🚀 Quero ${discountLabel} de desconto agora!`
+                  : `✅ Aceitar ${discountLabel} de desconto`}
+              </button>
             )}
 
-            {!loading && paymentStep !== 'pix' && (
+            {!loading && !choosingMethod && paymentStep !== 'pix' && (
               <button
                 onClick={() => (is25 ? setStep('50') : onClose())}
                 disabled={loading}
