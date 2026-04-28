@@ -262,7 +262,16 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
             ) : paymentStep === 'card' ? (
               /* Card Brick */
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-white text-center">Pagar com Cartão</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-white">Pagar com Cartão</p>
+                  <button
+                    onClick={() => { setPaymentStep('options'); setChoosingMethod(true); }}
+                    aria-label="Fechar formulário de cartão"
+                    className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+                  >
+                    ✕
+                  </button>
+                </div>
                 {cardStatus === 'success' && (
                   <p className="text-emerald-400 text-sm text-center font-semibold">{cardStatusMsg}</p>
                 )}
