@@ -210,9 +210,13 @@ export function CustomerArea() {
         <PromoModal
           products={promoData.products}
           storeId={user?.storeId ?? null}
-          onClose={() => setPromoData(null)}
+          onClose={() => {
+            setPromoData(null);
+            triggerPageReload();
+          }}
           onAccepted={(url) => {
             setPromoData(null);
+            sessionStorage.setItem(CUSTOMER_AREA_REFRESH_KEY, '1');
             window.location.href = url;
           }}
         />

@@ -139,6 +139,12 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
                   <p className="text-xs text-center text-gray-400">{pixCopyMsg}</p>
                 )}
                 <button
+                  onClick={onClose}
+                  className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-sm transition-colors"
+                >
+                  ✅ Já paguei
+                </button>
+                <button
                   onClick={() => { setPaymentStep('options'); setPixData(null); setChoosingMethod(true); }}
                   className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
                 >
