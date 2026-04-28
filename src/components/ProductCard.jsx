@@ -4,6 +4,7 @@ import { Gamepad2, ExternalLink, Lock, Loader2, X, CreditCard, QrCode, Wallet } 
 import api from '@/services/api';
 
 const CUSTOMER_AREA_REFRESH_KEY = 'customerAreaNeedsRefresh';
+const MP_PUBLIC_KEY = 'APP_USR-f344722f-528a-459f-8949-8e50f7db0e03';
 
 function formatBRL(val) {
   return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -18,6 +19,7 @@ function formatBRL(val) {
  */
 export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }) {
   const { productid, title, image, owned, price, relprice, description, deliverlink } = product;
+  const displayPrice = price != null ? Number(price) : null;
   const [buying, setBuying] = useState(false);
   const [buyError, setBuyError] = useState(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -29,11 +31,123 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
   const [paymentActionLabel, setPaymentActionLabel] = useState('');
   const checkoutUrlRef = useRef(null);
   const checkoutUrlPromiseRef = useRef(null);
+  const [cardModalOpen, setCardModalOpen] = useState(false);
+  const [cardStatus, setCardStatus] = useState('');
+  const [cardStatusMsg, setCardStatusMsg] = useState('');
+  const mpBricksCtrl = useRef(null);
 
   // Ensure component is mounted before rendering portals
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Mount / unmount MP CardPayment Brick for card payment
+  useEffect(() => {
+    if (!cardModalOpen) {
+      if (mpBricksCtrl.current) {
+        try { mpBricksCtrl.current.unmount(); } catch (_) {}
+        mpBricksCtrl.current = null;
+      }
+      return;
+    }
+    setCardStatus('');
+    setCardStatusMsg('');
+    const containerId = `card-brick-product-${productid}`;
+
+    function initBrick() {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = '';
+      try {
+        const mp = new window.MercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });
+        mp.bricks().create('cardPayment', containerId, {
+          initialization: { amount: displayPrice ?? 0, payer: { email: userEmail || '' } },
+          callbacks: {
+            onReady: () => {},
+            onSubmit: async (cardData) => {
+              setCardStatus('');
+              setCardStatusMsg('');
+              const body = {
+                sids: String(productid),
+                token: cardData.token,
+                installments: cardData.installments,
+                payment_method_id: cardData.payment_method_id,
+                email: cardData.payer?.email || userEmail,
+                storeid: storeId,
+              };
+              if (cardData.payer?.identification?.number) {
+                body.identification_type = cardData.payer.identification.type || 'CPF';
+                body.identification_number = cardData.payer.identification.number;
+              }
+              try {
+                const res = await api.post('/create_card_payment', body);
+                const data = res.data;
+                if (data.error) {
+                  setCardStatus('error');
+                  setCardStatusMsg(data.error);
+                } else if (data.status === 'approved') {
+                  setCardStatus('success');
+                  setCardStatusMsg('\u2705 Pagamento aprovado!');
+                  if (mpBricksCtrl.current) {
+                    try { mpBricksCtrl.current.unmount(); } catch (_) {}
+                    mpBricksCtrl.current = null;
+                  }
+                  const redirectUrl = data.redirect_url;
+                  setTimeout(() => {
+                    if (redirectUrl) {
+                      sessionStorage.setItem(CUSTOMER_AREA_REFRESH_KEY, '1');
+                      window.location.href = redirectUrl;
+                    } else {
+                      setCardModalOpen(false);
+                      onPaymentFlowClosed?.();
+                    }
+                  }, 2000);
+                } else if (data.status === 'in_process' || data.status === 'pending') {
+                  setCardStatus('pending');
+                  setCardStatusMsg('\u23f3 Pagamento em an\u00e1lise. Voc\u00ea receber\u00e1 um e-mail de confirma\u00e7\u00e3o em breve.');
+                  setTimeout(() => { setCardModalOpen(false); onPaymentFlowClosed?.(); }, 3000);
+                } else {
+                  setCardStatus('error');
+                  setCardStatusMsg(`Pagamento n\u00e3o aprovado (${data.status_detail || data.status}). Verifique os dados e tente novamente.`);
+                }
+              } catch {
+                setCardStatus('error');
+                setCardStatusMsg('Erro ao processar pagamento. Tente novamente.');
+              }
+            },
+            onError: (err) => {
+              console.error('ProductCard CardBrick error:', err);
+            },
+          },
+        }).then(ctrl => { mpBricksCtrl.current = ctrl; });
+      } catch (e) {
+        console.error('ProductCard initBrick error:', e);
+        const el = document.getElementById(containerId);
+        if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">Erro ao carregar formul\u00e1rio. Use PIX ou Mercado Pago.</p>';
+      }
+    }
+
+    if (window.MercadoPago) {
+      initBrick();
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://sdk.mercadopago.com/js/v2';
+      script.onload = initBrick;
+      script.onerror = () => {
+        const el = document.getElementById(containerId);
+        if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">N\u00e3o foi poss\u00edvel carregar o formul\u00e1rio. Use PIX ou Mercado Pago.</p>';
+      };
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      if (mpBricksCtrl.current) {
+        try { mpBricksCtrl.current.unmount(); } catch (_) {}
+        mpBricksCtrl.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardModalOpen]);
 
   const getSids = () => String(productid);
 
@@ -105,10 +219,14 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
     }
   };
 
-  const handleBuyCard = async () => {
-    // Abre checkout do Mercado Pago, onde o cliente pode pagar com cartão.
-    setPaymentActionLabel('Redirecionando para o checkout com cartão...');
-    await handleBuyMercadoPago();
+  const handleBuyCard = () => {
+    setPaymentModalOpen(false);
+    setCardModalOpen(true);
+  };
+
+  const closeCardModal = () => {
+    setCardModalOpen(false);
+    onPaymentFlowClosed?.();
   };
 
   const handleBuyPix = async () => {
@@ -207,7 +325,6 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
   }
 
   /* ── Produto não adquirido ── */
-  const displayPrice   = price    != null ? Number(price)    : null;
   const displayRelPrice = relprice != null ? Number(relprice) : null;
   const discount =
     displayRelPrice && displayPrice && displayRelPrice > displayPrice
@@ -329,6 +446,32 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {isMounted && cardModalOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+              <h3 className="text-white font-semibold">Pagar com Cartão</h3>
+              <button onClick={closeCardModal} aria-label="Fechar" className="text-gray-400 hover:text-white">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-3">
+              {cardStatus === 'success' && (
+                <p className="text-emerald-400 text-sm text-center font-semibold">{cardStatusMsg}</p>
+              )}
+              {cardStatus === 'pending' && (
+                <p className="text-amber-400 text-sm text-center font-semibold">{cardStatusMsg}</p>
+              )}
+              {cardStatus === 'error' && (
+                <p className="text-red-400 text-sm text-center">{cardStatusMsg}</p>
+              )}
+              <div id={`card-brick-product-${productid}`} />
             </div>
           </div>
         </div>,
