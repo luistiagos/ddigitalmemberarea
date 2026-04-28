@@ -92,97 +92,30 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
   const discountPct   = is25 ? 25 : 50;
   const totalShown    = is25 ? total25 : total50;
 
+  // Compact payment screen (choosing method or PIX QR)
+  const isCompact = choosingMethod || paymentStep === 'pix';
+
   return (
     /* Backdrop */
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-lg rounded-2xl bg-gray-900 border border-gray-700 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-sm rounded-2xl bg-gray-900 border border-gray-700 shadow-2xl overflow-hidden">
 
         {/* Header gradient bar */}
         <div className={`h-1.5 w-full ${is25 ? 'bg-linear-to-r from-amber-400 to-orange-500' : 'bg-linear-to-r from-red-500 to-pink-600'}`} />
 
-        <div className="p-6 space-y-5">
+        {isCompact ? (
+          /* ── COMPACT PAYMENT VIEW ── */
+          <div className="p-5 space-y-4">
 
-          {/* Title */}
-          <div className="text-center space-y-1">
-            <p className="text-2xl font-bold text-white">
-              {is25 ? '🔥 Oferta Exclusiva — Só Agora!' : '⚠️ Último Aviso!'}
-            </p>
-            <p className="text-sm text-gray-400">
-              {is25
-                ? `Esta promoção expira quando você fechar esta janela.`
-                : `Esta é sua última chance. A oferta desaparece quando você clicar em "Não quero".`}
-            </p>
-          </div>
-
-          {/* FOMO body */}
-          <p className="text-gray-300 text-sm leading-relaxed text-center">
-            {is25
-              ? `Detectamos que você ainda não possui ${products.length > 1 ? `${products.length} produto(s)` : 'este produto'} da loja. Desbloqueie agora com `
-              : `Ok, entendemos que ${fmt(total25)} ainda era muito. Que tal levar tudo por apenas `}
-            <span className={`font-bold ${is25 ? 'text-amber-400' : 'text-red-400'}`}>{fmt(totalShown)}</span>
-            {is25 ? ` (${discountLabel} de desconto)!` : ` — ${discountLabel} de desconto? Essa é a nossa oferta final.`}
-          </p>
-
-          {/* Product list */}
-          <ul className="space-y-2 max-h-52 overflow-y-auto pr-1">
-            {products.map((p) => {
-              const discounted = is25 ? p.price_25 : p.price_50;
-              return (
-                <li
-                  key={p.productid}
-                  className="flex items-center gap-3 bg-gray-800 rounded-xl px-3 py-2"
-                >
-                  {p.image && (
-                    <img
-                      src={p.image}
-                      alt={p.title}
-                      className="w-10 h-10 rounded-lg object-cover shrink-0"
-                    />
-                  )}
-                  <span className="flex-1 text-sm text-white line-clamp-1">{p.title}</span>
-                  <span className="text-xs text-gray-500 line-through mr-1">{fmt(p.price)}</span>
-                  <span className={`text-sm font-bold ${is25 ? 'text-amber-400' : 'text-red-400'}`}>
-                    {fmt(discounted)}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-
-          {/* Total */}
-          <div className="flex justify-between items-center bg-gray-800 rounded-xl px-4 py-3">
-            <span className="text-gray-400 text-sm">Total com desconto</span>
-            <div className="text-right">
-              <p className="text-xs text-gray-500 line-through">{fmt(totalFull)}</p>
-              <p className={`font-bold text-lg ${is25 ? 'text-amber-400' : 'text-red-400'}`}>
-                {fmt(totalShown)}
-              </p>
-            </div>
-          </div>
-
-          {error && (
-            <p className="text-red-400 text-sm text-center">{error}</p>
-          )}
-
-          {/* CTA buttons */}
-          <div className="space-y-2">
             {loading ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-gray-700 bg-gray-900/60 px-4 py-6 text-center">
-                <Loader2 className="h-7 w-7 animate-spin text-amber-400" />
-                <p className="mt-3 text-sm font-medium text-white">{loadingLabel || 'Processando...'}</p>
+              <div className="flex flex-col items-center justify-center py-8 gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
+                <p className="text-sm font-medium text-white">{loadingLabel || 'Processando...'}</p>
               </div>
             ) : paymentStep === 'pix' && pixData ? (
-              /* ── PIX QR Code ── */
+              /* PIX QR Code */
               <div className="flex flex-col items-center gap-3">
-                <div className="flex items-center justify-between w-full">
-                  <p className="text-sm font-semibold text-white">Pagar com PIX</p>
-                  <button
-                    onClick={() => { setPaymentStep('options'); setPixData(null); setChoosingMethod(true); }}
-                    className="text-gray-500 hover:text-gray-300 text-xs underline"
-                  >
-                    Voltar
-                  </button>
-                </div>
+                <p className="text-sm font-semibold text-white">Pagar com PIX</p>
                 {pixData.qr_code_base64 && (
                   <img
                     src={pixData.qr_code_base64.startsWith('data:') ? pixData.qr_code_base64 : `data:image/png;base64,${pixData.qr_code_base64}`}
@@ -205,76 +138,154 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
                 {pixCopyMsg && (
                   <p className="text-xs text-center text-gray-400">{pixCopyMsg}</p>
                 )}
-              </div>
-            ) : choosingMethod ? (
-              /* ── 3 métodos (aparece apenas após clicar no botão principal) ── */
-              <>
-                <p className="text-center text-sm text-gray-400 pb-1">Escolha como pagar</p>
-
                 <button
-                  onClick={() => handleMercadoPago(discountPct)}
-                  disabled={loading}
-                  className="w-full py-3 rounded-xl font-bold bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-gray-900 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  <Wallet className="h-4 w-4" />
-                  Link Mercado Pago
-                </button>
-
-                <button
-                  onClick={() => handlePix(discountPct)}
-                  disabled={loading}
-                  className="w-full py-3 rounded-xl font-bold bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-gray-900 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  <QrCode className="h-4 w-4" />
-                  PIX
-                </button>
-
-                <button
-                  onClick={() => handleMercadoPago(discountPct)}
-                  disabled={loading}
-                  className="w-full py-3 rounded-xl font-bold bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  <CreditCard className="h-4 w-4" />
-                  Cartão
-                </button>
-
-                <button
-                  onClick={() => setChoosingMethod(false)}
+                  onClick={() => { setPaymentStep('options'); setPixData(null); setChoosingMethod(true); }}
                   className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
                 >
                   Voltar
                 </button>
-              </>
+              </div>
             ) : (
-              /* ── Botão principal único ── */
+              /* 3 payment method buttons */
+              <>
+                {/* Compact total */}
+                <div className="flex items-center justify-between bg-gray-800 rounded-xl px-4 py-3">
+                  <span className="text-gray-400 text-sm">Total com desconto</span>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500 line-through">{fmt(totalFull)}</p>
+                    <p className={`font-bold text-base ${is25 ? 'text-amber-400' : 'text-red-400'}`}>
+                      {fmt(totalShown)}
+                    </p>
+                  </div>
+                </div>
+
+                {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+                <p className="text-center text-xs text-gray-400">Escolha como pagar</p>
+
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleMercadoPago(discountPct)}
+                    disabled={loading}
+                    className="w-full py-3 rounded-xl font-bold bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-gray-900 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <Wallet className="h-4 w-4" />
+                    Link Mercado Pago
+                  </button>
+
+                  <button
+                    onClick={() => handlePix(discountPct)}
+                    disabled={loading}
+                    className="w-full py-3 rounded-xl font-bold bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-gray-900 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <QrCode className="h-4 w-4" />
+                    PIX
+                  </button>
+
+                  <button
+                    onClick={() => handleMercadoPago(discountPct)}
+                    disabled={loading}
+                    className="w-full py-3 rounded-xl font-bold bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Cartão
+                  </button>
+
+                  <button
+                    onClick={() => setChoosingMethod(false)}
+                    className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    Voltar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          /* ── FULL OFFER VIEW ── */
+          <div className="p-6 space-y-5">
+
+            {/* Title */}
+            <div className="text-center space-y-1">
+              <p className="text-2xl font-bold text-white">
+                {is25 ? '🔥 Oferta Exclusiva — Só Agora!' : '⚠️ Último Aviso!'}
+              </p>
+              <p className="text-sm text-gray-400">
+                {is25
+                  ? 'Esta promoção expira quando você fechar esta janela.'
+                  : 'Esta é sua última chance. A oferta desaparece quando você clicar em "Não quero".'}
+              </p>
+            </div>
+
+            {/* FOMO body */}
+            <p className="text-gray-300 text-sm leading-relaxed text-center">
+              {is25
+                ? `Detectamos que você ainda não possui ${products.length > 1 ? `${products.length} produto(s)` : 'este produto'} da loja. Desbloqueie agora com `
+                : `Ok, entendemos que ${fmt(total25)} ainda era muito. Que tal levar tudo por apenas `}
+              <span className={`font-bold ${is25 ? 'text-amber-400' : 'text-red-400'}`}>{fmt(totalShown)}</span>
+              {is25 ? ` (${discountLabel} de desconto)!` : ` — ${discountLabel} de desconto? Essa é a nossa oferta final.`}
+            </p>
+
+            {/* Product list */}
+            <ul className="space-y-2 max-h-52 overflow-y-auto pr-1">
+              {products.map((p) => {
+                const discounted = is25 ? p.price_25 : p.price_50;
+                return (
+                  <li
+                    key={p.productid}
+                    className="flex items-center gap-3 bg-gray-800 rounded-xl px-3 py-2"
+                  >
+                    {p.image && (
+                      <img
+                        src={p.image}
+                        alt={p.title}
+                        className="w-10 h-10 rounded-lg object-cover shrink-0"
+                      />
+                    )}
+                    <span className="flex-1 text-sm text-white line-clamp-1">{p.title}</span>
+                    <span className="text-xs text-gray-500 line-through mr-1">{fmt(p.price)}</span>
+                    <span className={`text-sm font-bold ${is25 ? 'text-amber-400' : 'text-red-400'}`}>
+                      {fmt(discounted)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Total */}
+            <div className="flex justify-between items-center bg-gray-800 rounded-xl px-4 py-3">
+              <span className="text-gray-400 text-sm">Total com desconto</span>
+              <div className="text-right">
+                <p className="text-xs text-gray-500 line-through">{fmt(totalFull)}</p>
+                <p className={`font-bold text-lg ${is25 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {fmt(totalShown)}
+                </p>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="space-y-2">
               <button
                 onClick={() => setChoosingMethod(true)}
-                disabled={loading}
-                className={`w-full py-3 rounded-xl font-bold text-white transition-all disabled:opacity-50
+                className={`w-full py-3 rounded-xl font-bold text-white transition-all
                   ${is25
                     ? 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600'
                     : 'bg-red-500 hover:bg-red-400 active:bg-red-600'}`}
               >
-                {is25
-                  ? `🚀 Quero ${discountLabel} de desconto agora!`
-                  : `✅ Aceitar ${discountLabel} de desconto`}
+                {is25 ? `🚀 Quero ${discountLabel} de desconto agora!` : `✅ Aceitar ${discountLabel} de desconto`}
               </button>
-            )}
 
-            {!loading && !choosingMethod && paymentStep !== 'pix' && (
               <button
                 onClick={() => (is25 ? setStep('50') : onClose())}
-                disabled={loading}
-                className="w-full py-2 rounded-xl text-sm text-gray-500 hover:text-gray-300 transition-colors disabled:opacity-50"
+                className="w-full py-2 rounded-xl text-sm text-gray-500 hover:text-gray-300 transition-colors"
               >
-                {is25
-                  ? 'Vou perder essa oportunidade'
-                  : 'Não, quero mesmo assim perder'}
+                {is25 ? 'Vou perder essa oportunidade' : 'Não, quero mesmo assim perder'}
               </button>
-            )}
-          </div>
+            </div>
 
-        </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
