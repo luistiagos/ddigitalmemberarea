@@ -205,8 +205,8 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
 
   return (
     /* Backdrop */
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-sm rounded-2xl bg-gray-900 border border-gray-700 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 backdrop-blur-sm py-4 px-4">
+      <div className="relative w-full max-w-sm rounded-2xl bg-gray-900 border border-gray-700 shadow-2xl my-auto">
 
         {/* Header gradient bar */}
         <div className={`h-1.5 w-full ${is25 ? 'bg-linear-to-r from-amber-400 to-orange-500' : 'bg-linear-to-r from-red-500 to-pink-600'}`} />
@@ -262,11 +262,11 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
             ) : paymentStep === 'card' ? (
               /* Card Brick */
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between sticky top-0 bg-gray-900 pb-2 border-b border-gray-700 z-10">
                   <p className="text-sm font-semibold text-white">Pagar com Cartão</p>
                   <button
                     onClick={() => { setPaymentStep('options'); setChoosingMethod(true); }}
-                    aria-label="Fechar formulário de cartão"
+                    aria-label="Voltar"
                     className="text-gray-500 hover:text-gray-300 transition-colors p-1"
                   >
                     ✕

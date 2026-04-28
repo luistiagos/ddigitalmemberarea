@@ -453,9 +453,9 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
       )}
 
       {isMounted && cardModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 py-4">
+          <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl my-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700 sticky top-0 bg-gray-800 z-10 rounded-t-2xl">
               <h3 className="text-white font-semibold">Pagar com Cartão</h3>
               <button onClick={closeCardModal} aria-label="Fechar" className="text-gray-400 hover:text-white">
                 <X className="h-5 w-5" />
