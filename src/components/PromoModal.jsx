@@ -31,9 +31,9 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
   const fmt = (v) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  async function handleMercadoPago(discountPct) {
+  async function handleMercadoPago(discountPct, label = 'Gerando link de pagamento...') {
     setLoading(true);
-    setLoadingLabel('Gerando link de pagamento...');
+    setLoadingLabel(label);
     setError('');
     try {
       const body = { product_ids: productIds, discount_pct: discountPct };
@@ -189,7 +189,7 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
                   </button>
 
                   <button
-                    onClick={() => handleMercadoPago(discountPct)}
+                    onClick={() => handleMercadoPago(discountPct, 'Redirecionando para o checkout com cartão...')}
                     disabled={loading}
                     className="w-full py-3 rounded-xl font-bold bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
