@@ -16,7 +16,7 @@ const MP_PUBLIC_KEY = 'APP_USR-f344722f-528a-459f-8949-8e50f7db0e03';
  *   onClose    — called when the user rejects both offers
  *   onAccepted — called with the checkout URL after a successful promo checkout
  */
-export default function PromoModal({ products, storeId = null, onClose, onAccepted }) {
+export default function PromoModal({ products, storeId = null, onClose, onPaymentComplete, onAccepted }) {
   const [step, setStep]             = useState('25');
   const [loading, setLoading]       = useState(false);
   const [loadingLabel, setLoadingLabel] = useState('');
@@ -81,11 +81,11 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
                     try { mpBricksCtrl.current.unmount(); } catch (_) {}
                     mpBricksCtrl.current = null;
                   }
-                  setTimeout(() => onClose(), 2500);
+                  setTimeout(() => (onPaymentComplete ?? onClose)(), 2500);
                 } else if (data.status === 'in_process' || data.status === 'pending') {
                   setCardStatus('pending');
                   setCardStatusMsg('⏳ Pagamento em análise. Você receberá um e-mail de confirmação em breve.');
-                  setTimeout(() => onClose(), 3000);
+                  setTimeout(() => (onPaymentComplete ?? onClose)(), 3000);
                 } else {
                   setCardStatus('error');
                   setCardStatusMsg(`Pagamento não aprovado (${data.status_detail || data.status}). Verifique os dados e tente novamente.`);
@@ -250,7 +250,7 @@ export default function PromoModal({ products, storeId = null, onClose, onAccept
                   <p className="text-xs text-center text-gray-400">{pixCopyMsg}</p>
                 )}
                 <button
-                  onClick={onClose}
+                  onClick={onPaymentComplete ?? onClose}
                   className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-sm transition-colors"
                 >
                   ✅ Já paguei

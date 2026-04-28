@@ -211,6 +211,14 @@ export function CustomerArea() {
           products={promoData.products}
           storeId={user?.storeId ?? null}
           onClose={() => {
+            // Usuário recusou a oferta — apenas fecha o modal.
+            // NÃO recarregamos a página para evitar que o reload aborte o
+            // request de promo-seen em voo, o que causaria o loop infinito.
+            setPromoData(null);
+          }}
+          onPaymentComplete={() => {
+            // Pagamento concluído dentro do PromoModal — recarrega para
+            // refletir o novo produto desbloqueado.
             setPromoData(null);
             triggerPageReload();
           }}
