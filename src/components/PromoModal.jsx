@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CreditCard, Loader2, QrCode, Wallet, X } from 'lucide-react';
+import { CreditCard, Loader2, QrCode, Wallet } from 'lucide-react';
 import api from '@/services/api';
 
 /**

@@ -37,12 +37,7 @@ export function useProducts(userEmail, storeId = null) {
         params.set('_ts', String(Date.now()));
         params.set('_fk', String(fetchKey));
 
-        const response = await api.get(`/list_store_catalog?${params}`, {
-          headers: {
-            'Cache-Control': 'no-cache',
-            Pragma: 'no-cache',
-          },
-        });
+        const response = await api.get(`/list_store_catalog?${params}`);
 
         if (!cancelled) {
           setProducts(response.data || []);
