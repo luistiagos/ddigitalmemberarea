@@ -11,6 +11,7 @@ import api from '@/services/api';
 import PromoModal from '@/components/PromoModal';
 
 const CUSTOMER_AREA_REFRESH_KEY = 'customerAreaNeedsRefresh';
+const PROMO_MODAL_SHOWN_KEY = 'promoModalShownThisSession';
 
 function EmptyState() {
   return (
@@ -67,8 +68,10 @@ export function CustomerArea() {
     api.post('/area-cliente/access', body).catch(() => {/* silencioso — não bloqueia a UI */});
   }, [user?.storeId]);
 
-  // Verifica se o modal promocional deve ser exibido
+  // Verifica se o modal promocional deve ser exibido.
+  // Sai imediatamente se já foi exibido nesta sessão (persiste em reloads do mesmo tab).
   useEffect(() => {
+    if (sessionStorage.getItem(PROMO_MODAL_SHOWN_KEY)) return;
     const params = user?.storeId ? { store_id: user.storeId } : {};
     api.get('/area-cliente/promo', { params })
       .then(({ data }) => {
@@ -79,13 +82,17 @@ export function CustomerArea() {
       .catch(() => {/* silencioso */});
   }, [user?.storeId]);
 
-  // Registra a exibição do modal ao apresentar pela primeira vez
+  // Registra a exibição do modal ao apresentar pela primeira vez.
+  // Envia store_id no body para evitar mismatch de NULL no banco
+  // quando o JWT ainda não carrega store_id (tokens antigos).
   useEffect(() => {
     if (promoData && !promoSeen) {
       setPromoSeen(true);
-      api.post('/area-cliente/promo-seen').catch(() => {});
+      sessionStorage.setItem(PROMO_MODAL_SHOWN_KEY, '1');
+      const body = user?.storeId ? { store_id: user.storeId } : {};
+      api.post('/area-cliente/promo-seen', body).catch(() => {});
     }
-  }, [promoData, promoSeen]);
+  }, [promoData, promoSeen, user?.storeId]);
 
   useEffect(() => {
     if (sessionStorage.getItem(CUSTOMER_AREA_REFRESH_KEY) === '1') {
