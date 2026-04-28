@@ -21,6 +21,13 @@ export function SetPassword() {
   // Aceita tanto ?store_id= quanto ?storeid= (compatibilidade com links antigos)
   const rawStoreId = searchParams.get('store_id') || searchParams.get('storeid');
   const storeId = rawStoreId ? Number(rawStoreId) : null;
+
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+
   // Persiste o storeId da URL após o primeiro render
   useEffect(() => {
     if (storeId != null) persistStoreId(storeId);
@@ -29,12 +36,6 @@ export function SetPassword() {
   if (isAuthenticated()) {
     return <Navigate to="/area-cliente" replace />;
   }
-
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
 
   const strength = calcStrength(password);
   const strengthWidth = `${(strength / 4) * 100}%`;
