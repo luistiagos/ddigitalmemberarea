@@ -6,7 +6,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { useProducts } from '@/hooks/useProducts';
-import { getStoredUser } from '@/utils/auth';
+import { getStoredUser, storeUser } from '@/utils/auth';
 import api from '@/services/api';
 import PromoModal from '@/components/PromoModal';
 
@@ -33,6 +33,21 @@ export function CustomerArea() {
   const [promoData, setPromoData] = useState(null); // { products: [...] }
   const [promoSeen, setPromoSeen] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+
+  // Silently refresh JWT when store_id is missing (old tokens issued before first purchase)
+  useEffect(() => {
+    if (user?.storeId) return; // already present — nothing to do
+    api.post('/auth/refresh')
+      .then(({ data }) => {
+        if (data.store_id) {
+          storeUser({ email: user.email, id: user.id, storeId: data.store_id }, data.token);
+          // Reload so all hooks pick up the new storeId from localStorage
+          window.location.reload();
+        }
+      })
+      .catch(() => {/* silencioso */});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const triggerAutoRefresh = useCallback(() => {
     setIsAutoRefreshing(true);
