@@ -82,16 +82,6 @@ export function CustomerArea() {
       .catch(() => {/* silencioso */});
   }, [user?.storeId]);
 
-  // Marca que o modal foi exibido nesta sessão assim que promoData chega.
-  // O promo-seen (gravação no banco) só é chamado pelo PromoModal via onShown,
-  // garantindo que o servidor só registra quando o modal está de fato na tela.
-  useEffect(() => {
-    if (promoData && !promoSeen) {
-      setPromoSeen(true);
-      sessionStorage.setItem(PROMO_MODAL_SHOWN_KEY, '1');
-    }
-  }, [promoData, promoSeen]);
-
   useEffect(() => {
     if (sessionStorage.getItem(CUSTOMER_AREA_REFRESH_KEY) === '1') {
       triggerPageReload();
@@ -216,10 +206,13 @@ export function CustomerArea() {
           products={promoData.products}
           storeId={user?.storeId ?? null}
           onShown={() => {
-            // Chamado pelo PromoModal no seu useEffect de montagem —
-            // garante que o promo-seen só é gravado quando o modal
-            // está de fato renderizado na tela (evita falso-positivo
-            // causado por reload antes do render).
+            // Só grava no sessionStorage e no servidor quando o modal
+            // está de fato renderizado na tela. Isso evita o falso-positivo
+            // onde o reload do refresh de JWT disparava antes do render.
+            if (!promoSeen) {
+              setPromoSeen(true);
+              sessionStorage.setItem(PROMO_MODAL_SHOWN_KEY, '1');
+            }
             const body = user?.storeId ? { store_id: user.storeId } : {};
             api.post('/area-cliente/promo-seen', body).catch(() => {});
           }}
