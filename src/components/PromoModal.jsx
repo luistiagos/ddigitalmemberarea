@@ -75,10 +75,17 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
       container.innerHTML = '';
       try {
         const mp = new window.MercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });
+        console.log('[PromoCardBrick] Initializing with amount:', totalShown, 'step:', step);
         mp.bricks().create('cardPayment', 'promo-card-brick-container', {
           initialization: { amount: totalShown },
+          customization: {
+            paymentMethods: {
+              creditCard: 'all',
+              debitCard: 'all',
+            },
+          },
           callbacks: {
-            onReady: () => {},
+            onReady: () => { console.log('[PromoCardBrick] Ready'); },
             onSubmit: async (cardData) => {
               setLoading(true);
               setLoadingLabel('Processando pagamento...');
@@ -126,9 +133,9 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
               }
             },
             onError: (err) => {
-              console.error('PromoModal CardBrick error:', err);
-              // Only surface critical errors — 'non_critical' are informational
-              // (e.g. BIN lookup during typing) and should not block the user.
+              // Log full error object for diagnosis
+              console.error('[PromoCardBrick] onError:', JSON.stringify(err, null, 2), err);
+              // Only surface critical errors — non_critical fires during BIN typing and is expected
               if (err?.type !== 'non_critical') {
                 setCardStatus('error');
                 setCardStatusMsg('Erro no formulário de cartão. Tente novamente ou use outra forma de pagamento.');

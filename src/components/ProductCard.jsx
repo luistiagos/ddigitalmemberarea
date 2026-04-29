@@ -69,10 +69,17 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
       container.innerHTML = '';
       try {
         const mp = new window.MercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });
+        console.log('[CardBrick] Initializing with amount:', displayPrice, 'email:', userEmail);
         mp.bricks().create('cardPayment', containerId, {
           initialization: { amount: displayPrice, payer: { email: userEmail || '' } },
+          customization: {
+            paymentMethods: {
+              creditCard: 'all',
+              debitCard: 'all',
+            },
+          },
           callbacks: {
-            onReady: () => {},
+            onReady: () => { console.log('[CardBrick] Ready'); },
             onSubmit: async (cardData) => {
               setCardStatus('');
               setCardStatusMsg('');
@@ -125,9 +132,9 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
               }
             },
             onError: (err) => {
-              console.error('ProductCard CardBrick error:', err);
-              // Only surface non-trivial (critical) errors to the user.
-              // 'non_critical' errors are informational (e.g. BIN lookup during typing).
+              // Log full error object for diagnosis
+              console.error('[CardBrick] onError:', JSON.stringify(err, null, 2), err);
+              // Only surface critical errors — non_critical fires during BIN typing and is expected
               if (err?.type !== 'non_critical') {
                 setCardStatus('error');
                 setCardStatusMsg('Erro no formulário de cartão. Tente novamente ou use outra forma de pagamento.');
