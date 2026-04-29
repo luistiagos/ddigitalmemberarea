@@ -48,6 +48,21 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
       },
+      '/create_card_payment': {
+        target: 'https://digitalstoregames.pythonanywhere.com',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/create_pix_payment': {
+        target: 'https://digitalstoregames.pythonanywhere.com',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/payment_status': {
+        target: 'https://digitalstoregames.pythonanywhere.com',
+        changeOrigin: true,
+        secure: true,
+      },
       '/notification': {
         target: 'https://digitalstoregames.pythonanywhere.com',
         changeOrigin: true,

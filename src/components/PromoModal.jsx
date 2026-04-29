@@ -29,6 +29,16 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
   const [cardStatusMsg, setCardStatusMsg] = useState('');
   const mpBricksCtrl = useRef(null);
 
+  // Computed values — need to be declared BEFORE the useEffect that uses them
+  const productIds  = products.map((p) => p.productid);
+  const total25     = products.reduce((s, p) => s + p.price_25, 0);
+  const total50     = products.reduce((s, p) => s + p.price_50, 0);
+  const totalFull   = products.reduce((s, p) => s + p.price,    0);
+  const is25        = step === '25';
+  const discountLabel = is25 ? '25%' : '50%';
+  const discountPct   = is25 ? 25 : 50;
+  const totalShown    = is25 ? total25 : total50;
+
   // Notifica o pai que o modal está de fato na tela.
   // onShown é chamado apenas uma vez na montagem — é aqui que o pai
   // deve chamar /area-cliente/promo-seen, garantindo que o registro
@@ -139,12 +149,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentStep]);
-
-  const productIds  = products.map((p) => p.productid);
-  const total25     = products.reduce((s, p) => s + p.price_25, 0);
-  const total50     = products.reduce((s, p) => s + p.price_50, 0);
-  const totalFull   = products.reduce((s, p) => s + p.price,    0);
+  }, [paymentStep, totalShown]);
 
   const fmt = (v) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -204,11 +209,6 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
       setPixCopyMsg('Não foi possível copiar automaticamente.');
     }
   }
-
-  const is25 = step === '25';
-  const discountLabel = is25 ? '25%' : '50%';
-  const discountPct   = is25 ? 25 : 50;
-  const totalShown    = is25 ? total25 : total50;
 
   // Compact payment screen (choosing method, PIX QR, or card form)
   const isCompact = choosingMethod || paymentStep === 'pix';
