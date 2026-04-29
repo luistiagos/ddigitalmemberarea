@@ -61,6 +61,14 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
     setCardStatus('');
     setCardStatusMsg('');
 
+    // Guard: never initialise the Brick with amount = 0 — MP returns
+    // 'no_payment_method_for_provided_bin' for every BIN when amount is 0.
+    if (!totalShown || totalShown <= 0) {
+      const el = document.getElementById('promo-card-brick-container');
+      if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">Valor inválido. Não é possível processar o pagamento com cartão.</p>';
+      return;
+    }
+
     function initBrick() {
       const container = document.getElementById('promo-card-brick-container');
       if (!container) return;
@@ -119,6 +127,12 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
             },
             onError: (err) => {
               console.error('PromoModal CardBrick error:', err);
+              // Only surface critical errors — 'non_critical' are informational
+              // (e.g. BIN lookup during typing) and should not block the user.
+              if (err?.type !== 'non_critical') {
+                setCardStatus('error');
+                setCardStatusMsg('Erro no formulário de cartão. Tente novamente ou use outra forma de pagamento.');
+              }
             },
           },
         }).then(ctrl => { mpBricksCtrl.current = ctrl; });

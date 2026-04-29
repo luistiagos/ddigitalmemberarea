@@ -55,6 +55,14 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
     setCardStatusMsg('');
     const containerId = `card-brick-product-${productid}`;
 
+    // Guard: never initialise the Brick with amount = 0 — MP returns
+    // 'no_payment_method_for_provided_bin' for every BIN when amount is 0.
+    if (!displayPrice || displayPrice <= 0) {
+      const el = document.getElementById(containerId);
+      if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">Preço inválido. Não é possível processar o pagamento com cartão.</p>';
+      return;
+    }
+
     function initBrick() {
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -62,7 +70,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
       try {
         const mp = new window.MercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });
         mp.bricks().create('cardPayment', containerId, {
-          initialization: { amount: displayPrice ?? 0, payer: { email: userEmail || '' } },
+          initialization: { amount: displayPrice, payer: { email: userEmail || '' } },
           callbacks: {
             onReady: () => {},
             onSubmit: async (cardData) => {
@@ -118,6 +126,12 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
             },
             onError: (err) => {
               console.error('ProductCard CardBrick error:', err);
+              // Only surface non-trivial (critical) errors to the user.
+              // 'non_critical' errors are informational (e.g. BIN lookup during typing).
+              if (err?.type !== 'non_critical') {
+                setCardStatus('error');
+                setCardStatusMsg('Erro no formulário de cartão. Tente novamente ou use outra forma de pagamento.');
+              }
             },
           },
         }).then(ctrl => { mpBricksCtrl.current = ctrl; });
@@ -148,7 +162,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardModalOpen]);
+  }, [cardModalOpen, displayPrice, userEmail]);
 
   const getSids = () => String(productid);
 
