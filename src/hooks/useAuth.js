@@ -61,6 +61,11 @@ export function useAuth() {
       // ignora erros no logout — limpa localmente de qualquer forma
     } finally {
       clearAuth();
+      // Limpa flags de sessão para que o próximo login comece com estado limpo.
+      // Sem isso, o PromoModal nunca aparece numa nova sessão no mesmo tab porque
+      // o sessionStorage NÃO é destruído pelo logout — só quando o tab é fechado.
+      sessionStorage.removeItem('promoModalShownThisSession');
+      sessionStorage.removeItem('customerAreaNeedsRefresh');
       navigate('/login');
     }
   };
