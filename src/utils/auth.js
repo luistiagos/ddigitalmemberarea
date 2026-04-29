@@ -64,6 +64,7 @@ export function clearAuth() {
   localStorage.removeItem(USER_ID_KEY);
   localStorage.removeItem(TOKEN_KEY);
   // STORE_ID_KEY é preservado intencionalmente
+  sessionStorage.removeItem('promoModalShownThisSession');
 }
 
 /**
