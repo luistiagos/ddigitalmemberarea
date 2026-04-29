@@ -82,17 +82,15 @@ export function CustomerArea() {
       .catch(() => {/* silencioso */});
   }, [user?.storeId]);
 
-  // Registra a exibição do modal ao apresentar pela primeira vez.
-  // Envia store_id no body para evitar mismatch de NULL no banco
-  // quando o JWT ainda não carrega store_id (tokens antigos).
+  // Marca que o modal foi exibido nesta sessão assim que promoData chega.
+  // O promo-seen (gravação no banco) só é chamado pelo PromoModal via onShown,
+  // garantindo que o servidor só registra quando o modal está de fato na tela.
   useEffect(() => {
     if (promoData && !promoSeen) {
       setPromoSeen(true);
       sessionStorage.setItem(PROMO_MODAL_SHOWN_KEY, '1');
-      const body = user?.storeId ? { store_id: user.storeId } : {};
-      api.post('/area-cliente/promo-seen', body).catch(() => {});
     }
-  }, [promoData, promoSeen, user?.storeId]);
+  }, [promoData, promoSeen]);
 
   useEffect(() => {
     if (sessionStorage.getItem(CUSTOMER_AREA_REFRESH_KEY) === '1') {
@@ -217,15 +215,18 @@ export function CustomerArea() {
         <PromoModal
           products={promoData.products}
           storeId={user?.storeId ?? null}
+          onShown={() => {
+            // Chamado pelo PromoModal no seu useEffect de montagem —
+            // garante que o promo-seen só é gravado quando o modal
+            // está de fato renderizado na tela (evita falso-positivo
+            // causado por reload antes do render).
+            const body = user?.storeId ? { store_id: user.storeId } : {};
+            api.post('/area-cliente/promo-seen', body).catch(() => {});
+          }}
           onClose={() => {
-            // Usuário recusou a oferta — apenas fecha o modal.
-            // NÃO recarregamos a página para evitar que o reload aborte o
-            // request de promo-seen em voo, o que causaria o loop infinito.
             setPromoData(null);
           }}
           onPaymentComplete={() => {
-            // Pagamento concluído dentro do PromoModal — recarrega para
-            // refletir o novo produto desbloqueado.
             setPromoData(null);
             triggerPageReload();
           }}

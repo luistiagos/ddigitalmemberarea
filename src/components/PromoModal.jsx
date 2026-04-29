@@ -16,7 +16,7 @@ const MP_PUBLIC_KEY = 'APP_USR-f344722f-528a-459f-8949-8e50f7db0e03';
  *   onClose    — called when the user rejects both offers
  *   onAccepted — called with the checkout URL after a successful promo checkout
  */
-export default function PromoModal({ products, storeId = null, onClose, onPaymentComplete, onAccepted }) {
+export default function PromoModal({ products, storeId = null, onClose, onPaymentComplete, onAccepted, onShown }) {
   const [step, setStep]             = useState('25');
   const [loading, setLoading]       = useState(false);
   const [loadingLabel, setLoadingLabel] = useState('');
@@ -28,6 +28,15 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
   const [cardStatus, setCardStatus] = useState(''); // '' | 'success' | 'pending' | 'error'
   const [cardStatusMsg, setCardStatusMsg] = useState('');
   const mpBricksCtrl = useRef(null);
+
+  // Notifica o pai que o modal está de fato na tela.
+  // onShown é chamado apenas uma vez na montagem — é aqui que o pai
+  // deve chamar /area-cliente/promo-seen, garantindo que o registro
+  // só é gravado quando o usuário viu o modal.
+  useEffect(() => {
+    if (onShown) onShown();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Mount / unmount the MP CardPayment Brick
   useEffect(() => {
