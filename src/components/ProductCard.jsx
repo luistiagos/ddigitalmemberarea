@@ -36,10 +36,19 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
   const [cardStatus, setCardStatus] = useState('');
   const [cardStatusMsg, setCardStatusMsg] = useState('');
   const mpBricksCtrl = useRef(null);
+  const pixPollingRef = useRef(null);
+
+  const clearPixPolling = () => {
+    if (pixPollingRef.current) {
+      clearInterval(pixPollingRef.current);
+      pixPollingRef.current = null;
+    }
+  };
 
   // Ensure component is mounted before rendering portals
   useEffect(() => {
     setIsMounted(true);
+    return () => clearPixPolling();
   }, []);
 
   // Mount / unmount MP CardPayment Brick for card payment
@@ -108,15 +117,9 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
                     try { mpBricksCtrl.current.unmount(); } catch (_) {}
                     mpBricksCtrl.current = null;
                   }
-                  const redirectUrl = data.redirect_url;
                   setTimeout(() => {
-                    if (redirectUrl) {
-                      sessionStorage.setItem(CUSTOMER_AREA_REFRESH_KEY, '1');
-                      window.location.href = redirectUrl;
-                    } else {
-                      setCardModalOpen(false);
-                      onPaymentFlowClosed?.();
-                    }
+                    setCardModalOpen(false);
+                    onPaymentFlowClosed?.();
                   }, 2000);
                 } else if (data.status === 'in_process' || data.status === 'pending') {
                   setCardStatus('pending');
@@ -266,6 +269,27 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
         setPaymentModalOpen(false);
         setPixData(res.data);
         setPixModalOpen(true);
+
+        if (res.data.payment_id) {
+          clearPixPolling();
+          pixPollingRef.current = setInterval(async () => {
+            try {
+              const statusRes = await api.get(`/payment_status?payment_id=${res.data.payment_id}`);
+              const d = statusRes.data;
+              if (d.status === 'approved') {
+                clearPixPolling();
+                setPixCopyMsg('✅ Pagamento confirmado!');
+                setTimeout(() => {
+                  setPixModalOpen(false);
+                  onPaymentFlowClosed?.();
+                }, 2500);
+              } else if (['rejected', 'cancelled', 'expired'].includes(d.status)) {
+                clearPixPolling();
+                setPixCopyMsg('⚠️ PIX cancelado ou expirado.');
+              }
+            } catch (err) { /* silent */ }
+          }, 5000);
+        }
       } else {
         setBuyError('Não foi possível gerar o PIX. Tente novamente.');
       }
@@ -302,6 +326,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
 
   const closePixModal = () => {
     setPixModalOpen(false);
+    clearPixPolling();
     onPaymentFlowClosed?.();
   };
 

@@ -39,12 +39,22 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
   const discountPct   = is25 ? 25 : 50;
   const totalShown    = is25 ? total25 : total50;
 
+  const pixPollingRef = useRef(null);
+
+  const clearPixPolling = () => {
+    if (pixPollingRef.current) {
+      clearInterval(pixPollingRef.current);
+      pixPollingRef.current = null;
+    }
+  };
+
   // Notifica o pai que o modal está de fato na tela.
   // onShown é chamado apenas uma vez na montagem — é aqui que o pai
   // deve chamar /area-cliente/promo-seen, garantindo que o registro
   // só é gravado quando o usuário viu o modal.
   useEffect(() => {
     if (onShown) onShown();
+    return () => clearPixPolling();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -210,6 +220,30 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
       } else if (data.qr_code) {
         setPixData(data);
         setPaymentStep('pix');
+
+        if (data.payment_id) {
+          clearPixPolling();
+          pixPollingRef.current = setInterval(async () => {
+            try {
+              const statusRes = await api.get(`/payment_status?payment_id=${data.payment_id}`);
+              const d = statusRes.data;
+              if (d.status === 'approved') {
+                clearPixPolling();
+                setPixCopyMsg('✅ Pagamento confirmado!');
+                setTimeout(() => {
+                  if (onPaymentComplete) {
+                    onPaymentComplete();
+                  } else {
+                    onClose();
+                  }
+                }, 2500);
+              } else if (['rejected', 'cancelled', 'expired'].includes(d.status)) {
+                clearPixPolling();
+                setPixCopyMsg('⚠️ PIX cancelado ou expirado.');
+              }
+            } catch (err) { /* silent */ }
+          }, 5000);
+        }
       } else {
         setError('Não foi possível gerar o PIX. Tente novamente.');
       }
@@ -280,13 +314,13 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
                   <p className="text-xs text-center text-gray-400">{pixCopyMsg}</p>
                 )}
                 <button
-                  onClick={onPaymentComplete ?? onClose}
+                  onClick={() => { clearPixPolling(); (onPaymentComplete ?? onClose)(); }}
                   className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-sm transition-colors"
                 >
                   ✅ Já paguei
                 </button>
                 <button
-                  onClick={() => { setPaymentStep('options'); setPixData(null); setChoosingMethod(true); }}
+                  onClick={() => { clearPixPolling(); setPaymentStep('options'); setPixData(null); setChoosingMethod(true); }}
                   className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
                 >
                   Voltar
