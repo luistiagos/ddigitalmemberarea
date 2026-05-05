@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Package, Gamepad2, Sparkles } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProductCard } from '@/components/ProductCard';
@@ -6,7 +7,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { useProducts } from '@/hooks/useProducts';
-import { getStoredUser, storeUser } from '@/utils/auth';
+import { getStoredUser, storeUser, persistStoreId } from '@/utils/auth';
 import api from '@/services/api';
 import PromoModal from '@/components/PromoModal';
 
@@ -28,21 +29,39 @@ function EmptyState() {
 }
 
 export function CustomerArea() {
+  const [searchParams] = useSearchParams();
+  const rawStoreId = searchParams.get('store_id') || searchParams.get('storeid');
+  const urlStoreId = rawStoreId ? Number(rawStoreId) : null;
+
+  // Persist store_id from URL immediately — this is the fix for cross-store leakage.
+  // The email access link carries ?store_id=XXXXXX; without this, CustomerArea would
+  // fall back to whatever storeId was last written to localStorage (the previous store).
+  useEffect(() => {
+    if (urlStoreId != null) persistStoreId(urlStoreId);
+  }, [urlStoreId]);
+
   const user = getStoredUser();
-  const { products, loading, error, refetch } = useProducts(user?.email, user?.storeId ?? null);
+  // URL store_id takes precedence over whatever is in localStorage
+  const effectiveStoreId = urlStoreId ?? user?.storeId ?? null;
+  const { products, loading, error, refetch } = useProducts(user?.email, effectiveStoreId);
 
   const [promoData, setPromoData] = useState(null); // { products: [...] }
   const [promoSeen, setPromoSeen] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
 
-  // Silently refresh JWT when store_id is missing (old tokens issued before first purchase)
+  // Refresh JWT when:
+  // 1. JWT has no store_id at all (old tokens before first purchase), OR
+  // 2. URL carries a store_id different from the JWT's store_id (cross-store access link)
   useEffect(() => {
-    if (user?.storeId) return; // already present — nothing to do
-    api.post('/auth/refresh')
+    const jwtStoreId = user?.storeId ?? null;
+    const needsRefresh = !jwtStoreId || (urlStoreId != null && urlStoreId !== jwtStoreId);
+    if (!needsRefresh) return;
+
+    const body = urlStoreId != null ? { store_id: urlStoreId } : {};
+    api.post('/auth/refresh', body)
       .then(({ data }) => {
         if (data.store_id) {
           storeUser({ email: user.email, id: user.id, storeId: data.store_id }, data.token);
-          // Reload so all hooks pick up the new storeId from localStorage
           window.location.reload();
         }
       })
@@ -64,15 +83,15 @@ export function CustomerArea() {
 
   // Registra o acesso à área do cliente
   useEffect(() => {
-    const body = user?.storeId ? { store_id: user.storeId } : {};
+    const body = effectiveStoreId ? { store_id: effectiveStoreId } : {};
     api.post('/area-cliente/access', body).catch(() => {/* silencioso — não bloqueia a UI */});
-  }, [user?.storeId]);
+  }, [effectiveStoreId]);
 
   // Verifica se o modal promocional deve ser exibido.
   // Sai imediatamente se já foi exibido nesta sessão (persiste em reloads do mesmo tab).
   useEffect(() => {
     if (sessionStorage.getItem(PROMO_MODAL_SHOWN_KEY)) return;
-    const params = user?.storeId ? { store_id: user.storeId } : {};
+    const params = effectiveStoreId ? { store_id: effectiveStoreId } : {};
     api.get('/area-cliente/promo', { params })
       .then(({ data }) => {
         if (data.show && data.products?.length > 0) {
@@ -169,7 +188,7 @@ export function CustomerArea() {
                     key={product.productid ?? product.title}
                     product={product}
                     userEmail={user?.email}
-                    storeId={user?.storeId ?? 1}
+                    storeId={effectiveStoreId ?? 1}
                     onPaymentFlowClosed={triggerPageReload}
                   />
                 ))}
@@ -190,7 +209,7 @@ export function CustomerArea() {
                     key={product.productid ?? product.title}
                     product={product}
                     userEmail={user?.email}
-                    storeId={user?.storeId ?? 1}
+                    storeId={effectiveStoreId ?? 1}
                     onPaymentFlowClosed={triggerPageReload}
                   />
                 ))}
@@ -204,7 +223,7 @@ export function CustomerArea() {
       {promoData && (
         <PromoModal
           products={promoData.products}
-          storeId={user?.storeId ?? null}
+          storeId={effectiveStoreId ?? null}
           onShown={() => {
             // Só grava no sessionStorage e no servidor quando o modal
             // está de fato renderizado na tela. Isso evita o falso-positivo
@@ -213,7 +232,7 @@ export function CustomerArea() {
               setPromoSeen(true);
               sessionStorage.setItem(PROMO_MODAL_SHOWN_KEY, '1');
             }
-            const body = user?.storeId ? { store_id: user.storeId } : {};
+            const body = effectiveStoreId ? { store_id: effectiveStoreId } : {};
             api.post('/area-cliente/promo-seen', body).catch(() => {});
           }}
           onClose={() => {

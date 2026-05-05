@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
-import { storeUser, clearAuth, getStoredUser, getPersistedStoreId } from '@/utils/auth';
+import { storeUser, clearAuth, getStoredUser, getPersistedStoreId, persistStoreId } from '@/utils/auth';
 import { logError } from '@/utils/logError';
 
 /**
@@ -25,8 +25,11 @@ export function useAuth() {
     setLoading(true);
     setError(null);
 
-    // Se não veio storeId pela URL, usa o que estava persistido de uma visita anterior
+    // Explicit storeId from URL wins; only fall back to persisted value when absent
     const effectiveStoreId = storeId ?? getPersistedStoreId();
+
+    // Persist before the API call so it's available even if the call fails mid-flight
+    if (storeId != null) persistStoreId(storeId);
 
     try {
       const body = { email, password };
@@ -34,7 +37,11 @@ export function useAuth() {
       const response = await api.post('/auth/login', body);
       if (response.data.success) {
         storeUser(response.data.user, response.data.token);
-        navigate('/area-cliente');
+        // Navigate with store_id in URL so CustomerArea can detect a store switch
+        const dest = effectiveStoreId != null
+          ? `/area-cliente?store_id=${effectiveStoreId}`
+          : '/area-cliente';
+        navigate(dest);
       }
     } catch (err) {
       if (err.response?.status === 401 && err.response?.data?.needs_set_password) {

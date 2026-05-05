@@ -20,14 +20,18 @@ export function Login() {
   // Aceita tanto ?store_id= quanto ?storeid= (compatibilidade com links antigos)
   const rawStoreId = searchParams.get('store_id') || searchParams.get('storeid');
   const storeId = rawStoreId ? Number(rawStoreId) : null;
-  // Persiste o storeId da URL após o primeiro render
+  // Persiste o storeId da URL após o primeiro render.
+  // Runs before the authenticated redirect so that if the user is already logged in
+  // and arrives via a store-specific email link, the new storeId wins over the old one.
   useEffect(() => {
     if (storeId != null) persistStoreId(storeId);
   }, [storeId]);
 
-  // Se já está autenticado, redireciona
+  // Se já está autenticado, redireciona — preservando store_id na URL de destino
+  // para que CustomerArea possa detectar a troca de loja.
   if (isAuthenticated()) {
-    return <Navigate to="/area-cliente" replace />;
+    const dest = storeId != null ? `/area-cliente?store_id=${storeId}` : '/area-cliente';
+    return <Navigate to={dest} replace />;
   }
 
   const handleSubmit = async (e) => {
