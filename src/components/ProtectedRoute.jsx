@@ -3,17 +3,33 @@ import { isAuthenticated, clearAuth, getStoredUser } from '@/utils/auth';
 
 /**
  * Componente de rota protegida.
- * Redireciona para /login preservando query params (ex.: ?store_id=) da URL atual
- * para que o login page possa repassá-los ao retornar para /area-cliente.
+ *
+ * Regras:
+ * 1. Não autenticado → /login preservando query params (store_id segue junto).
+ * 2. Autenticado mas URL tem store_id diferente do JWT → logout + /login?store_id=
+ *    Cada loja é independente; sessão de loja A não dá acesso à loja B.
  */
 export function ProtectedRoute({ children }) {
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const rawUrlStoreId = searchParams.get('store_id') || searchParams.get('storeid');
+  const urlStoreId = rawUrlStoreId ? Number(rawUrlStoreId) : null;
 
   if (!isAuthenticated()) {
     if (getStoredUser()) clearAuth();
-    // Preserve query string so login page can forward store_id back after auth
-    const loginDest = `/login${location.search}`;
-    return <Navigate to={loginDest} replace />;
+    return <Navigate to={`/login${location.search}`} replace />;
   }
+
+  // Logout when URL requests a different store than the active session.
+  // Each store is fully independent — no cross-store session reuse.
+  if (urlStoreId != null) {
+    const user = getStoredUser();
+    const sessionStoreId = user?.storeId ?? null;
+    if (sessionStoreId != null && sessionStoreId !== urlStoreId) {
+      clearAuth();
+      return <Navigate to={`/login${location.search}`} replace />;
+    }
+  }
+
   return children;
 }

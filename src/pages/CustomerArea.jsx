@@ -49,16 +49,11 @@ export function CustomerArea() {
   const [promoSeen, setPromoSeen] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
 
-  // Refresh JWT when:
-  // 1. JWT has no store_id at all (old tokens before first purchase), OR
-  // 2. URL carries a store_id different from the JWT's store_id (cross-store access link)
+  // Refresh JWT only when token has no store_id (old tokens issued before first purchase).
+  // Cross-store access is handled upstream by ProtectedRoute (logout + redirect to login).
   useEffect(() => {
-    const jwtStoreId = user?.storeId ?? null;
-    const needsRefresh = !jwtStoreId || (urlStoreId != null && urlStoreId !== jwtStoreId);
-    if (!needsRefresh) return;
-
-    const body = urlStoreId != null ? { store_id: urlStoreId } : {};
-    api.post('/auth/refresh', body)
+    if (user?.storeId) return;
+    api.post('/auth/refresh')
       .then(({ data }) => {
         if (data.store_id) {
           storeUser({ email: user.email, id: user.id, storeId: data.store_id }, data.token);
