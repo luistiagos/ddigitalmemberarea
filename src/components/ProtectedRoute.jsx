@@ -1,19 +1,19 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { isAuthenticated, clearAuth, getStoredUser } from '@/utils/auth';
 
 /**
  * Componente de rota protegida.
- * Redireciona para /login se o usuário não estiver autenticado ou com token expirado.
- * Limpa o localStorage quando o token expirou para evitar estado inconsistente.
- *
- * Uso:
- *   <Route path="/area-cliente" element={<ProtectedRoute><CustomerArea /></ProtectedRoute>} />
+ * Redireciona para /login preservando query params (ex.: ?store_id=) da URL atual
+ * para que o login page possa repassá-los ao retornar para /area-cliente.
  */
 export function ProtectedRoute({ children }) {
+  const location = useLocation();
+
   if (!isAuthenticated()) {
-    // Se há dados de usuário mas o token expirou, limpa o estado antes de redirecionar
     if (getStoredUser()) clearAuth();
-    return <Navigate to="/login" replace />;
+    // Preserve query string so login page can forward store_id back after auth
+    const loginDest = `/login${location.search}`;
+    return <Navigate to={loginDest} replace />;
   }
   return children;
 }
