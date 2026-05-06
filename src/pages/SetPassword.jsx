@@ -79,8 +79,9 @@ export function SetPassword() {
       }
     } catch (err) {
       if (err.response?.status === 409) {
-        // Usuário já criou senha antes — manda para o login
-        navigate(`/login?email=${encodeURIComponent(email)}`, { replace: true });
+        // Usuário já tem senha — manda para login preservando store_id
+        const storeParam = storeId != null ? `&store_id=${storeId}` : '';
+        navigate(`/login?email=${encodeURIComponent(email)}${storeParam}`, { replace: true });
         return;
       }
       const message = err.response?.data?.error || 'Erro ao definir senha. Tente novamente.';

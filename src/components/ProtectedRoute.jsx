@@ -1,13 +1,15 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { isAuthenticated, clearAuth, getStoredUser } from '@/utils/auth';
+import { isAuthenticated, clearAuth, getStoredUser, getPersistedStoreId } from '@/utils/auth';
 
 /**
  * Componente de rota protegida.
  *
  * Regras:
  * 1. Não autenticado → /login preservando query params (store_id segue junto).
- * 2. Autenticado mas URL tem store_id diferente do JWT → logout + /login?store_id=
- *    Cada loja é independente; sessão de loja A não dá acesso à loja B.
+ * 2. Autenticado + URL tem store_id diferente do JWT → logout + /login?store_id=
+ *    (cada loja é independente — sem reuso de sessão entre lojas)
+ * 3. Autenticado + rota /area-cliente sem store_id em lugar algum → /selecionar-loja
+ *    (fallback extremo: usuário multi-loja sem referência de qual loja acessar)
  */
 export function ProtectedRoute({ children }) {
   const location = useLocation();
@@ -20,14 +22,21 @@ export function ProtectedRoute({ children }) {
     return <Navigate to={`/login${location.search}`} replace />;
   }
 
+  const user = getStoredUser();
+  const sessionStoreId = user?.storeId ?? null;
+
   // Logout when URL requests a different store than the active session.
-  // Each store is fully independent — no cross-store session reuse.
-  if (urlStoreId != null) {
-    const user = getStoredUser();
-    const sessionStoreId = user?.storeId ?? null;
-    if (sessionStoreId != null && sessionStoreId !== urlStoreId) {
-      clearAuth();
-      return <Navigate to={`/login${location.search}`} replace />;
+  if (urlStoreId != null && sessionStoreId != null && sessionStoreId !== urlStoreId) {
+    clearAuth();
+    return <Navigate to={`/login${location.search}`} replace />;
+  }
+
+  // Fallback: no store_id in URL and none in localStorage → store selector
+  // Only applies to /area-cliente, not to /selecionar-loja (avoid infinite loop)
+  if (location.pathname === '/area-cliente' && urlStoreId == null) {
+    const persistedStoreId = getPersistedStoreId();
+    if (!persistedStoreId) {
+      return <Navigate to="/selecionar-loja" replace />;
     }
   }
 

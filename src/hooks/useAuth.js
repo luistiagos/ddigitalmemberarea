@@ -37,11 +37,12 @@ export function useAuth() {
       const response = await api.post('/auth/login', body);
       if (response.data.success) {
         storeUser(response.data.user, response.data.token);
-        // Navigate with store_id in URL so CustomerArea can detect a store switch
-        const dest = effectiveStoreId != null
-          ? `/area-cliente?store_id=${effectiveStoreId}`
-          : '/area-cliente';
-        navigate(dest);
+        if (effectiveStoreId != null) {
+          navigate(`/area-cliente?store_id=${effectiveStoreId}`);
+        } else {
+          // No store_id available — let store selector resolve which store to show
+          navigate('/selecionar-loja');
+        }
       }
     } catch (err) {
       if (err.response?.status === 401 && err.response?.data?.needs_set_password) {
