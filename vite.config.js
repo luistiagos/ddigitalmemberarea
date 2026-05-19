@@ -78,6 +78,21 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
       },
+      '/store': {
+        target: 'https://digitalstoregames.pythonanywhere.com',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/createMLlink_v2': {
+        target: 'https://digitalstoregames.pythonanywhere.com',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/cupom': {
+        target: 'https://digitalstoregames.pythonanywhere.com',
+        changeOrigin: true,
+        secure: true,
+      },
     },
   },
 });
