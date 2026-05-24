@@ -49,9 +49,18 @@ export function useAuth() {
         const storeParam = effectiveStoreId != null ? `&store_id=${effectiveStoreId}` : '';
         navigate(`/criar-senha?email=${encodeURIComponent(email)}${storeParam}`);
       } else {
-        const message = err.response?.data?.error || 'Ocorreu um erro ao fazer login.';
-        setError(message);
-        logError('useAuth.js', 'login', message);
+        const userMessage = err.response?.data?.error || 'Ocorreu um erro ao fazer login.';
+        setError(userMessage);
+
+        // Erros de credencial inválida são erros do usuário, não do sistema — não logar
+        const isCredentialError = err.response?.status === 401;
+        if (!isCredentialError) {
+          // Monta mensagem de diagnóstico com contexto completo do erro
+          const httpStatus = err.response?.status ?? 'no_response';
+          const originalMsg = err.message || String(err);
+          const diagMessage = `[HTTP ${httpStatus}] ${originalMsg} | user_msg: ${userMessage}`;
+          logError('useAuth.js', 'login', diagMessage);
+        }
       }
     } finally {
       setLoading(false);

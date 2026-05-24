@@ -84,9 +84,11 @@ export function SetPassword() {
         navigate(`/login?email=${encodeURIComponent(email)}${storeParam}`, { replace: true });
         return;
       }
-      const message = err.response?.data?.error || 'Erro ao definir senha. Tente novamente.';
-      setError(message);
-      logError('SetPassword.jsx', 'handleSubmit', message);
+      const userMessage = err.response?.data?.error || 'Erro ao definir senha. Tente novamente.';
+      setError(userMessage);
+      const httpStatus = err.response?.status ?? 'no_response';
+      const originalMsg = err.message || String(err);
+      logError('SetPassword.jsx', 'handleSubmit', `[HTTP ${httpStatus}] ${originalMsg} | user_msg: ${userMessage}`);
     } finally {
       setLoading(false);
     }

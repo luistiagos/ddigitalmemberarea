@@ -72,9 +72,11 @@ export function ResetPassword() {
         setTimeout(() => navigate(`/login${email ? `?email=${encodeURIComponent(email)}${storeParam}` : ''}`), 2000);
       }
     } catch (err) {
-      const message = err.response?.data?.error || 'Erro ao redefinir senha. Tente novamente.';
-      setError(message);
-      logError('ResetPassword.jsx', 'handleSubmit', message);
+      const userMessage = err.response?.data?.error || 'Erro ao redefinir senha. Tente novamente.';
+      setError(userMessage);
+      const httpStatus = err.response?.status ?? 'no_response';
+      const originalMsg = err.message || String(err);
+      logError('ResetPassword.jsx', 'handleSubmit', `[HTTP ${httpStatus}] ${originalMsg} | user_msg: ${userMessage}`);
     } finally {
       setLoading(false);
     }
