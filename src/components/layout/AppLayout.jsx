@@ -8,6 +8,7 @@ function SupportFooter() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-0">
           <span className="text-xs text-gray-600 sm:mr-3">Precisa de ajuda?</span>
           <div className="flex items-center gap-4">
+            {/* WHATSAPP DESATIVADO TEMPORARIAMENTE - problema com WhatsApp Business
             <a
               href="https://wa.me/554196260115"
               target="_blank"
@@ -18,6 +19,7 @@ function SupportFooter() {
               <span>+55 41 9626-0115</span>
             </a>
             <span className="text-gray-700 select-none">·</span>
+            */}
             <a
               href="mailto:contato@digitalstoregames.com"
               className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
