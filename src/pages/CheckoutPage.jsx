@@ -5,6 +5,7 @@ import {
   Send, Star, Copy, Check, Loader2, ChevronDown, ChevronUp, X 
 } from 'lucide-react';
 import api from '@/services/api';
+import './CheckoutPage.css';
 
 // Static FAQ Data
 const FAQ_ITEMS = [
@@ -633,604 +634,410 @@ export function CheckoutPage() {
   const origPrice = mainProduct.relprice || basePrice * 3;
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-[#f8fafc] font-['Montserrat'] antialiased pb-20 select-none">
-      
-      {/* Dynamic styles to inject to page */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        .strike {
-          text-decoration: line-through;
-          text-decoration-color: #ef4444;
-        }
-        .whatsapp-float {
-          position: fixed;
-          bottom: 24px;
-          right: 24px;
-          background-color: #25d366;
-          color: white;
-          width: 52px;
-          height: 52px;
-          border-radius: 50px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-          z-index: 100;
-          transition: all 0.3s ease;
-        }
-        .whatsapp-float:hover {
-          transform: scale(1.08);
-          background-color: #20ba5a;
-        }
-        .whatsapp-tooltip {
-          position: absolute;
-          right: 65px;
-          background-color: #1e293b;
-          border: 1px solid #334155;
-          color: #f8fafc;
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          white-space: nowrap;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.3s ease;
-        }
-        .whatsapp-float:hover .whatsapp-tooltip {
-          opacity: 1;
-        }
-      `}} />
-
-      <div className="max-w-[1180px] mx-auto pt-6 px-4 md:px-6">
-        
-        {/* Header */}
-        <header className="flex flex-row items-center justify-between gap-4 mb-6 px-1">
-          <a href="#" className="flex items-center gap-2 group text-decoration-none">
-            <Gamepad2 className="h-8 w-8 text-blue-500 group-hover:scale-105 transition-transform" />
-            <div className="text-white font-extrabold text-sm md:text-base tracking-wider">
-              DIGITAL STORE <span className="text-blue-500">GAMES</span>
-            </div>
-          </a>
-          <div className="flex items-center gap-1.5 text-[#10b981] font-semibold text-xs md:text-sm bg-[#10b981]/10 px-3 py-1.5 rounded-full">
-            <Lock className="h-3.5 w-3.5" />
-            <span>Ambiente Seguro</span>
+    <div className="wrap">
+      <header>
+        <a href="#" className="logo-custom" style={{ textDecoration: 'none' }}>
+          <svg className="logo-icon-brand" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 12h4m-2-2v4M15 13h.01M18 11h.01M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" />
+          </svg>
+          <div className="logo-label">
+            DIGITAL STORE <span>GAMES</span>
           </div>
-        </header>
+        </a>
+        <div className="header-secure">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+          </svg>
+          <span>Ambiente Seguro</span>
+        </div>
+      </header>
 
-        {/* Layout: Main column & Sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-[18px] items-start">
-          
-          {/* Main Checkout Section */}
-          <section className="bg-[#1e293b] border border-[#334155] rounded-[14px] p-4 md:p-6 shadow-xl">
-            
-            {/* Header Pricing summary */}
-            <div className="mb-4">
-              <div className="text-gray-400 text-xs font-semibold tracking-wider">
-                VALOR TOTAL (COM BÔNUS): <span className="strike text-red-500 font-bold ml-1">{fmt(origPrice)}</span>
-              </div>
-              <div className="text-3xl md:text-4xl font-extrabold text-white my-1">
-                5 × {fmt(discPrice / 5)}
-              </div>
-              <div className="text-gray-400 text-sm font-medium">
-                No Cartão ou <span className="text-white font-bold">{fmt(discPrice)}</span> à vista
-              </div>
-            </div>
+      <div className="layout">
+        <section className="card">
+          <div className="muted">VALOR TOTAL (COM BÔNUS): <span className="strike" style={{ color: '#e74c3c' }}>{fmt(origPrice)}</span></div>
+          <div className="price" id="headlinePrice">5 × {fmt(discPrice / 5)}</div>
+          <div className="muted">No Cartão ou <span id="avistaVlr">{fmt(discPrice)}</span> à vista</div>
 
-            {/* Main Product Order Card */}
-            <div className="flex gap-4 bg-[#1e293b] border border-[#334155] rounded-[12px] p-4 my-4 flex-col sm:flex-row items-start sm:items-center">
-              {mainProduct.image ? (
-                <img 
-                  className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-[10px] border border-[#334155] shrink-0 self-center sm:self-auto" 
-                  src={mainProduct.image} 
-                  alt={mainProduct.title} 
-                />
-              ) : (
-                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-[10px] bg-gray-800 border border-[#334155] flex items-center justify-center shrink-0 self-center sm:self-auto">
-                  <ImageOff className="h-10 w-10 text-gray-600" />
-                </div>
-              )}
-              <div className="flex-1">
-                <h3 className="text-white font-bold text-base md:text-lg mb-2 leading-tight">
-                  {mainProduct.title} (Acesso Digital)
-                </h3>
-                <ul className="text-gray-400 text-xs md:text-sm space-y-1 list-disc pl-4">
-                  {getProductBullets().map((bullet, i) => (
-                    <li key={i}>{bullet}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* Checkout Form */}
-            <form onSubmit={e => e.preventDefault()} className="space-y-4" noValidate>
-              
-              <div className="flex flex-col gap-1.5">
-                <label className="text-white text-xs md:text-sm font-semibold" htmlFor="nome">Nome Completo</label>
-                <input 
-                  className="w-full bg-[#0f172a] border border-[#334155] rounded-[10px] p-3 text-white text-sm md:text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" 
-                  id="nome" 
-                  type="text" 
-                  placeholder="Seu nome" 
-                  value={nome}
-                  onChange={e => setNome(e.target.value)}
-                />
-                <span className="text-gray-500 text-[10px] md:text-xs">Opcional</span>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-white text-xs md:text-sm font-semibold" htmlFor="email">E-mail para entrega</label>
-                <input 
-                  className={`w-full bg-[#0f172a] border rounded-[10px] p-3 text-white text-sm md:text-base focus:outline-none ${
-                    emailError 
-                      ? 'border-red-500 focus:ring-2 focus:ring-red-500/20' 
-                      : 'border-[#334155] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                  }`} 
-                  id="email" 
-                  type="email" 
-                  placeholder="voce@email.com" 
-                  required
-                  value={email}
-                  onChange={e => { setEmail(e.target.value); setEmailError(false); }}
-                />
-                {emailError && (
-                  <span className="text-red-500 text-xs font-semibold">E-mail inválido. Ex: nome@email.com</span>
-                )}
-                <span className="text-gray-500 text-[10px] md:text-xs">Importante: verifique se digitou o e-mail corretamente para receber o acesso.</span>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-white text-xs md:text-sm font-semibold" htmlFor="cel">Celular com DDD (opcional)</label>
-                <input 
-                  className={`w-full bg-[#0f172a] border rounded-[10px] p-3 text-white text-sm md:text-base focus:outline-none ${
-                    celularError 
-                      ? 'border-red-500 focus:ring-2 focus:ring-red-500/20' 
-                      : 'border-[#334155] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                  }`} 
-                  id="cel" 
-                  type="tel" 
-                  placeholder="(11) 99999-9999" 
-                  value={celular}
-                  onChange={handlePhoneChange}
-                />
-                {celularError && (
-                  <span className="text-red-500 text-xs font-semibold">Celular inválido. Use um formato como (11) 99999-9999</span>
-                )}
-                <span className="text-gray-500 text-[10px] md:text-xs">Usado para suporte rápido via WhatsApp e rastreamento da entrega.</span>
-              </div>
-
-            </form>
-
-            {/* Order Bumps stack */}
-            {orderBumps.length > 0 && (
-              <div className="mt-8 mb-6">
-                <div className="bg-[#0f172a] border border-[#334155] rounded-[12px] p-3 mb-4 text-center">
-                  <h4 className="text-blue-400 font-extrabold text-sm md:text-base leading-tight">
-                    Aproveite também — extras adicionais com preço especial
-                  </h4>
-                  <p className="text-gray-400 text-xs mt-1 font-medium">Esta oferta única expira ao sair desta página</p>
-                </div>
-                
-                <div className="grid gap-3">
-                  {orderBumps.map((bump) => {
-                    const isSelected = selectedBumps.has(bump.id);
-                    const bumpPrice = bump.price ?? bump.package_price;
-                    const bumpRelPrice = bump.relprice || bumpPrice * 2;
-                    const econPercent = Math.round((1 - (bumpPrice / bumpRelPrice)) * 100);
-
-                    return (
-                      <div 
-                        key={bump.id}
-                        onClick={() => toggleBump(bump.id)}
-                        className={`relative rounded-xl border p-4 cursor-pointer transition-all ${
-                          isSelected 
-                            ? 'border-blue-500 bg-blue-500/10 shadow-lg scale-[1.01]' 
-                            : 'border-[#334155] bg-gray-800/40 hover:border-gray-500'
-                        }`}
-                      >
-                        <div className="absolute top-[-10px] right-3 bg-blue-600 text-white font-extrabold text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                          Recomendado
-                        </div>
-
-                        <div className="flex gap-3 items-start md:items-center flex-col sm:flex-row mt-1">
-                          
-                          <div className="flex items-center gap-3 shrink-0 self-stretch sm:self-auto justify-between sm:justify-start">
-                            <span className="text-orange-500 font-black text-lg animate-pulse">➔</span>
-                            <input 
-                              type="checkbox" 
-                              checked={isSelected}
-                              onChange={() => {}} // Handle on parent div click
-                              className="w-5 h-5 accent-blue-500 cursor-pointer"
-                            />
-                            {bump.image ? (
-                              <img 
-                                src={bump.image} 
-                                alt={bump.title || bump.package_title} 
-                                className="w-14 h-14 rounded-lg object-contain border border-[#334155] bg-[#0f172a]" 
-                              />
-                            ) : (
-                              <div className="w-14 h-14 rounded-lg bg-gray-800 border border-[#334155] flex items-center justify-center">
-                                <ImageOff className="h-5 w-5 text-gray-600" />
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex-1">
-                            <h5 className="text-white font-bold text-sm md:text-base leading-snug">
-                              {bump.title || bump.package_title}
-                            </h5>
-                            <p className="text-gray-400 text-[11px] md:text-xs mt-1 leading-snug">
-                              {bump.description || 'Adicione este item extra ao seu pacote com desconto exclusivo.'}
-                            </p>
-                            <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                              <span className="text-gray-500 text-xs strike">{fmt(bumpRelPrice)}</span>
-                              <span className="text-blue-400 font-extrabold text-sm">{fmt(bumpPrice)}</span>
-                              <span className="bg-blue-500/20 text-blue-300 font-bold text-[10px] px-2 py-0.5 rounded-full">
-                                {econPercent}% de desconto
-                              </span>
-                            </div>
-                          </div>
-
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+          <div className="order-card">
+            {mainProduct.image ? (
+              <img className="order-thumb" src={mainProduct.image} alt={mainProduct.title} fetchPriority="high" />
+            ) : (
+              <div className="order-thumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1e293b' }}>
+                <ImageOff className="h-10 w-10 text-gray-600" />
               </div>
             )}
-
-            {/* Coupon Code Section */}
-            <div className="mt-6 mb-4 flex flex-col gap-1.5">
-              <label className="text-white text-xs md:text-sm font-semibold" htmlFor="cupom">
-                Cupom de desconto (opcional)
-              </label>
-              <div className="flex gap-2">
-                <input 
-                  className={`flex-1 bg-[#0f172a] border rounded-[10px] p-3 text-white text-sm md:text-base focus:outline-none ${
-                    couponStatus === 'applied' 
-                      ? 'border-green-500' 
-                      : couponStatus === 'invalid' 
-                      ? 'border-red-500' 
-                      : 'border-[#334155] focus:border-blue-500'
-                  }`} 
-                  id="cupom" 
-                  type="text" 
-                  placeholder="Código do cupom" 
-                  value={couponCode}
-                  onChange={e => { setCouponCode(e.target.value); setCouponStatus('idle'); }}
-                  disabled={couponStatus === 'checking'}
-                />
-                <button 
-                  type="button" 
-                  onClick={handleApplyCoupon}
-                  disabled={!couponCode.trim() || couponStatus === 'checking'}
-                  className={`px-5 rounded-[10px] font-semibold text-xs md:text-sm transition-all duration-200 ${
-                    couponStatus === 'applied' 
-                      ? 'bg-green-600 hover:bg-green-500 text-white' 
-                      : couponStatus === 'invalid' 
-                      ? 'bg-red-600 hover:bg-red-500 text-white' 
-                      : 'bg-[#0f172a] border border-[#334155] text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed'
-                  }`}
-                >
-                  {couponStatus === 'checking' && 'Verificando...'}
-                  {couponStatus === 'applied' && 'Aplicado!'}
-                  {couponStatus === 'invalid' && 'Inválido'}
-                  {couponStatus === 'error' && 'Erro'}
-                  {['idle', 'error'].includes(couponStatus) && 'Aplicar'}
-                </button>
-              </div>
+            <div className="order-info">
+              <h3>{mainProduct.title} (Acesso Digital)</h3>
+              <ul>
+                {getProductBullets().map((bullet, i) => (
+                  <li key={i}>{bullet}</li>
+                ))}
+              </ul>
             </div>
+          </div>
 
-            {/* Order Summary details */}
-            <div className="mt-6 border border-[#334155] rounded-[12px] bg-[#1e293b]/70 overflow-hidden shadow-inner">
-              <h4 className="m-0 p-3 bg-[#0f172a] border-b border-[#334155] text-white font-bold text-sm">
-                Detalhes do pedido
-              </h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs md:text-sm">
-                  <thead>
-                    <tr className="border-b border-[#334155] bg-gray-800/40 text-gray-400">
-                      <th className="p-3">Produto</th>
-                      <th className="p-3 text-right">Preço</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    
-                    {/* Main package row */}
-                    <tr className="border-b border-[#334155]">
-                      <td className="p-3">
-                        <div className="font-semibold text-white">
-                          {mainProduct.title} (Acesso Digital)
-                          {couponDiscount > 0 && (
-                            <span className="ml-2 bg-green-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
-                              -{couponDiscount}% OFF
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-gray-500 text-[10px] md:text-xs mt-1">
-                          <span className="strike mr-1">de {fmt(origPrice)}</span> 
-                          ➔ por <span className="text-white font-semibold">{fmt(discPrice)}</span>
-                          <span className="text-green-500 font-bold ml-1">• Economia {fmt(origPrice - discPrice)}</span>
-                        </div>
-                      </td>
-                      <td className="p-3 text-right font-semibold text-white vertical-align-top">
-                        {fmt(discPrice)}
-                      </td>
-                    </tr>
-
-                    {/* Selected order bumps rows */}
-                    {orderBumps.map(bump => {
-                      if (!selectedBumps.has(bump.id)) return null;
-                      const origB = bump.relprice || (bump.price ?? bump.package_price) * 2;
-                      let discB = bump.price ?? bump.package_price;
-                      if (couponDiscount > 0) {
-                        discB = discB * (1 - couponDiscount / 100);
-                      }
-
-                      return (
-                        <tr key={bump.id} className="border-b border-[#334155]">
-                          <td className="p-3">
-                            <div className="font-semibold text-white">
-                              {bump.title || bump.package_title}
-                              {couponDiscount > 0 && (
-                                <span className="ml-2 bg-green-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
-                                  -{couponDiscount}%
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-gray-500 text-[10px] md:text-xs mt-1">
-                              <span className="strike mr-1">de {fmt(origB)}</span> 
-                              ➔ por <span className="text-white font-semibold">{fmt(discB)}</span>
-                              <span className="text-green-500 font-bold ml-1">• Economia {fmt(origB - discB)}</span>
-                            </div>
-                          </td>
-                          <td className="p-3 text-right font-semibold text-white">
-                            {fmt(discB)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-gray-800/20 font-extrabold text-sm text-white">
-                      <td className="p-3">
-                        Total <span className="text-green-500 text-xs font-bold block sm:inline ml-1">(Economia {fmt(getTotalEconomy())})</span>
-                      </td>
-                      <td className="p-3 text-right text-base text-blue-400">
-                        {fmt(getCartTotal())}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-              
-              {/* Savings Banner */}
-              <div className="p-3.5 border-t border-[#334155] bg-blue-500/10 text-blue-400 font-bold text-center text-xs md:text-sm">
-                🎉 <strong>Parabéns!</strong> Você está economizando <strong className="text-white">{fmt(getTotalEconomy())}</strong> hoje.
-              </div>
+          <form id="checkoutForm" noValidate autoComplete="on" onSubmit={e => e.preventDefault()}>
+            <div className="field">
+              <label className="label" htmlFor="nome">Nome Completo</label>
+              <input 
+                className="input" 
+                id="nome" 
+                name="nome" 
+                type="text" 
+                placeholder="Seu nome" 
+                autoComplete="name"
+                inputMode="text" 
+                autoCapitalize="off" 
+                autoCorrect="off" 
+                spellCheck="false" 
+                autoFocus 
+                enterKeyHint="next"
+                value={nome}
+                onChange={e => setNome(e.target.value)}
+              />
+              <div className="assist">Opcional</div>
             </div>
-
-            {/* Trust Bar Info */}
-            <div className="my-4 p-3.5 bg-[#0f172a]/60 border border-[#334155] rounded-[12px] text-center text-xs md:text-sm text-gray-400 leading-snug">
-              🔒 <strong>Checkout seguro</strong> — você paga no <strong>Mercado Pago</strong> (Pix, Cartão, Boleto). Seus dados são criptografados de ponta a ponta.
-            </div>
-
-            {/* CTA checkout payments buttons */}
-            <div className="my-6">
-              
-              <div className="flex items-center justify-center font-bold text-xs text-gray-500 uppercase tracking-widest gap-3 mb-4">
-                <span className="w-12 h-[1px] bg-gray-700"></span>
-                <span>Escolha como pagar</span>
-                <span className="w-12 h-[1px] bg-gray-700"></span>
-              </div>
-
-              {/* Payment Triggers grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                
-                {/* 1. Mercado Pago Redirect */}
-                <button 
-                  type="button"
-                  onClick={pagarMercadoPago}
-                  className="flex items-center justify-center gap-2.5 p-4 rounded-xl border border-white/10 text-white font-extrabold text-sm md:text-base cursor-pointer shadow-lg hover:translate-y-[-2px] transition-all bg-gradient-to-r from-[#00B2FF] to-[#009EE3] border-b-4 border-[#008AC5] active:translate-y-[1px]"
-                >
-                  <img 
-                    src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/mercadopago.webp" 
-                    alt="Mercado Pago" 
-                    className="w-7 h-7 object-contain filter drop-shadow-md"
-                  />
-                  <span>Mercado Pago</span>
-                </button>
-
-                {/* 2. PIX Modal trigger */}
-                <button 
-                  type="button"
-                  onClick={abrirPixFlow}
-                  className="flex items-center justify-center gap-2.5 p-4 rounded-xl border border-white/10 text-white font-extrabold text-sm md:text-base cursor-pointer shadow-lg hover:translate-y-[-2px] transition-all bg-gradient-to-r from-[#38C7B7] to-[#20A597] border-b-4 border-[#1a8f81] active:translate-y-[1px]"
-                >
-                  <span className="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-md">
-                    <img 
-                      src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/pix.svg" 
-                      alt="PIX" 
-                      className="w-4.5 h-4.5"
-                    />
-                  </span>
-                  <span>PIX à vista</span>
-                </button>
-
-                {/* 3. Card Payment Modal trigger */}
-                <button 
-                  type="button"
-                  onClick={abrirCardFlow}
-                  className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border border-gray-200 bg-white text-[#1e293b] font-extrabold text-sm md:text-base cursor-pointer shadow-lg hover:translate-y-[-2px] transition-all border-b-4 border-[#d1d5db] active:translate-y-[1px]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <svg className="w-5 h-5 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <rect x="2" y="5" width="20" height="14" rx="2" />
-                      <path d="M2 10h20" />
-                    </svg>
-                    <span>Cartão de Crédito</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/visa.svg" alt="Visa" className="h-3.5 object-contain" />
-                    <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/mastercard.webp" alt="Mastercard" className="h-3.5 object-contain" />
-                    <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/elo.svg" alt="Elo" className="h-3.5 object-contain" />
-                    <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/amex.svg" alt="Amex" className="h-3.5 object-contain" />
-                  </div>
-                </button>
-
-              </div>
-            </div>
-
-            {/* Social Proof details underneath buttons */}
-            <div className="flex items-center justify-between flex-wrap gap-4 border-t border-[#334155] pt-6 mt-6">
-              
-              <div className="flex flex-col">
-                <span className="text-white font-bold text-xs md:text-sm">Mais de 12.000 clientes satisfeitos</span>
-                <div className="flex items-center gap-1 mt-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                  ))}
-                  <span className="text-white text-xs font-extrabold ml-1.5">4.8 / 5 <span className="text-gray-400 font-normal ml-0.5">(12.854 usuários)</span></span>
-                </div>
-              </div>
-
-              {/* Payment methods logos */}
-              <div className="flex items-center gap-1.5 flex-wrap opacity-60">
-                <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/mercadopago.webp" alt="Mercado Pago" className="h-5" />
-                <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/pix.svg" alt="Pix" className="h-5" />
-                <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/visa.svg" alt="Visa" className="h-5" />
-                <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/mastercard.webp" alt="Mastercard" className="h-5" />
-                <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/elo.svg" alt="Elo" className="h-5" />
-                <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/amex.svg" alt="Amex" className="h-5" />
-                <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/diners-club.svg" alt="Diners Club" className="h-5" />
-                <img src="https://emuladores.github.io/ps2/checkout2/images/payment-methods/boleto.webp" alt="Boleto" className="h-5" />
-              </div>
-
-            </div>
-
-          </section>
-
-          {/* Sidebar Area: FAQ & Testimonials */}
-          <aside className="space-y-4">
             
-            {/* Rotating testimonials block */}
-            <div className="bg-[#1e293b] border border-[#334155] rounded-[14px] p-4 shadow-xl">
-              <h3 className="text-white font-bold text-sm md:text-base border-b border-[#334155] pb-2 mb-3">
-                O que dizem nossos clientes
-              </h3>
-              
-              <div className="space-y-4">
-                {displayedTestimonials.map((t, idx) => {
-                  const initial = t.name.charAt(0).toUpperCase();
-                  const colors = ['#eab308', '#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899'];
-                  const colorIdx = t.name.charCodeAt(0) % colors.length;
-                  const bgColor = colors[colorIdx];
+            <div className="field">
+              <label className="label" htmlFor="email">E-mail para entrega</label>
+              <input 
+                className={`input ${emailError ? 'is-invalid' : ''}`} 
+                id="email" 
+                name="email" 
+                type="email" 
+                placeholder="voce@email.com" 
+                required
+                autoComplete="email" 
+                inputMode="email" 
+                aria-describedby="emailErr" 
+                autoCapitalize="off" 
+                autoCorrect="off"
+                spellCheck="false" 
+                enterKeyHint="next"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setEmailError(false); }}
+              />
+              <div className="error" id="emailErr" role="alert" aria-hidden={!emailError}>E-mail inválido. Ex.: nome@site.com</div>
+              <div className="assist">Importante: verifique se digitou o e-mail corretamente para receber o acesso.</div>
+            </div>
+
+            <div className="field">
+              <label className="label" htmlFor="cel">Celular com DDD (opcional)</label>
+              <input 
+                className={`input ${celularError ? 'is-invalid' : ''}`} 
+                id="cel" 
+                name="tel" 
+                type="tel" 
+                placeholder="(11) 99999-9999" 
+                autoComplete="tel"
+                inputMode="numeric" 
+                pattern="[\d\s\-\(\)]{8,}" 
+                enterKeyHint="done" 
+                maxLength="16"
+                value={celular}
+                onChange={handlePhoneChange}
+              />
+              <div className="error" id="celErr" role="alert" aria-hidden={!celularError}>Celular inválido. Ex.: (11) 99999-9999</div>
+              <div className="assist">Usado para suporte rápido via WhatsApp e rastreamento da entrega.</div>
+            </div>
+          </form>
+
+          {orderBumps.length > 0 && (
+            <>
+              <div className="bump-header">
+                <h2 className="bump-header-title">Aproveite também — extras adicionais com preço especial</h2>
+                <p className="bump-header-sub">Esta oferta única expira ao sair desta página</p>
+              </div>
+
+              <div className="bump-stack">
+                {orderBumps.map((bump) => {
+                  const isSelected = selectedBumps.has(bump.id);
+                  const bumpPrice = bump.price ?? bump.package_price;
+                  const bumpRelPrice = bump.relprice || bumpPrice * 2;
+                  const econPercent = Math.round((1 - (bumpPrice / bumpRelPrice)) * 100);
 
                   return (
-                    <div key={idx} className="bg-gray-800/30 p-3 rounded-lg border border-[#334155]/60 hover:bg-gray-800/40 transition-colors">
-                      <div className="flex items-center gap-2.5 mb-2">
-                        <div 
-                          className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-white text-xs shrink-0" 
-                          style={{ backgroundColor: bgColor }}
-                        >
-                          {initial}
-                        </div>
-                        <div>
-                          <div className="text-white font-bold text-xs leading-none">{t.name}</div>
-                          <div className="text-[10px] text-gray-500 mt-1">há 2 dias</div>
+                    <div 
+                      key={bump.id} 
+                      className={`bump ${isSelected ? 'selected' : ''}`}
+                      onClick={() => toggleBump(bump.id)}
+                    >
+                      <div className="bump-tag">RECOMENDADO</div>
+                      <div className="bump-body">
+                        <div className="bump-main">
+                          <span className="bump-pointer">➔</span>
+                          <input 
+                            type="checkbox" 
+                            checked={isSelected}
+                            onChange={() => {}}
+                          />
+                          {bump.image ? (
+                            <img className="bump-thumb" src={bump.image} alt={bump.title || bump.package_title} />
+                          ) : (
+                            <div className="bump-thumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1e293b' }}>
+                              <ImageOff className="h-6 w-6 text-gray-600" />
+                            </div>
+                          )}
+                          <div>
+                            <div className="bump-hero">{bump.title || bump.package_title}</div>
+                            <div className="bump-sub">{bump.description || 'Adicione este item extra ao seu pacote com desconto exclusivo.'}</div>
+                            <div>
+                              <span className="bump-strike">de {fmt(bumpRelPrice)}</span>
+                              <span>por <span className="bump-price">{fmt(bumpPrice)}</span></span>
+                              <span className="bump-economy">{econPercent}% de desconto</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-1 mb-1.5">
-                        {[...Array(t.stars)].map((_, i) => (
-                          <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                        ))}
-                        <span className="text-[#10b981] ml-1">
-                          <CheckCircle2 className="h-3 w-3 fill-[#10b981] text-[#0f172a] inline" />
-                        </span>
-                      </div>
-                      <p className="text-gray-300 text-xs leading-snug font-medium">{t.text}</p>
                     </div>
                   );
                 })}
               </div>
+            </>
+          )}
 
-              <div className="text-center text-gray-500 text-[10px] font-semibold mt-4 tracking-wider uppercase">
-                ✓ Depoimentos verificados
-              </div>
+          <div className="field" style={{ marginTop: '20px' }}>
+            <label className="label" htmlFor="cupom">Cupom de desconto (opcional)</label>
+            <div className="input-group">
+              <input 
+                className={`input ${couponStatus === 'applied' ? 'is-valid' : couponStatus === 'invalid' ? 'is-invalid' : ''}`} 
+                id="cupom" 
+                name="cupom" 
+                type="text" 
+                placeholder="Código do cupom"
+                autoComplete="off" 
+                inputMode="text" 
+                enterKeyHint="done" 
+                maxLength="16"
+                value={couponCode}
+                onChange={e => { setCouponCode(e.target.value); setCouponStatus('idle'); }}
+                disabled={couponStatus === 'checking'}
+                style={couponStatus === 'applied' ? { borderColor: '#10b981' } : {}}
+              />
+              <button 
+                type="button" 
+                className="btn-apply" 
+                onClick={handleApplyCoupon}
+                disabled={!couponCode.trim() || couponStatus === 'checking'}
+                style={{
+                  backgroundColor: couponStatus === 'applied' ? '#10b981' : couponStatus === 'invalid' ? '#ef4444' : '',
+                  color: ['applied', 'invalid'].includes(couponStatus) ? '#fff' : ''
+                }}
+              >
+                {couponStatus === 'checking' && 'Verificando...'}
+                {couponStatus === 'applied' && 'Aplicado!'}
+                {couponStatus === 'invalid' && 'Inválido'}
+                {couponStatus === 'error' && 'Erro'}
+                {['idle', 'error'].includes(couponStatus) && 'Aplicar'}
+              </button>
             </div>
+          </div>
 
-            {/* Collapsible FAQ Accordion */}
-            <div className="bg-[#1e293b] border border-[#334155] rounded-[14px] p-4 shadow-xl">
-              <h3 className="text-white font-bold text-sm md:text-base border-b border-[#334155] pb-2 mb-3">
-                FAQ — antes de finalizar
-              </h3>
-              
-              <div className="divide-y divide-[#334155]">
-                {FAQ_ITEMS.map((item, idx) => {
-                  const isOpen = !!expandedFaq[idx];
-                  return (
-                    <div key={idx} className="py-2.5">
-                      <button 
-                        onClick={() => toggleFaq(idx)}
-                        className="w-full flex items-center justify-between text-left text-white font-semibold text-xs md:text-sm py-1 focus:outline-none hover:text-blue-400 transition-colors"
-                      >
-                        <span>{item.q}</span>
-                        {isOpen ? <ChevronUp className="h-4 w-4 shrink-0 text-gray-500" /> : <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />}
-                      </button>
-                      
-                      {isOpen && (
-                        <p className="text-gray-400 text-xs mt-1.5 leading-snug font-medium transition-all">
-                          {item.a}
-                        </p>
-                      )}
+          <div className="summary" id="summary" aria-live="polite">
+            <h3>Detalhes do pedido</h3>
+            <table className="summary-table" id="summaryTable">
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th style={{ textAlign: 'right' }}>Preço</th>
+                </tr>
+              </thead>
+              <tbody id="summaryBody">
+                <tr>
+                  <td>
+                    <div style={{ fontWeight: 'bold' }}>
+                      {mainProduct.title} (Acesso Digital)
                     </div>
+                    <div className="summary-small">
+                      <span className="summary-strike">{fmt(origPrice)}</span> ➔ por <span className="summary-price">{fmt(discPrice)}</span>
+                      {couponDiscount > 0 && <span style={{ color: '#16a34a', fontWeight: 'bold', marginLeft: '8px' }}>(-{couponDiscount}%)</span>}
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{fmt(discPrice)}</td>
+                </tr>
+                {orderBumps.map(bump => {
+                  if (!selectedBumps.has(bump.id)) return null;
+                  const origB = bump.relprice || (bump.price ?? bump.package_price) * 2;
+                  let discB = bump.price ?? bump.package_price;
+                  if (couponDiscount > 0) discB = discB * (1 - couponDiscount / 100);
+
+                  return (
+                    <tr key={bump.id}>
+                      <td>
+                        <div style={{ fontWeight: 'bold' }}>{bump.title || bump.package_title}</div>
+                        <div className="summary-small">
+                          <span className="summary-strike">{fmt(origB)}</span> ➔ por <span className="summary-price">{fmt(discB)}</span>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{fmt(discB)}</td>
+                    </tr>
                   );
                 })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Total <span className="economy" id="totalEconomy">(Economia {fmt(getTotalEconomy())})</span></td>
+                  <td style={{ textAlign: 'right', color: '#60a5fa' }} id="totalVlr">{fmt(getCartTotal())}</td>
+                </tr>
+              </tfoot>
+            </table>
+            <div className="savings-banner" id="savingsBanner" style={{ display: getTotalEconomy() > 0 ? 'block' : 'none' }}>
+              🎉 <strong>Parabéns!</strong> Você está economizando <strong id="savingsValue">{fmt(getTotalEconomy())}</strong> hoje.
+            </div>
+          </div>
+
+          <div className="trust-bar" id="trustBar">
+            🔒 <strong>Checkout seguro</strong> — você paga no <strong>Mercado Pago</strong> (Pix, Cartão, Boleto). Seus dados são criptografados de ponta a ponta.
+          </div>
+
+          {/* Moved Desktop Social Proof under the total logic to match original layout conceptually, or leave in checkout footer */}
+          <div className="checkout-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div className="social-proof" style={{ marginBottom: '10px' }}>
+              <div className="social-copy" style={{ fontWeight: 'bold', fontSize: '14px' }}>Mais de 12.000 clientes satisfeitos</div>
+            </div>
+            <div className="rating-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <div className="stars" style={{ display: 'flex', gap: '2px' }}>
+                {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />)}
               </div>
+              <div style={{ fontSize: '14px' }}><strong>4,8 / 5</strong> <span className="rating-muted" style={{ color: 'var(--muted)' }}>(12.854 usuários)</span></div>
+            </div>
+            
+            <div className="trust-under-cta" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', opacity: 0.7 }}>
+              <span>Você paga no Mercado Pago:</span>
+              <img src="/images/mercadopago.webp" alt="Mercado Pago" style={{ height: '20px' }} />
+              <img src="/images/pix.svg" alt="Pix" style={{ height: '20px' }} />
+              <img src="/images/visa.svg" alt="Visa" style={{ height: '20px' }} />
+              <img src="/images/mastercard.webp" alt="Mastercard" style={{ height: '20px' }} />
+              <img src="/images/elo.svg" alt="Elo" style={{ height: '20px' }} />
+              <img src="/images/amex.svg" alt="American Express" style={{ height: '20px' }} />
+              <img src="/images/diners-club.svg" alt="Diners Club" style={{ height: '20px' }} />
+              <img src="/images/boleto.webp" alt="Boleto bancário" style={{ height: '20px' }} />
+            </div>
+          </div>
+
+          <div className="mobile-sticky-bar" style={{ marginTop: '30px' }}>
+            <div className="micro-guarantee" style={{ display: 'flex', justifyContent: 'center', gap: '10px', fontSize: '12px', color: 'var(--muted)', marginBottom: '20px' }}>
+              <span>⚡ Acesso imediato</span><span className="sep">•</span>
+              <span>💬 Suporte via WhatsApp</span>
             </div>
 
-          </aside>
+            <p className="pay-label">Escolha como pagar</p>
+            <div className="pay-grid">
+              <button id="payBtn" className="pay-btn pay-btn--mp" onClick={pagarMercadoPago} type="button">
+                <img src="/images/mercadopago.webp" alt="" width="26" height="26" style={{ objectFit: 'contain' }} />
+                <span>Mercado Pago</span>
+              </button>
+              <button id="altPixBtn" className="pay-btn pay-btn--pix" onClick={abrirPixFlow} type="button">
+                <span className="pay-btn__icon-badge">
+                  <img src="/images/pix.svg" alt="" width="20" height="20" />
+                </span>
+                <span>PIX</span>
+              </button>
+              <button id="altCardBtn" className="pay-btn pay-btn--card" onClick={abrirCardFlow} type="button">
+                <span className="pay-btn__title">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                    <path d="M2 10h20" />
+                  </svg>
+                  Cartão de Crédito
+                </span>
+                <span className="pay-btn__brands">
+                  <img src="/images/visa.svg" alt="Visa" height="16" />
+                  <img src="/images/mastercard.webp" alt="Mastercard" height="16" />
+                  <img src="/images/elo.svg" alt="Elo" height="16" />
+                  <img src="/images/amex.svg" alt="Amex" height="16" />
+                </span>
+              </button>
+            </div>
+          </div>
+        </section>
 
-        </div>
+        <aside className="side">
+          <div className="tcard" id="tcard" style={{ background: 'var(--card)', borderRadius: '14px', border: '1px solid var(--border)', padding: '16px', marginBottom: '16px' }}>
+            <h3 className="t-title" style={{ margin: '0 0 16px', fontSize: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>O que dizem nossos clientes</h3>
+            <div id="tlist" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {displayedTestimonials.map((t, idx) => {
+                const initial = t.name.charAt(0).toUpperCase();
+                const colors = ['#eab308', '#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899'];
+                const bgColor = colors[t.name.charCodeAt(0) % colors.length];
 
+                return (
+                  <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px' }}>
+                        {initial}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{t.name}</div>
+                        <div style={{ fontSize: '10px', color: 'var(--muted)' }}>há 2 dias</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
+                      {[...Array(t.stars)].map((_, i) => <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />)}
+                      <CheckCircle2 className="h-3 w-3 fill-green-500 text-[var(--card)]" style={{ marginLeft: '4px' }} />
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#e2e8f0' }}>{t.text}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="t-footer" style={{ textAlign: 'center', fontSize: '11px', color: 'var(--muted)', marginTop: '16px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Depoimentos verificados
+            </div>
+          </div>
+
+          <div className="faq" id="checkoutFAQ" aria-label="Perguntas frequentes" style={{ background: 'var(--card)', borderRadius: '14px', border: '1px solid var(--border)', padding: '16px' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>FAQ — antes de finalizar</h3>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {FAQ_ITEMS.map((item, idx) => {
+                const isOpen = !!expandedFaq[idx];
+                return (
+                  <div key={idx} style={{ borderBottom: idx < FAQ_ITEMS.length - 1 ? '1px solid var(--border)' : 'none', padding: '10px 0' }}>
+                    <button 
+                      onClick={() => toggleFaq(idx)}
+                      style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', color: 'var(--text)', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                    >
+                      <span>{item.q}</span>
+                      {isOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
+                    </button>
+                    {isOpen && (
+                      <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--muted)', lineHeight: '1.4' }}>
+                        {item.a}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </aside>
       </div>
 
-      {/* Footer */}
-      <footer className="max-w-[1180px] mx-auto mt-12 px-4 text-center border-t border-[#334155] pt-8">
+      <footer className="trust-footer" style={{ marginTop: '40px', borderTop: '1px solid var(--border)', paddingTop: '24px', textAlign: 'center' }}>
+        <div className="footer-contacts" style={{ marginBottom: '20px', fontSize: '0.8rem', opacity: 0.8, display: 'flex', justifyContent: 'center', gap: '15px' }}>
+          <a href="mailto:contato@digitalstoregames.com" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <HelpCircle className="h-4 w-4" /> Email
+          </a>
+          <a href="https://wa.me/5541996260115" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Send className="h-4 w-4" /> WhatsApp
+          </a>
+        </div>
         
-        <div className="flex justify-center items-center gap-6 text-xs text-gray-400 mb-6 font-semibold">
-          <a href="mailto:contato@digitalstoregames.com" className="hover:text-white transition-colors flex items-center gap-1.5">
-            <HelpCircle className="h-3.5 w-3.5" /> Email
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <a href="https://www.siteconfiavel.com.br/site/digitalstoregames-com" target="_blank" rel="noopener noreferrer">
+            <img src="/images/siteconfiavel.webp" className="trust-seal" alt="Site Confiável" loading="lazy" style={{ height: '40px', borderRadius: '4px' }} />
           </a>
-          <a href="https://wa.me/5541996260115" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1.5">
-            <Send className="h-3.5 w-3.5" /> WhatsApp
+          <a href="https://www.websiteplanet.com/pt-br/webtools/ssl-checker/?url=digitalstoregames.com" target="_blank" rel="noopener noreferrer">
+            <img src="/images/ssl.webp" className="trust-seal" alt="SSL Seguro" loading="lazy" style={{ height: '40px', borderRadius: '4px' }} />
           </a>
-        </div>
-
-        <div className="flex justify-center items-center gap-4 flex-wrap pb-6">
-          <a href="https://www.siteconfiavel.com.br/site/digitalstoregames-com" target="_blank" rel="noopener noreferrer" className="opacity-70 hover:opacity-100 transition-opacity">
-            <img src="https://emuladores.github.io/ps2/checkout2/images/trust-seals/siteconfiavel.webp" className="h-10 object-contain rounded" alt="Site Confiável" />
-          </a>
-          <a href="https://www.websiteplanet.com/pt-br/webtools/ssl-checker/?url=digitalstoregames.com" target="_blank" rel="noopener noreferrer" className="opacity-70 hover:opacity-100 transition-opacity">
-            <img src="https://emuladores.github.io/ps2/checkout2/images/trust-seals/ssl.webp" className="h-10 object-contain rounded" alt="SSL Seguro" />
-          </a>
-          <a href="https://www.mercadopago.com.br/ajuda/23185" target="_blank" rel="noopener noreferrer" className="opacity-70 hover:opacity-100 transition-opacity">
-            <img src="https://emuladores.github.io/ps2/checkout2/images/trust-seals/mercadopagogarantia.webp" className="h-10 object-contain rounded" alt="Mercado Pago Garantia" />
+          <a href="https://www.mercadopago.com.br/ajuda/23185" target="_blank" rel="noopener noreferrer">
+            <img src="/images/mercadopagogarantia.webp" className="trust-seal" alt="Mercado Pago Garantia" loading="lazy" style={{ height: '40px', borderRadius: '4px' }} />
           </a>
         </div>
-
       </footer>
 
-      {/* Floating help WhatsApp Button */}
-      <a 
-        href={`https://api.whatsapp.com/send?phone=5541996260115&text=Gostaria%20de%20mais%20informa%C3%A7%C3%B5es%20sobre%20o%20produto%20${encodeURIComponent(mainProduct.title)}`}
-        className="whatsapp-float" 
-        target="_blank" 
-        rel="noopener noreferrer" 
-        aria-label="Fale conosco no WhatsApp"
-      >
+      {/* WhatsApp Floating Button */}
+      <a href={`https://api.whatsapp.com/send?phone=5541996260115&text=Gostaria%20de%20mais%20informa%C3%A7%C3%B5es%20sobre%20o%20produto`} className="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Fale conosco no WhatsApp">
         <span className="whatsapp-tooltip">Precisa de ajuda?</span>
         <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.008-.57-.008-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
@@ -1239,63 +1046,36 @@ export function CheckoutPage() {
 
       {/* Global Spinner Overlay */}
       {globalLoading && (
-        <div className="fixed inset-0 bg-[#0f172a]/95 text-white z-[99999] flex flex-col items-center justify-center p-6 text-center">
-          <div className="border-4 border-gray-700 border-t-blue-500 rounded-full w-12 h-12 animate-spin mb-4"></div>
-          <p className="font-semibold text-base">{globalLoadingMsg}</p>
+        <div style={{ display: 'flex', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(255, 255, 255, 0.9)', zIndex: 9999, justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+          <div style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #009EE3', borderRadius: '50%', width: '50px', height: '50px', animation: 'spin 1s linear infinite' }}></div>
+          <p style={{ marginTop: '15px', fontWeight: 600, color: '#333' }}>{globalLoadingMsg}</p>
         </div>
       )}
 
       {/* PIX Payment Modal */}
       {pixModalOpen && pixData && (
-        <div className="fixed inset-0 bg-black/85 z-[9999] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center text-gray-900 shadow-2xl relative">
-            <h2 className="text-[#00b04a] font-extrabold text-xl mb-1 flex items-center justify-center gap-1.5">
-              🏦 Pague com PIX
-            </h2>
-            <p className="text-gray-500 text-xs mb-4">Escaneie o QR Code ou copie o código Pix abaixo</p>
-            
+        <div role="dialog" aria-modal="true" aria-label="Pagar com PIX" style={{ display: 'flex', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 10001, alignItems: 'center', justifyContent: 'center', overflowY: 'auto' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px 24px', maxWidth: '400px', width: '90%', margin: '20px auto', textAlign: 'center', fontFamily: "'Montserrat', sans-serif" }}>
+            <h2 style={{ margin: '0 0 4px', color: '#00b04a', fontSize: '1.4rem' }}>🏦 Pague com PIX</h2>
+            <p style={{ color: '#555', fontSize: '0.85rem', margin: '0 0 18px' }}>Escaneie o QR Code ou copie o código</p>
             {pixData.qr_code_base64 && (
-              <img 
-                src={`data:image/png;base64,${pixData.qr_code_base64}`}
-                alt="QR Code PIX" 
-                className="w-48 h-48 border-4 border-[#00b04a] rounded-xl mx-auto block shadow"
-              />
+              <img src={`data:image/png;base64,${pixData.qr_code_base64}`} alt="QR Code PIX" style={{ maxWidth: '200px', border: '4px solid #00b04a', borderRadius: '10px', display: 'block', margin: '0 auto' }} />
             )}
-            
-            <p className="font-extrabold text-xl text-gray-800 mt-4 mb-2">{fmt(pixData.amount)}</p>
-            
-            <p className="text-[10px] text-gray-400 bg-gray-550/10 border border-gray-200 rounded-lg p-2 font-mono break-all leading-normal max-h-16 overflow-y-auto mb-4 select-text">
+            <p style={{ fontWeight: 700, fontSize: '1.2rem', color: '#222', margin: '12px 0 6px' }}>{fmt(pixData.amount)}</p>
+            <p style={{ fontSize: '0.72rem', color: '#999', wordBreak: 'break-all', fontFamily: 'monospace', background: '#f7f7f7', borderRadius: '6px', padding: '8px', margin: '0 0 14px', lineHeight: '1.4' }}>
               {pixData.qr_code}
             </p>
-
-            <button 
-              type="button" 
-              onClick={copiarPixCode}
-              className="w-full py-3 bg-[#00b04a] hover:bg-[#009b40] text-white rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-1.5 shadow"
-            >
-              {pixCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              <span>{pixCopied ? '✓ Copiado!' : '📋 Copiar código PIX'}</span>
+            <button onClick={copiarPixCode} style={{ width: '100%', padding: '13px', background: '#00b04a', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}>
+              {pixCopied ? '✓ Copiado!' : '📋 Copiar código PIX'}
             </button>
-
-            <div className="mt-4 text-xs font-semibold flex items-center justify-center gap-2 text-gray-600 min-h-6">
+            <div style={{ marginTop: '14px', fontSize: '0.88rem', color: '#666', minHeight: '24px' }}>
               {pixConfirmed ? (
-                <span className="text-green-600 font-extrabold flex items-center gap-1">
-                  <CheckCircle2 className="h-4 w-4 fill-green-600 text-white" />
-                  Pagamento confirmado! Verifique seu e-mail.
-                </span>
+                <span style={{ color: '#16a34a', fontWeight: 'bold' }}>Pagamento confirmado! Redirecionando...</span>
               ) : (
-                <>
-                  <span>{pixStatusText}</span>
-                  {!pixStatusText.includes('cancelado') && <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />}
-                </>
+                <span>{pixStatusText}</span>
               )}
             </div>
-
-            <button 
-              type="button" 
-              onClick={fecharPixModal}
-              className="mt-3.5 px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-xs rounded-lg transition-colors"
-            >
+            <button onClick={fecharPixModal} style={{ marginTop: '10px', padding: '8px 18px', background: '#eee', color: '#444', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.82rem', fontFamily: "'Montserrat', sans-serif" }}>
               Fechar
             </button>
           </div>
@@ -1304,42 +1084,18 @@ export function CheckoutPage() {
 
       {/* Card Payment Modal */}
       {cardModalOpen && (
-        <div className="fixed inset-0 bg-black/85 z-[9999] flex items-start justify-center p-4 overflow-y-auto pt-10">
-          <div className="bg-white rounded-2xl p-5 max-w-md w-full text-gray-900 shadow-2xl relative max-h-[90vh] overflow-y-auto select-text">
-            <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
-              <h2 className="font-extrabold text-base text-gray-800 flex items-center gap-2">
-                <svg className="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <rect x="2" y="5" width="20" height="14" rx="2" />
-                  <path d="M2 10h20" />
-                </svg>
-                Pagar com cartão
-              </h2>
-              <button 
-                type="button" 
-                onClick={fecharCardModal}
-                className="text-gray-400 hover:text-gray-600 font-bold text-lg px-2"
-              >
-                ✕
-              </button>
+        <div role="dialog" aria-modal="true" aria-label="Pagar com cartão" style={{ display: 'flex', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 10001, alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '16px 0' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '20px 24px', maxWidth: '440px', width: '90%', margin: 'auto', fontFamily: "'Montserrat', sans-serif", maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', position: 'sticky', top: 0, background: '#fff', paddingBottom: '8px', borderBottom: '1px solid #f0f0f0', zIndex: 1 }}>
+              <h2 style={{ margin: 0, color: '#222', fontSize: '1.1rem' }}>💳 Pagar com cartão</h2>
+              <button onClick={fecharCardModal} aria-label="Fechar" style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#888', lineHeight: 1, padding: '4px 8px' }}>✕</button>
             </div>
-            
-            {cardError && (
-              <div className="bg-red-50 text-red-700 p-3 rounded-lg text-xs font-semibold mb-3 border border-red-200">
-                {cardError}
-              </div>
-            )}
-
+            {cardError && <div style={{ color: '#ef4444', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>{cardError}</div>}
             <div id="cardBrickContainer"></div>
-
-            {cardSuccess && (
-              <p className="text-green-600 font-bold text-center text-sm mt-3">
-                ✅ Pagamento aprovado! Redirecionando...
-              </p>
-            )}
+            {cardSuccess && <div style={{ color: '#16a34a', marginTop: '10px', fontWeight: 'bold', textAlign: 'center' }}>Pagamento aprovado! Redirecionando...</div>}
           </div>
         </div>
       )}
-
     </div>
   );
 }
