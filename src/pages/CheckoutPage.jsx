@@ -57,6 +57,7 @@ export function CheckoutPage() {
   // Page States
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [storeInfo, setStoreInfo] = useState(null);
   const [mainProduct, setMainProduct] = useState(null);
   const [orderBumps, setOrderBumps] = useState([]);
   const [selectedBumps, setSelectedBumps] = useState(new Set());
@@ -127,19 +128,16 @@ export function CheckoutPage() {
     setLoading(true);
     setError(null);
 
-    api.get(`/store/${storeId}/packages`, { params: { active_only: true } })
+    api.get(`/store/${storeId}/checkout_info`)
       .then(({ data }) => {
-        if (!data || data.length === 0) {
+        if (!data || !data.principal) {
           setError('Nenhum produto cadastrado para esta loja.');
           return;
         }
 
-        // The first package from API should be the principal package based on sorting
-        const principal = data.find(p => p.principal === 1) || data[0];
-        const bumps = data.filter(p => p.id !== principal.id);
-
-        setMainProduct(principal);
-        setOrderBumps(bumps);
+        setStoreInfo(data.store);
+        setMainProduct(data.principal);
+        setOrderBumps(data.bumps || []);
       })
       .catch((err) => {
         console.error('Error fetching store packages:', err);
@@ -586,6 +584,9 @@ export function CheckoutPage() {
 
   // Bullet formatting for main product feature list
   const getProductBullets = () => {
+    if (storeInfo && storeInfo.checkout_features) {
+      return storeInfo.checkout_features.split('\n').filter(line => line.trim());
+    }
     if (mainProduct && mainProduct.prd_content) {
       return mainProduct.prd_content.split('\n').filter(line => line.trim());
     }
@@ -640,8 +641,11 @@ export function CheckoutPage() {
           <svg className="logo-icon-brand" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 12h4m-2-2v4M15 13h.01M18 11h.01M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" />
           </svg>
-          <div className="logo-label">
-            DIGITAL STORE <span>GAMES</span>
+          <div className="logo-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {storeInfo?.url_thumb && (
+              <img src={storeInfo.url_thumb} alt="Logo" style={{ height: '32px', borderRadius: '4px' }} />
+            )}
+            {storeInfo ? storeInfo.name : <>DIGITAL STORE <span>GAMES</span></>}
           </div>
         </a>
         <div className="header-secure">
@@ -1037,7 +1041,7 @@ export function CheckoutPage() {
       </footer>
 
       {/* WhatsApp Floating Button */}
-      <a href={`https://api.whatsapp.com/send?phone=5541996260115&text=Gostaria%20de%20mais%20informa%C3%A7%C3%B5es%20sobre%20o%20produto`} className="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Fale conosco no WhatsApp">
+      <a href={`https://api.whatsapp.com/send?phone=5541996260115&text=${encodeURIComponent(storeInfo?.checkout_whatsapp_text || 'Gostaria de mais informações sobre o produto')}`} className="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Fale conosco no WhatsApp">
         <span className="whatsapp-tooltip">Precisa de ajuda?</span>
         <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.008-.57-.008-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
