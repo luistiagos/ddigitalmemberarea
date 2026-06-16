@@ -5,53 +5,43 @@ import {
   Send, Star, Copy, Check, Loader2, ChevronDown, ChevronUp, X 
 } from 'lucide-react';
 import api from '@/services/api';
+import { TRANSLATIONS } from './translations';
 import './CheckoutPage.css';
 
 // Static FAQ Data
-const FAQ_ITEMS = [
-  {
-    q: 'Como recebo o acesso?',
-    a: 'Logo após o pagamento, o acesso é enviado para o seu e-mail. A liberação é imediata.'
-  },
-  {
-    q: 'Tem suporte, caso eu precise?',
-    a: 'Sim. Caso precise de ajuda, nosso suporte é feito diretamente pelo WhatsApp.'
-  },
-  {
-    q: 'E se eu não gostar?',
-    a: 'Você tem 30 dias de garantia para solicitar reembolso sem burocracia.'
-  },
-  {
-    q: 'É seguro?',
-    a: 'Sim. O pagamento é processado pelo Mercado Pago. Toda a compra é coberta pelo programa de Compra Garantida do Mercado Pago.'
-  },
-  {
-    q: 'Quanto tempo para receber o produto?',
-    a: 'Depois que o pagamento for confirmado, o produto será enviado para o seu e-mail.'
-  }
+const getFaqItems = (t) => [
+  { q: t.faq1q, a: t.faq1a },
+  { q: t.faq2q, a: t.faq2a },
+  { q: t.faq3q, a: t.faq3a },
+  { q: t.faq4q, a: t.faq4a },
+  { q: t.faq5q, a: t.faq5a }
 ];
 
 // Static Testimonials
-const TESTIMONIALS = [
-  { name: 'Gabriel S.', stars: 5, text: 'Recebi tudo certinho e o tutorial ajudou muito. Valeu cada centavo!' },
-  { name: 'Marina A.', stars: 5, text: 'Instalação rápida no notebook, catálogo enorme. Recomendo!' },
-  { name: 'Rogério M.', stars: 4, text: 'Suporte pelo Whats funcionou de primeira. Ótimo custo-benefício.' },
-  { name: 'Bianca T.', stars: 5, text: 'Comprei e em menos de 5 minutos já estava jogando. Sensacional!' },
-  { name: 'Angela N.', stars: 5, text: 'A parte do Switch com DLCs é top! Conteúdo atualizado.' },
-  { name: 'Carlos E.', stars: 5, text: 'Muito bom, revivi minha infância com o PS1.' },
-  { name: 'Fernanda L.', stars: 5, text: 'Fácil de instalar e roda liso no meu PC antigo.' },
-  { name: 'João P.', stars: 4, text: 'Bastante jogo, demorei pra escolher o que jogar kkk.' },
-  { name: 'Lucas R.', stars: 5, text: 'O suporte me ajudou a configurar o controle. Nota 10.' },
-  { name: 'Ana C.', stars: 5, text: 'Adorei os jogos de Super Nintendo, nostálgico demais.' },
-  { name: 'Pedro H.', stars: 5, text: 'Entrega imediata mesmo, paguei e chegou no email.' },
-  { name: 'Mariana S.', stars: 5, text: 'Tudo organizado, pastas separadas por console.' },
-  { name: 'Rafael K.', stars: 4, text: 'Recomendo, era o que eu esperava.' },
-  { name: 'Juliana M.', stars: 5, text: 'Comprei pro meu filho e ele adorou.' },
-  { name: 'Bruno V.', stars: 5, text: 'Melhor pack que já comprei, sem vírus e sem enrolação.' }
+const getTestimonials = (t) => [
+  { name: 'Gabriel S.', stars: 5, text: t.t1 },
+  { name: 'Marina A.', stars: 5, text: t.t2 },
+  { name: 'Rogério M.', stars: 4, text: t.t3 },
+  { name: 'Bianca T.', stars: 5, text: t.t4 },
+  { name: 'Angela N.', stars: 5, text: t.t5 },
+  { name: 'Carlos E.', stars: 5, text: t.t6 },
+  { name: 'Fernanda L.', stars: 5, text: t.t7 },
+  { name: 'João P.', stars: 4, text: t.t8 },
+  { name: 'Lucas R.', stars: 5, text: t.t9 },
+  { name: 'Ana C.', stars: 5, text: t.t10 },
+  { name: 'Pedro H.', stars: 5, text: t.t11 },
+  { name: 'Mariana S.', stars: 5, text: t.t12 },
+  { name: 'Rafael K.', stars: 4, text: t.t13 },
+  { name: 'Juliana M.', stars: 5, text: t.t14 },
+  { name: 'Bruno V.', stars: 5, text: t.t15 }
 ];
 
 export function CheckoutPage() {
   const [searchParams] = useSearchParams();
+  const langParam = searchParams.get('lang')?.toLowerCase() || 'ptbr';
+  const lang = TRANSLATIONS[langParam] ? langParam : 'ptbr';
+  const t = TRANSLATIONS[lang];
+
   const storeId = searchParams.get('storeid') || searchParams.get('store_id');
 
   // Page States
@@ -79,15 +69,16 @@ export function CheckoutPage() {
 
   // Testimonials slide rotation
   const [testimonialIdx, setTestimonialIdx] = useState(0);
+  const TESTIMONIALS = getTestimonials(t);
   const displayedTestimonials = TESTIMONIALS.slice(testimonialIdx, testimonialIdx + 3);
 
   // Modal & Payment processing states
   const [globalLoading, setGlobalLoading] = useState(false);
-  const [globalLoadingMsg, setGlobalLoadingMsg] = useState('Processando seu pagamento...');
+  const [globalLoadingMsg, setGlobalLoadingMsg] = useState(t.cardProcessing);
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [pixData, setPixData] = useState(null); // { qr_code, qr_code_base64, amount, payment_id }
   const [pixCopied, setPixCopied] = useState(false);
-  const [pixStatusText, setPixStatusText] = useState('Aguardando pagamento...');
+  const [pixStatusText, setPixStatusText] = useState(t.awaitingPayment);
   const [pixConfirmed, setPixConfirmed] = useState(false);
   
   const [cardModalOpen, setCardModalOpen] = useState(false);
@@ -107,7 +98,7 @@ export function CheckoutPage() {
 
     // Auto rotate testimonials
     const interval = setInterval(() => {
-      setTestimonialIdx((prev) => (prev + 3 >= TESTIMONIALS.length ? 0 : prev + 3));
+      setTestimonialIdx((prev) => (prev + 3 >= getTestimonials(TRANSLATIONS['ptbr']).length ? 0 : prev + 3));
     }, 5500);
 
     return () => {
@@ -120,7 +111,7 @@ export function CheckoutPage() {
   // Fetch Store Packages
   useEffect(() => {
     if (!storeId) {
-      setError('ID de loja inválido ou não fornecido.');
+      setError(t.errInvalidStore);
       setLoading(false);
       return;
     }
@@ -131,7 +122,7 @@ export function CheckoutPage() {
     api.get(`/store/${storeId}/checkout_info`)
       .then(({ data }) => {
         if (!data || !data.principal) {
-          setError('Nenhum produto cadastrado para esta loja.');
+          setError(t.errNoProducts);
           return;
         }
 
@@ -141,7 +132,7 @@ export function CheckoutPage() {
       })
       .catch((err) => {
         console.error('Error fetching store packages:', err);
-        setError('Erro ao carregar dados da loja. Verifique sua conexão.');
+        setError(t.errFetch);
       })
       .finally(() => setLoading(false));
   }, [storeId]);
@@ -301,7 +292,7 @@ export function CheckoutPage() {
     if (!checkFormValid()) return;
 
     setGlobalLoading(true);
-    setGlobalLoadingMsg('Redirecionando para o Mercado Pago...');
+    setGlobalLoadingMsg(t.redirecting);
 
     const sids = getSelectedSids();
     const cleanPhone = celular.replace(/\D/g, '');
@@ -320,12 +311,12 @@ export function CheckoutPage() {
       if (response.data && response.data.checkout_url) {
         window.location.href = response.data.checkout_url;
       } else {
-        alert('Erro ao gerar checkout do Mercado Pago. Tente outro método.');
+        alert(t.errGenCheckout);
         setGlobalLoading(false);
       }
     } catch (err) {
       console.error(err);
-      alert('Erro ao conectar com o serviço de pagamento. Tente novamente.');
+      alert(t.errConn);
       setGlobalLoading(false);
     }
   };
@@ -335,7 +326,7 @@ export function CheckoutPage() {
     if (!checkFormValid()) return;
 
     setGlobalLoading(true);
-    setGlobalLoadingMsg('Gerando QR Code PIX...');
+    setGlobalLoadingMsg(t.generatingPix);
 
     const sids = getSelectedSids();
     const cleanPhone = celular.replace(/\D/g, '');
@@ -362,7 +353,7 @@ export function CheckoutPage() {
         amount: data.amount,
         payment_id: data.payment_id
       });
-      setPixStatusText('Aguardando pagamento...');
+      setPixStatusText(t.awaitingPayment);
       setPixConfirmed(false);
       setPixCopied(false);
       setPixModalOpen(true);
@@ -372,7 +363,7 @@ export function CheckoutPage() {
       startPollingPix(data.payment_id);
     } catch (err) {
       console.error(err);
-      alert('Erro ao processar pagamento via PIX. Tente novamente.');
+      alert(t.errPix);
       setGlobalLoading(false);
     }
   };
@@ -391,14 +382,14 @@ export function CheckoutPage() {
           clearInterval(pixPollIntervalRef.current);
           pixPollIntervalRef.current = null;
           setPixConfirmed(true);
-          setPixStatusText('Pagamento confirmado com sucesso!');
+          setPixStatusText(t.pixSuccess);
           setTimeout(() => {
             window.location.href = d.redirect_url || 'https://digitalmemberarea.digitalstoregames.com/recuperaracesso/';
           }, 3000);
         } else if (['rejected', 'cancelled', 'expired'].includes(d.status)) {
           clearInterval(pixPollIntervalRef.current);
           pixPollIntervalRef.current = null;
-          setPixStatusText('Pagamento cancelado ou expirado. Tente novamente.');
+          setPixStatusText(t.pixCancelled);
         }
       } catch (e) {
         // fail silently
@@ -443,11 +434,11 @@ export function CheckoutPage() {
     if (!checkFormValid()) return;
 
     setGlobalLoading(true);
-    setGlobalLoadingMsg('Iniciando formulário de cartão seguro...');
+    setGlobalLoadingMsg(t.cardFormInit);
 
     const sdkLoaded = await loadMercadoPagoSDK();
     if (!sdkLoaded) {
-      alert('Não foi possível carregar o formulário do Mercado Pago. Tente novamente.');
+      alert(t.errCardLoad);
       setGlobalLoading(false);
       return;
     }
@@ -485,7 +476,7 @@ export function CheckoutPage() {
           onSubmit: (cardData) => processCardPayment(cardData),
           onError: (err) => {
             console.error('CardBrick Error:', err);
-            setCardError('Ocorreu um erro no formulário. Tente novamente.');
+            setCardError(t.errCardForm);
           }
         }
       }).then(controller => {
@@ -493,13 +484,13 @@ export function CheckoutPage() {
       });
     } catch (e) {
       console.error(e);
-      setCardError('Erro ao inicializar formulário. Tente outro método.');
+      setCardError(t.errCardInit);
     }
   };
 
   const processCardPayment = async (cardData) => {
     setGlobalLoading(true);
-    setGlobalLoadingMsg('Processando pagamento com cartão...');
+    setGlobalLoadingMsg(t.cardProcessing);
 
     const sids = getSelectedSids();
     const cleanPhone = celular.replace(/\D/g, '');
@@ -525,7 +516,7 @@ export function CheckoutPage() {
       const data = response.data;
 
       if (data.error) {
-        alert('Erro no pagamento: ' + data.error);
+        alert(t.errCardPay + data.error);
         setGlobalLoading(false);
         // Refresh block to let user retry
         if (cardBrickControllerRef.current) {
@@ -540,16 +531,16 @@ export function CheckoutPage() {
         setCardSuccess(true);
         setCardModalOpen(false);
         setGlobalLoading(true);
-        setGlobalLoadingMsg('Pagamento Aprovado! Redirecionando...');
+        setGlobalLoadingMsg(t.cardApproved);
         setTimeout(() => {
           window.location.href = data.redirect_url || 'https://digitalmemberarea.digitalstoregames.com/recuperaracesso/';
         }, 3000);
       } else if (['in_process', 'pending'].includes(data.status)) {
-        alert('Seu pagamento está em análise pelo Mercado Pago. Você receberá a confirmação por e-mail.');
+        alert(t.cardPending);
         setCardModalOpen(false);
         setGlobalLoading(false);
       } else {
-        alert('Pagamento não aprovado. Verifique os dados do cartão e tente novamente.');
+        alert(t.errCardDeclined);
         setGlobalLoading(false);
         // Retry
         if (cardBrickControllerRef.current) {
@@ -560,7 +551,7 @@ export function CheckoutPage() {
       }
     } catch (err) {
       console.error(err);
-      alert('Erro de conexão ao processar cartão. Tente novamente.');
+      alert(t.errCardConn);
       setGlobalLoading(false);
     }
   };
@@ -592,11 +583,11 @@ export function CheckoutPage() {
     }
     // Default high converting bullets
     return [
-      'Acesso imediato e vitalício',
-      'Catálogo completo incluso',
-      'Download ilimitado e sem limites',
-      'Atualizações gratuitas constantes',
-      'Tutorial passo a passo em vídeo'
+      t.bullet1,
+      t.bullet2,
+      t.bullet3,
+      t.bullet4,
+      t.bullet5
     ];
   };
 
@@ -609,7 +600,7 @@ export function CheckoutPage() {
     return (
       <div className="min-h-screen bg-[#0f172a] text-[#f8fafc] flex flex-col items-center justify-center p-6" style={{ fontFamily: 'Montserrat, sans-serif' }}>
         <Loader2 className="h-10 w-10 text-blue-500 animate-spin mb-4" />
-        <p className="font-semibold text-lg">Carregando dados de checkout seguro...</p>
+        <p className="font-semibold text-lg">{t.loadingSecure}</p>
       </div>
     );
   }
@@ -618,7 +609,7 @@ export function CheckoutPage() {
     return (
       <div className="min-h-screen bg-[#0f172a] text-[#f8fafc] flex flex-col items-center justify-center p-6 text-center" style={{ fontFamily: 'Montserrat, sans-serif' }}>
         <X className="h-16 w-16 text-red-500 mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Ops! Ocorreu um problema</h2>
+        <h2 className="text-2xl font-bold mb-2">{t.opsProblem}</h2>
         <p className="text-gray-400 max-w-md mb-6">{error}</p>
         <button 
           onClick={() => window.location.reload()} 
@@ -652,15 +643,15 @@ export function CheckoutPage() {
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
             <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
           </svg>
-          <span>Ambiente Seguro</span>
+          <span>{t.secureEnvironment}</span>
         </div>
       </header>
 
       <div className="layout">
         <section className="card">
-          <div className="muted">VALOR TOTAL (COM BÔNUS): <span className="strike" style={{ color: '#e74c3c' }}>{fmt(origPrice)}</span></div>
+          <div className="muted">{t.totalValue} <span className="strike" style={{ color: '#e74c3c' }}>{fmt(origPrice)}</span></div>
           <div className="price" id="headlinePrice">5 × {fmt(discPrice / 5)}</div>
-          <div className="muted">No Cartão ou <span id="avistaVlr">{fmt(discPrice)}</span> à vista</div>
+          <div className="muted">{t.cardOrCash} <span id="avistaVlr">{fmt(discPrice)}</span> {t.cash}</div>
 
           <div className="order-card">
             {mainProduct.image ? (
@@ -671,7 +662,7 @@ export function CheckoutPage() {
               </div>
             )}
             <div className="order-info">
-              <h3>{mainProduct.title} (Acesso Digital)</h3>
+              <h3>{mainProduct.title} {t.digitalAccess}</h3>
               <ul>
                 {getProductBullets().map((bullet, i) => (
                   <li key={i}>{bullet}</li>
@@ -682,13 +673,13 @@ export function CheckoutPage() {
 
           <form id="checkoutForm" noValidate autoComplete="on" onSubmit={e => e.preventDefault()}>
             <div className="field">
-              <label className="label" htmlFor="nome">Nome Completo</label>
+              <label className="label" htmlFor="nome">{t.fullName}</label>
               <input 
                 className="input" 
                 id="nome" 
                 name="nome" 
                 type="text" 
-                placeholder="Seu nome" 
+                placeholder={t.yourName} 
                 autoComplete="name"
                 inputMode="text" 
                 autoCapitalize="off" 
@@ -699,11 +690,11 @@ export function CheckoutPage() {
                 value={nome}
                 onChange={e => setNome(e.target.value)}
               />
-              <div className="assist">Opcional</div>
+              <div className="assist">{t.optional}</div>
             </div>
             
             <div className="field">
-              <label className="label" htmlFor="email">E-mail para entrega</label>
+              <label className="label" htmlFor="email">{t.deliveryEmail}</label>
               <input 
                 className={`input ${emailError ? 'is-invalid' : ''}`} 
                 id="email" 
@@ -721,12 +712,12 @@ export function CheckoutPage() {
                 value={email}
                 onChange={e => { setEmail(e.target.value); setEmailError(false); }}
               />
-              <div className="error" id="emailErr" role="alert" aria-hidden={!emailError}>E-mail inválido. Ex.: nome@site.com</div>
-              <div className="assist">Importante: verifique se digitou o e-mail corretamente para receber o acesso.</div>
+              <div className="error" id="emailErr" role="alert" aria-hidden={!emailError}>{t.invalidEmail}</div>
+              <div className="assist">{t.emailAssist}</div>
             </div>
 
             <div className="field">
-              <label className="label" htmlFor="cel">Celular com DDD (opcional)</label>
+              <label className="label" htmlFor="cel">{t.phone}</label>
               <input 
                 className={`input ${celularError ? 'is-invalid' : ''}`} 
                 id="cel" 
@@ -741,16 +732,16 @@ export function CheckoutPage() {
                 value={celular}
                 onChange={handlePhoneChange}
               />
-              <div className="error" id="celErr" role="alert" aria-hidden={!celularError}>Celular inválido. Ex.: (11) 99999-9999</div>
-              <div className="assist">Usado para suporte rápido via WhatsApp e rastreamento da entrega.</div>
+              <div className="error" id="celErr" role="alert" aria-hidden={!celularError}>{t.invalidPhone}</div>
+              <div className="assist">{t.phoneAssist}</div>
             </div>
           </form>
 
           {orderBumps.length > 0 && (
             <>
               <div className="bump-header">
-                <h2 className="bump-header-title">Aproveite também — extras adicionais com preço especial</h2>
-                <p className="bump-header-sub">Esta oferta única expira ao sair desta página</p>
+                <h2 className="bump-header-title">{t.bumpHeaderTitle}</h2>
+                <p className="bump-header-sub">{t.bumpHeaderSub}</p>
               </div>
 
               <div className="bump-stack">
@@ -766,7 +757,7 @@ export function CheckoutPage() {
                       className={`bump ${isSelected ? 'selected' : ''}`}
                       onClick={() => toggleBump(bump.id)}
                     >
-                      <div className="bump-tag">RECOMENDADO</div>
+                      <div className="bump-tag">{t.recommended}</div>
                       <div className="bump-body">
                         <div className="bump-main">
                           <span className="bump-pointer">➔</span>
@@ -784,11 +775,11 @@ export function CheckoutPage() {
                           )}
                           <div>
                             <div className="bump-hero">{bump.title || bump.package_title}</div>
-                            <div className="bump-sub">{bump.description || 'Adicione este item extra ao seu pacote com desconto exclusivo.'}</div>
+                            <div className="bump-sub">{bump.description || t.bumpDefaultDesc}</div>
                             <div>
-                              <span className="bump-strike">de {fmt(bumpRelPrice)}</span>
-                              <span>por <span className="bump-price">{fmt(bumpPrice)}</span></span>
-                              <span className="bump-economy">{econPercent}% de desconto</span>
+                              <span className="bump-strike">{t.from} {fmt(bumpRelPrice)}</span>
+                              <span>{t.to} <span className="bump-price">{fmt(bumpPrice)}</span></span>
+                              <span className="bump-economy">{econPercent}{t.discount}</span>
                             </div>
                           </div>
                         </div>
@@ -801,14 +792,14 @@ export function CheckoutPage() {
           )}
 
           <div className="field" style={{ marginTop: '20px' }}>
-            <label className="label" htmlFor="cupom">Cupom de desconto (opcional)</label>
+            <label className="label" htmlFor="cupom">{t.couponLabel}</label>
             <div className="input-group">
               <input 
                 className={`input ${couponStatus === 'applied' ? 'is-valid' : couponStatus === 'invalid' ? 'is-invalid' : ''}`} 
                 id="cupom" 
                 name="cupom" 
                 type="text" 
-                placeholder="Código do cupom"
+                placeholder={t.couponPlaceholder}
                 autoComplete="off" 
                 inputMode="text" 
                 enterKeyHint="done" 
@@ -828,32 +819,32 @@ export function CheckoutPage() {
                   color: ['applied', 'invalid'].includes(couponStatus) ? '#fff' : ''
                 }}
               >
-                {couponStatus === 'checking' && 'Verificando...'}
-                {couponStatus === 'applied' && 'Aplicado!'}
-                {couponStatus === 'invalid' && 'Inválido'}
-                {couponStatus === 'error' && 'Erro'}
-                {['idle', 'error'].includes(couponStatus) && 'Aplicar'}
+                {couponStatus === 'checking' && t.checking}
+                {couponStatus === 'applied' && t.applied}
+                {couponStatus === 'invalid' && t.invalid}
+                {couponStatus === 'error' && t.error}
+                {['idle', 'error'].includes(couponStatus) && t.apply}
               </button>
             </div>
           </div>
 
           <div className="summary" id="summary" aria-live="polite">
-            <h3>Detalhes do pedido</h3>
+            <h3>{t.summaryTitle}</h3>
             <table className="summary-table" id="summaryTable">
               <thead>
                 <tr>
-                  <th>Produto</th>
-                  <th style={{ textAlign: 'right' }}>Preço</th>
+                  <th>{t.product}</th>
+                  <th style={{ textAlign: 'right' }}>{t.price}</th>
                 </tr>
               </thead>
               <tbody id="summaryBody">
                 <tr>
                   <td>
                     <div style={{ fontWeight: 'bold' }}>
-                      {mainProduct.title} (Acesso Digital)
+                      {mainProduct.title} {t.digitalAccess}
                     </div>
                     <div className="summary-small">
-                      <span className="summary-strike">{fmt(origPrice)}</span> ➔ por <span className="summary-price">{fmt(discPrice)}</span>
+                      <span className="summary-strike">{fmt(origPrice)}</span> ➔ {t.to} <span className="summary-price">{fmt(discPrice)}</span>
                       {couponDiscount > 0 && <span style={{ color: '#16a34a', fontWeight: 'bold', marginLeft: '8px' }}>(-{couponDiscount}%)</span>}
                     </div>
                   </td>
@@ -870,7 +861,7 @@ export function CheckoutPage() {
                       <td>
                         <div style={{ fontWeight: 'bold' }}>{bump.title || bump.package_title}</div>
                         <div className="summary-small">
-                          <span className="summary-strike">{fmt(origB)}</span> ➔ por <span className="summary-price">{fmt(discB)}</span>
+                          <span className="summary-strike">{fmt(origB)}</span> ➔ {t.to} <span className="summary-price">{fmt(discB)}</span>
                         </div>
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{fmt(discB)}</td>
@@ -880,34 +871,34 @@ export function CheckoutPage() {
               </tbody>
               <tfoot>
                 <tr>
-                  <td>Total <span className="economy" id="totalEconomy">(Economia {fmt(getTotalEconomy())})</span></td>
+                  <td>{t.total} <span className="economy" id="totalEconomy">({t.economy} {fmt(getTotalEconomy())})</span></td>
                   <td style={{ textAlign: 'right', color: '#60a5fa' }} id="totalVlr">{fmt(getCartTotal())}</td>
                 </tr>
               </tfoot>
             </table>
             <div className="savings-banner" id="savingsBanner" style={{ display: getTotalEconomy() > 0 ? 'block' : 'none' }}>
-              🎉 <strong>Parabéns!</strong> Você está economizando <strong id="savingsValue">{fmt(getTotalEconomy())}</strong> hoje.
+              🎉 <strong>{t.savingsBanner1_1}</strong> {t.savingsBanner1_2} <strong id="savingsValue">{fmt(getTotalEconomy())}</strong> {t.savingsBanner2}
             </div>
           </div>
 
           <div className="trust-bar" id="trustBar">
-            🔒 <strong>Checkout seguro</strong> — você paga no <strong>Mercado Pago</strong> (Pix, Cartão, Boleto). Seus dados são criptografados de ponta a ponta.
+            {t.trustBar}
           </div>
 
           {/* Moved Desktop Social Proof under the total logic to match original layout conceptually, or leave in checkout footer */}
           <div className="checkout-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div className="social-proof" style={{ marginBottom: '10px' }}>
-              <div className="social-copy" style={{ fontWeight: 'bold', fontSize: '14px' }}>Mais de 12.000 clientes satisfeitos</div>
+              <div className="social-copy" style={{ fontWeight: 'bold', fontSize: '14px' }}>{t.socialProof}</div>
             </div>
             <div className="rating-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <div className="stars" style={{ display: 'flex', gap: '2px' }}>
                 {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />)}
               </div>
-              <div style={{ fontSize: '14px' }}><strong>4,8 / 5</strong> <span className="rating-muted" style={{ color: 'var(--muted)' }}>(12.854 usuários)</span></div>
+              <div style={{ fontSize: '14px' }}><strong>4,8 / 5</strong> <span className="rating-muted" style={{ color: 'var(--muted)' }}>(12.854 {t.users})</span></div>
             </div>
             
             <div className="trust-under-cta" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', opacity: 0.7 }}>
-              <span>Você paga no Mercado Pago:</span>
+              <span>{t.youPayVia}</span>
               <img src="/images/mercadopago.webp" alt="Mercado Pago" style={{ height: '20px' }} />
               <img src="/images/pix.svg" alt="Pix" style={{ height: '20px' }} />
               <img src="/images/visa.svg" alt="Visa" style={{ height: '20px' }} />
@@ -921,11 +912,11 @@ export function CheckoutPage() {
 
           <div className="mobile-sticky-bar" style={{ marginTop: '30px' }}>
             <div className="micro-guarantee" style={{ display: 'flex', justifyContent: 'center', gap: '10px', fontSize: '12px', color: 'var(--muted)', marginBottom: '20px' }}>
-              <span>⚡ Acesso imediato</span><span className="sep">•</span>
-              <span>💬 Suporte via WhatsApp</span>
+              <span>{t.immediateAccess}</span><span className="sep">•</span>
+              <span>{t.supportWhatsapp}</span>
             </div>
 
-            <p className="pay-label">Escolha como pagar</p>
+            <p className="pay-label">{t.choosePayment}</p>
             <div className="pay-grid">
               <button id="payBtn" className="pay-btn pay-btn--mp" onClick={pagarMercadoPago} type="button">
                 <img src="/images/mercadopago.webp" alt="" width="26" height="26" style={{ objectFit: 'contain' }} />
@@ -943,7 +934,7 @@ export function CheckoutPage() {
                     <rect x="2" y="5" width="20" height="14" rx="2" />
                     <path d="M2 10h20" />
                   </svg>
-                  Cartão de Crédito
+                  {t.creditCard}
                 </span>
                 <span className="pay-btn__brands">
                   <img src="/images/visa.svg" alt="Visa" height="16" />
@@ -958,7 +949,7 @@ export function CheckoutPage() {
 
         <aside className="side">
           <div className="tcard" id="tcard" style={{ background: 'var(--card)', borderRadius: '14px', border: '1px solid var(--border)', padding: '16px', marginBottom: '16px' }}>
-            <h3 className="t-title" style={{ margin: '0 0 16px', fontSize: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>O que dizem nossos clientes</h3>
+            <h3 className="t-title" style={{ margin: '0 0 16px', fontSize: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>{t.whatClientsSay}</h3>
             <div id="tlist" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {displayedTestimonials.map((t, idx) => {
                 const initial = t.name.charAt(0).toUpperCase();
@@ -973,7 +964,7 @@ export function CheckoutPage() {
                       </div>
                       <div>
                         <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{t.name}</div>
-                        <div style={{ fontSize: '10px', color: 'var(--muted)' }}>há 2 dias</div>
+                        <div style={{ fontSize: '10px', color: 'var(--muted)' }}>{t.daysAgo}</div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
@@ -991,12 +982,12 @@ export function CheckoutPage() {
           </div>
 
           <div className="faq" id="checkoutFAQ" aria-label="Perguntas frequentes" style={{ background: 'var(--card)', borderRadius: '14px', border: '1px solid var(--border)', padding: '16px' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>FAQ — antes de finalizar</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>{t.faqTitle}</h3>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {FAQ_ITEMS.map((item, idx) => {
+              {getFaqItems(t).map((item, idx) => {
                 const isOpen = !!expandedFaq[idx];
                 return (
-                  <div key={idx} style={{ borderBottom: idx < FAQ_ITEMS.length - 1 ? '1px solid var(--border)' : 'none', padding: '10px 0' }}>
+                  <div key={idx} style={{ borderBottom: idx < getFaqItems(t).length - 1 ? '1px solid var(--border)' : 'none', padding: '10px 0' }}>
                     <button 
                       onClick={() => toggleFaq(idx)}
                       style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', color: 'var(--text)', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', padding: 0, textAlign: 'left' }}
@@ -1041,8 +1032,8 @@ export function CheckoutPage() {
       </footer>
 
       {/* WhatsApp Floating Button */}
-      <a href={`https://api.whatsapp.com/send?phone=5541996260115&text=${encodeURIComponent(storeInfo?.checkout_whatsapp_text || 'Gostaria de mais informações sobre o produto')}`} className="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Fale conosco no WhatsApp">
-        <span className="whatsapp-tooltip">Precisa de ajuda?</span>
+      <a href={`https://api.whatsapp.com/send?phone=5541996260115&text=${encodeURIComponent(storeInfo?.checkout_whatsapp_text || t.wppDefaultText)}`} className="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Fale conosco no WhatsApp">
+        <span className="whatsapp-tooltip">{t.helpNeeded}</span>
         <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.008-.57-.008-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
         </svg>
@@ -1060,8 +1051,8 @@ export function CheckoutPage() {
       {pixModalOpen && pixData && (
         <div role="dialog" aria-modal="true" aria-label="Pagar com PIX" style={{ display: 'flex', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 10001, alignItems: 'center', justifyContent: 'center', overflowY: 'auto' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '28px 24px', maxWidth: '400px', width: '90%', margin: '20px auto', textAlign: 'center', fontFamily: "'Montserrat', sans-serif" }}>
-            <h2 style={{ margin: '0 0 4px', color: '#00b04a', fontSize: '1.4rem' }}>🏦 Pague com PIX</h2>
-            <p style={{ color: '#555', fontSize: '0.85rem', margin: '0 0 18px' }}>Escaneie o QR Code ou copie o código</p>
+            <h2 style={{ margin: '0 0 4px', color: '#00b04a', fontSize: '1.4rem' }}>{t.payWithPix}</h2>
+            <p style={{ color: '#555', fontSize: '0.85rem', margin: '0 0 18px' }}>{t.scanQr}</p>
             {pixData.qr_code_base64 && (
               <img src={`data:image/png;base64,${pixData.qr_code_base64}`} alt="QR Code PIX" style={{ maxWidth: '200px', border: '4px solid #00b04a', borderRadius: '10px', display: 'block', margin: '0 auto' }} />
             )}
@@ -1070,7 +1061,7 @@ export function CheckoutPage() {
               {pixData.qr_code}
             </p>
             <button onClick={copiarPixCode} style={{ width: '100%', padding: '13px', background: '#00b04a', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}>
-              {pixCopied ? '✓ Copiado!' : '📋 Copiar código PIX'}
+              {pixCopied ? t.copied : t.copyPix}
             </button>
             <div style={{ marginTop: '14px', fontSize: '0.88rem', color: '#666', minHeight: '24px' }}>
               {pixConfirmed ? (
@@ -1091,7 +1082,7 @@ export function CheckoutPage() {
         <div role="dialog" aria-modal="true" aria-label="Pagar com cartão" style={{ display: 'flex', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 10001, alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '16px 0' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '20px 24px', maxWidth: '440px', width: '90%', margin: 'auto', fontFamily: "'Montserrat', sans-serif", maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', position: 'sticky', top: 0, background: '#fff', paddingBottom: '8px', borderBottom: '1px solid #f0f0f0', zIndex: 1 }}>
-              <h2 style={{ margin: 0, color: '#222', fontSize: '1.1rem' }}>💳 Pagar com cartão</h2>
+              <h2 style={{ margin: 0, color: '#222', fontSize: '1.1rem' }}>{t.payWithCard}</h2>
               <button onClick={fecharCardModal} aria-label="Fechar" style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#888', lineHeight: 1, padding: '4px 8px' }}>✕</button>
             </div>
             {cardError && <div style={{ color: '#ef4444', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>{cardError}</div>}
