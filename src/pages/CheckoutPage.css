@@ -226,9 +226,10 @@ header {
 
 .order-info ul {
   margin: 0;
-  padding-left: 18px;
+  padding-left: 20px;
   color: var(--muted);
-  font-size: .9375rem
+  font-size: .9375rem;
+  list-style-type: disc;
 }
 
 @media (max-width: 480px) {
@@ -505,16 +506,15 @@ header {
   position: absolute;
   top: -10px;
   right: 12px;
-  background: var(--accent);
-  color: #fff;
+  background: #dcfce7;
+  color: #065f46;
+  border: 1px solid #86efac;
   font-size: 0.75rem;
   font-weight: 800;
   padding: 2px 10px;
   border-radius: 99px;
   z-index: 10;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  text-transform: uppercase;
-  letter-spacing: 0.5px
 }
 
 .bump-head {

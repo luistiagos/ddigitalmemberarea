@@ -38,11 +38,23 @@ const getTestimonials = (t) => [
 
 export function CheckoutPage() {
   const [searchParams] = useSearchParams();
-  const langParam = searchParams.get('lang')?.toLowerCase() || 'ptbr';
+  
+  // Extract and sanitize storeId (strip trailing params if user typed ? instead of &)
+  const storeIdRaw = searchParams.get('storeid') || searchParams.get('store_id');
+  const storeId = storeIdRaw ? storeIdRaw.split('?')[0].split('&')[0] : null;
+
+  // Extract and sanitize langParam (handling potential double-question mark typos)
+  let langParam = searchParams.get('lang')?.toLowerCase() || 'ptbr';
+  if (langParam === 'ptbr' && window.location.search.includes('lang=')) {
+    const match = window.location.search.match(/[?&]lang=([^?&]+)/i);
+    if (match) {
+      langParam = match[1].toLowerCase();
+    }
+  }
+
   const lang = TRANSLATIONS[langParam] ? langParam : 'ptbr';
   const t = TRANSLATIONS[lang];
-
-  const storeId = searchParams.get('storeid') || searchParams.get('store_id');
+  const isUSD = lang === 'en' || lang === 'es';
 
   // Page States
   const [loading, setLoading] = useState(true);
@@ -69,7 +81,21 @@ export function CheckoutPage() {
 
   // Testimonials slide rotation
   const [testimonialIdx, setTestimonialIdx] = useState(0);
-  const TESTIMONIALS = getTestimonials(t);
+
+  // Resolve testimonials dynamically: if storeInfo has checkout_testimonials, parse it.
+  // Otherwise, fallback to getTestimonials(t).
+  let TESTIMONIALS = getTestimonials(t);
+  if (storeInfo && storeInfo.checkout_testimonials) {
+    try {
+      const parsed = JSON.parse(storeInfo.checkout_testimonials);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        TESTIMONIALS = parsed;
+      }
+    } catch (e) {
+      console.error("Erro parsing store checkout_testimonials:", e);
+    }
+  }
+
   const displayedTestimonials = TESTIMONIALS.slice(testimonialIdx, testimonialIdx + 3);
 
   // Modal & Payment processing states
@@ -96,17 +122,23 @@ export function CheckoutPage() {
     link.rel = 'stylesheet';
     document.head.appendChild(link);
 
-    // Auto rotate testimonials
-    const interval = setInterval(() => {
-      setTestimonialIdx((prev) => (prev + 3 >= getTestimonials(TRANSLATIONS['ptbr']).length ? 0 : prev + 3));
-    }, 5500);
-
     return () => {
       document.head.removeChild(link);
-      clearInterval(interval);
       if (pixPollIntervalRef.current) clearInterval(pixPollIntervalRef.current);
     };
   }, []);
+
+  // Auto rotate testimonials
+  useEffect(() => {
+    if (TESTIMONIALS.length <= 3) {
+      setTestimonialIdx(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setTestimonialIdx((prev) => (prev + 3 >= TESTIMONIALS.length ? 0 : prev + 3));
+    }, 5500);
+    return () => clearInterval(interval);
+  }, [TESTIMONIALS.length]);
 
   // Fetch Store Packages
   useEffect(() => {
@@ -170,10 +202,19 @@ export function CheckoutPage() {
     let valid = true;
     if (!validateEmail(email)) {
       setEmailError(true);
+      const emailInput = document.getElementById('email');
+      if (emailInput) {
+        emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        emailInput.focus();
+      }
       valid = false;
-    }
-    if (celular && !validatePhone(celular)) {
+    } else if (!isUSD && celular && !validatePhone(celular)) {
       setCelularError(true);
+      const celInput = document.getElementById('cel');
+      if (celInput) {
+        celInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        celInput.focus();
+      }
       valid = false;
     }
     return valid;
@@ -305,6 +346,51 @@ export function CheckoutPage() {
           sids: sids,
           telefone: cleanPhone,
           cupom: couponCode.trim() || undefined
+        }
+      });
+
+      if (response.data && response.data.checkout_url) {
+        window.location.href = response.data.checkout_url;
+      } else {
+        alert(t.errGenCheckout);
+        setGlobalLoading(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert(t.errConn);
+      setGlobalLoading(false);
+    }
+  };
+
+  // 1b. Stripe Payment Link
+  const pagarStripe = async () => {
+    if (!checkFormValid()) return;
+
+    setGlobalLoading(true);
+    setGlobalLoadingMsg(t.redirecting);
+
+    const sids = getSelectedSids();
+    const mainPid = mainProduct.package_id || mainProduct.id;
+    const cleanPhone = celular.replace(/\D/g, '');
+
+    const bumpIds = [];
+    orderBumps.forEach(bump => {
+      if (selectedBumps.has(bump.id)) {
+        bumpIds.push(bump.package_id || bump.id);
+      }
+    });
+    const orderbumpsStr = bumpIds.join(',');
+
+    try {
+      const response = await api.get('/createStripeLink', {
+        params: {
+          sid: mainPid,
+          orderbumps: orderbumpsStr || undefined,
+          email: email.trim(),
+          telefone: cleanPhone || undefined,
+          storeid: storeId,
+          cupom: couponCode.trim() || undefined,
+          base_currency: 'usd'
         }
       });
 
@@ -593,6 +679,9 @@ export function CheckoutPage() {
 
   // Format currency helper
   const fmt = (v) => {
+    if (isUSD) {
+      return '$' + Number(v).toFixed(2);
+    }
     return 'R$ ' + Number(v).toFixed(2).replace('.', ',');
   };
 
@@ -632,11 +721,8 @@ export function CheckoutPage() {
           <svg className="logo-icon-brand" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 12h4m-2-2v4M15 13h.01M18 11h.01M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" />
           </svg>
-          <div className="logo-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {storeInfo?.url_thumb && (
-              <img src={storeInfo.url_thumb} alt="Logo" style={{ height: '32px', borderRadius: '4px' }} />
-            )}
-            {storeInfo ? storeInfo.name : <>DIGITAL STORE <span>GAMES</span></>}
+          <div className="logo-label">
+            DIGITAL STORE <span>GAMES</span>
           </div>
         </a>
         <div className="header-secure">
@@ -650,7 +736,9 @@ export function CheckoutPage() {
       <div className="layout">
         <section className="card">
           <div className="muted">{t.totalValue} <span className="strike" style={{ color: '#e74c3c' }}>{fmt(origPrice)}</span></div>
-          <div className="price" id="headlinePrice">5 × {fmt(discPrice / 5)}</div>
+          {storeInfo?.checkout_headline_price && (
+            <div className="price" id="headlinePrice">{storeInfo.checkout_headline_price}</div>
+          )}
           <div className="muted">{t.cardOrCash} <span id="avistaVlr">{fmt(discPrice)}</span> {t.cash}</div>
 
           <div className="order-card">
@@ -662,7 +750,7 @@ export function CheckoutPage() {
               </div>
             )}
             <div className="order-info">
-              <h3>{mainProduct.title} {t.digitalAccess}</h3>
+              <h3>{storeInfo?.name || mainProduct?.title}</h3>
               <ul>
                 {getProductBullets().map((bullet, i) => (
                   <li key={i}>{bullet}</li>
@@ -672,26 +760,28 @@ export function CheckoutPage() {
           </div>
 
           <form id="checkoutForm" noValidate autoComplete="on" onSubmit={e => e.preventDefault()}>
-            <div className="field">
-              <label className="label" htmlFor="nome">{t.fullName}</label>
-              <input 
-                className="input" 
-                id="nome" 
-                name="nome" 
-                type="text" 
-                placeholder={t.yourName} 
-                autoComplete="name"
-                inputMode="text" 
-                autoCapitalize="off" 
-                autoCorrect="off" 
-                spellCheck="false" 
-                autoFocus 
-                enterKeyHint="next"
-                value={nome}
-                onChange={e => setNome(e.target.value)}
-              />
-              <div className="assist">{t.optional}</div>
-            </div>
+            {!isUSD && (
+              <div className="field">
+                <label className="label" htmlFor="nome">{t.fullName}</label>
+                <input 
+                  className="input" 
+                  id="nome" 
+                  name="nome" 
+                  type="text" 
+                  placeholder={t.yourName} 
+                  autoComplete="name"
+                  inputMode="text" 
+                  autoCapitalize="off" 
+                  autoCorrect="off" 
+                  spellCheck="false" 
+                  autoFocus={!isUSD}
+                  enterKeyHint="next"
+                  value={nome}
+                  onChange={e => setNome(e.target.value)}
+                />
+                <div className="assist">{t.optional}</div>
+              </div>
+            )}
             
             <div className="field">
               <label className="label" htmlFor="email">{t.deliveryEmail}</label>
@@ -711,30 +801,33 @@ export function CheckoutPage() {
                 enterKeyHint="next"
                 value={email}
                 onChange={e => { setEmail(e.target.value); setEmailError(false); }}
+                autoFocus={isUSD}
               />
               <div className="error" id="emailErr" role="alert" aria-hidden={!emailError}>{t.invalidEmail}</div>
               <div className="assist">{t.emailAssist}</div>
             </div>
 
-            <div className="field">
-              <label className="label" htmlFor="cel">{t.phone}</label>
-              <input 
-                className={`input ${celularError ? 'is-invalid' : ''}`} 
-                id="cel" 
-                name="tel" 
-                type="tel" 
-                placeholder="(11) 99999-9999" 
-                autoComplete="tel"
-                inputMode="numeric" 
-                pattern="[\d\s\-\(\)]{8,}" 
-                enterKeyHint="done" 
-                maxLength="16"
-                value={celular}
-                onChange={handlePhoneChange}
-              />
-              <div className="error" id="celErr" role="alert" aria-hidden={!celularError}>{t.invalidPhone}</div>
-              <div className="assist">{t.phoneAssist}</div>
-            </div>
+            {!isUSD && (
+              <div className="field">
+                <label className="label" htmlFor="cel">{t.phone}</label>
+                <input 
+                  className={`input ${celularError ? 'is-invalid' : ''}`} 
+                  id="cel" 
+                  name="tel" 
+                  type="tel" 
+                  placeholder="(11) 99999-9999" 
+                  autoComplete="tel"
+                  inputMode="numeric" 
+                  pattern="[\d\s\-\(\)]{8,}" 
+                  enterKeyHint="done" 
+                  maxLength="16"
+                  value={celular}
+                  onChange={handlePhoneChange}
+                />
+                <div className="error" id="celErr" role="alert" aria-hidden={!celularError}>{t.invalidPhone}</div>
+                <div className="assist">{t.phoneAssist}</div>
+              </div>
+            )}
           </form>
 
           {orderBumps.length > 0 && (
@@ -757,7 +850,7 @@ export function CheckoutPage() {
                       className={`bump ${isSelected ? 'selected' : ''}`}
                       onClick={() => toggleBump(bump.id)}
                     >
-                      <div className="bump-tag">{t.recommended}</div>
+                      <div className="bump-tag">-{econPercent}%</div>
                       <div className="bump-body">
                         <div className="bump-main">
                           <span className="bump-pointer">➔</span>
@@ -899,51 +992,90 @@ export function CheckoutPage() {
             
             <div className="trust-under-cta" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', opacity: 0.7 }}>
               <span>{t.youPayVia}</span>
-              <img src="/images/mercadopago.webp" alt="Mercado Pago" style={{ height: '20px' }} />
-              <img src="/images/pix.svg" alt="Pix" style={{ height: '20px' }} />
-              <img src="/images/visa.svg" alt="Visa" style={{ height: '20px' }} />
-              <img src="/images/mastercard.webp" alt="Mastercard" style={{ height: '20px' }} />
-              <img src="/images/elo.svg" alt="Elo" style={{ height: '20px' }} />
-              <img src="/images/amex.svg" alt="American Express" style={{ height: '20px' }} />
-              <img src="/images/diners-club.svg" alt="Diners Club" style={{ height: '20px' }} />
-              <img src="/images/boleto.webp" alt="Boleto bancário" style={{ height: '20px' }} />
+              {isUSD ? (
+                <>
+                  <img src="/images/visa.svg" alt="Visa" style={{ height: '20px' }} />
+                  <img src="/images/mastercard.webp" alt="Mastercard" style={{ height: '20px' }} />
+                  <img src="/images/amex.svg" alt="American Express" style={{ height: '20px' }} />
+                  <img src="/images/diners-club.svg" alt="Diners Club" style={{ height: '20px' }} />
+                </>
+              ) : (
+                <>
+                  <img src="/images/mercadopago.webp" alt="Mercado Pago" style={{ height: '20px' }} />
+                  <img src="/images/pix.svg" alt="Pix" style={{ height: '20px' }} />
+                  <img src="/images/visa.svg" alt="Visa" style={{ height: '20px' }} />
+                  <img src="/images/mastercard.webp" alt="Mastercard" style={{ height: '20px' }} />
+                  <img src="/images/elo.svg" alt="Elo" style={{ height: '20px' }} />
+                  <img src="/images/amex.svg" alt="American Express" style={{ height: '20px' }} />
+                  <img src="/images/diners-club.svg" alt="Diners Club" style={{ height: '20px' }} />
+                  <img src="/images/boleto.webp" alt="Boleto bancário" style={{ height: '20px' }} />
+                </>
+              )}
             </div>
           </div>
 
           <div className="mobile-sticky-bar" style={{ marginTop: '30px' }}>
             <div className="micro-guarantee" style={{ display: 'flex', justifyContent: 'center', gap: '10px', fontSize: '12px', color: 'var(--muted)', marginBottom: '20px' }}>
-              <span>{t.immediateAccess}</span><span className="sep">•</span>
-              <span>{t.supportWhatsapp}</span>
+              <span>{t.immediateAccess}</span>
+              {!isUSD && (
+                <>
+                  <span className="sep">•</span>
+                  <span>{t.supportWhatsapp}</span>
+                </>
+              )}
             </div>
 
             <p className="pay-label">{t.choosePayment}</p>
-            <div className="pay-grid">
-              <button id="payBtn" className="pay-btn pay-btn--mp" onClick={pagarMercadoPago} type="button">
-                <img src="/images/mercadopago.webp" alt="" width="26" height="26" style={{ objectFit: 'contain' }} />
-                <span>Mercado Pago</span>
-              </button>
-              <button id="altPixBtn" className="pay-btn pay-btn--pix" onClick={abrirPixFlow} type="button">
-                <span className="pay-btn__icon-badge">
-                  <img src="/images/pix.svg" alt="" width="20" height="20" />
-                </span>
-                <span>PIX</span>
-              </button>
-              <button id="altCardBtn" className="pay-btn pay-btn--card" onClick={abrirCardFlow} type="button">
-                <span className="pay-btn__title">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <rect x="2" y="5" width="20" height="14" rx="2" />
-                    <path d="M2 10h20" />
-                  </svg>
-                  {t.creditCard}
-                </span>
-                <span className="pay-btn__brands">
-                  <img src="/images/visa.svg" alt="Visa" height="16" />
-                  <img src="/images/mastercard.webp" alt="Mastercard" height="16" />
-                  <img src="/images/elo.svg" alt="Elo" height="16" />
-                  <img src="/images/amex.svg" alt="Amex" height="16" />
-                </span>
-              </button>
-            </div>
+            {isUSD ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <button 
+                  id="stripePayBtn" 
+                  className="cta-primary" 
+                  onClick={pagarStripe} 
+                  type="button" 
+                  style={{ 
+                    background: '#635bff', 
+                    boxShadow: '0 8px 18px rgba(99, 91, 255, .22)', 
+                    padding: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Lock className="h-5 w-5" />
+                  <span>{t.payButtonStripe}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="pay-grid">
+                <button id="payBtn" className="pay-btn pay-btn--mp" onClick={pagarMercadoPago} type="button">
+                  <img src="/images/mercadopago.webp" alt="" width="26" height="26" style={{ objectFit: 'contain' }} />
+                  <span>Mercado Pago</span>
+                </button>
+                <button id="altPixBtn" className="pay-btn pay-btn--pix" onClick={abrirPixFlow} type="button">
+                  <span className="pay-btn__icon-badge">
+                    <img src="/images/pix.svg" alt="" width="20" height="20" />
+                  </span>
+                  <span>PIX</span>
+                </button>
+                <button id="altCardBtn" className="pay-btn pay-btn--card" onClick={abrirCardFlow} type="button">
+                  <span className="pay-btn__title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="5" width="20" height="14" rx="2" />
+                      <path d="M2 10h20" />
+                    </svg>
+                    {t.creditCard}
+                  </span>
+                  <span className="pay-btn__brands">
+                    <img src="/images/visa.svg" alt="Visa" height="16" />
+                    <img src="/images/mastercard.webp" alt="Mastercard" height="16" />
+                    <img src="/images/elo.svg" alt="Elo" height="16" />
+                    <img src="/images/amex.svg" alt="Amex" height="16" />
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -951,10 +1083,11 @@ export function CheckoutPage() {
           <div className="tcard" id="tcard" style={{ background: 'var(--card)', borderRadius: '14px', border: '1px solid var(--border)', padding: '16px', marginBottom: '16px' }}>
             <h3 className="t-title" style={{ margin: '0 0 16px', fontSize: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>{t.whatClientsSay}</h3>
             <div id="tlist" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {displayedTestimonials.map((t, idx) => {
-                const initial = t.name.charAt(0).toUpperCase();
+              {displayedTestimonials.map((item, idx) => {
+                const initial = (item.name || '?').charAt(0).toUpperCase();
                 const colors = ['#eab308', '#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899'];
-                const bgColor = colors[t.name.charCodeAt(0) % colors.length];
+                const bgColor = colors[(item.name || '?').charCodeAt(0) % colors.length];
+                const starsCount = Math.min(5, Math.max(1, Number(item.stars) || 5));
 
                 return (
                   <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -963,15 +1096,15 @@ export function CheckoutPage() {
                         {initial}
                       </div>
                       <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{t.name}</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{item.name}</div>
                         <div style={{ fontSize: '10px', color: 'var(--muted)' }}>{t.daysAgo}</div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
-                      {[...Array(t.stars)].map((_, i) => <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />)}
+                      {[...Array(starsCount)].map((_, i) => <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />)}
                       <CheckCircle2 className="h-3 w-3 fill-green-500 text-[var(--card)]" style={{ marginLeft: '4px' }} />
                     </div>
-                    <div style={{ fontSize: '13px', color: '#e2e8f0' }}>{t.text}</div>
+                    <div style={{ fontSize: '13px', color: '#e2e8f0' }}>{item.text}</div>
                   </div>
                 );
               })}
@@ -1013,31 +1146,37 @@ export function CheckoutPage() {
           <a href="mailto:contato@digitalstoregames.com" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <HelpCircle className="h-4 w-4" /> Email
           </a>
-          <a href="https://wa.me/5541996260115" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Send className="h-4 w-4" /> WhatsApp
-          </a>
+          {!isUSD && (
+            <a href="https://wa.me/5541996260115" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Send className="h-4 w-4" /> WhatsApp
+            </a>
+          )}
         </div>
         
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
-          <a href="https://www.siteconfiavel.com.br/site/digitalstoregames-com" target="_blank" rel="noopener noreferrer">
-            <img src="/images/siteconfiavel.webp" className="trust-seal" alt="Site Confiável" loading="lazy" style={{ height: '40px', borderRadius: '4px' }} />
-          </a>
-          <a href="https://www.websiteplanet.com/pt-br/webtools/ssl-checker/?url=digitalstoregames.com" target="_blank" rel="noopener noreferrer">
-            <img src="/images/ssl.webp" className="trust-seal" alt="SSL Seguro" loading="lazy" style={{ height: '40px', borderRadius: '4px' }} />
-          </a>
-          <a href="https://www.mercadopago.com.br/ajuda/23185" target="_blank" rel="noopener noreferrer">
-            <img src="/images/mercadopagogarantia.webp" className="trust-seal" alt="Mercado Pago Garantia" loading="lazy" style={{ height: '40px', borderRadius: '4px' }} />
-          </a>
-        </div>
+        {!isUSD && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <a href="https://www.siteconfiavel.com.br/site/digitalstoregames-com" target="_blank" rel="noopener noreferrer">
+              <img src="/images/trust-seals/siteconfiavel.webp" className="trust-seal" alt="Site Confiável" loading="lazy" style={{ height: '40px', borderRadius: '4px' }} />
+            </a>
+            <a href="https://www.websiteplanet.com/pt-br/webtools/ssl-checker/?url=digitalstoregames.com" target="_blank" rel="noopener noreferrer">
+              <img src="/images/trust-seals/ssl.webp" className="trust-seal" alt="SSL Seguro" loading="lazy" style={{ height: '40px', borderRadius: '4px' }} />
+            </a>
+            <a href="https://www.mercadopago.com.br/ajuda/23185" target="_blank" rel="noopener noreferrer">
+              <img src="/images/trust-seals/mercadopagogarantia.webp" className="trust-seal" alt="Mercado Pago Garantia" loading="lazy" style={{ height: '40px', borderRadius: '4px' }} />
+            </a>
+          </div>
+        )}
       </footer>
 
       {/* WhatsApp Floating Button */}
-      <a href={`https://api.whatsapp.com/send?phone=5541996260115&text=${encodeURIComponent(storeInfo?.checkout_whatsapp_text || t.wppDefaultText)}`} className="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Fale conosco no WhatsApp">
-        <span className="whatsapp-tooltip">{t.helpNeeded}</span>
-        <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
-          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.008-.57-.008-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-        </svg>
-      </a>
+      {!isUSD && (
+        <a href={`https://api.whatsapp.com/send?phone=5541996260115&text=${encodeURIComponent(storeInfo?.checkout_whatsapp_text || t.wppDefaultText)}`} className="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Fale conosco no WhatsApp">
+          <span className="whatsapp-tooltip">{t.helpNeeded}</span>
+          <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.008-.57-.008-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+          </svg>
+        </a>
+      )}
 
       {/* Global Spinner Overlay */}
       {globalLoading && (

@@ -88,6 +88,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
       },
+      '/createStripeLink': {
+        target: 'https://digitalstoregames.pythonanywhere.com',
+        changeOrigin: true,
+        secure: true,
+      },
       '/cupom': {
         target: 'https://digitalstoregames.pythonanywhere.com',
         changeOrigin: true,
