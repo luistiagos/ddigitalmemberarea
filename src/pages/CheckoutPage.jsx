@@ -8,7 +8,7 @@ import api from '@/services/api';
 import { TRANSLATIONS } from './translations';
 import './CheckoutPage.css';
 
-// Static FAQ Data
+// Static FAQ fallback
 const getFaqItems = (t) => [
   { q: t.faq1q, a: t.faq1a },
   { q: t.faq2q, a: t.faq2a },
@@ -16,6 +16,9 @@ const getFaqItems = (t) => [
   { q: t.faq4q, a: t.faq4a },
   { q: t.faq5q, a: t.faq5a }
 ];
+
+// Dynamic FAQ Data — resolved later from storeInfo.checkout_faq with static fallback
+let faqItems = null;
 
 // Static Testimonials
 const getTestimonials = (t) => [
@@ -93,6 +96,19 @@ export function CheckoutPage() {
       }
     } catch (e) {
       console.error("Erro parsing store checkout_testimonials:", e);
+    }
+  }
+
+  // Resolve FAQ dynamically: if storeInfo has checkout_faq, parse it.
+  // Otherwise, fallback to getFaqItems(t).
+  if (!faqItems && storeInfo && storeInfo.checkout_faq) {
+    try {
+      const parsed = JSON.parse(storeInfo.checkout_faq);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        faqItems = parsed.map(item => ({ q: item.question, a: item.answer }));
+      }
+    } catch (e) {
+      console.error("Erro parsing store checkout_faq:", e);
     }
   }
 
@@ -651,6 +667,11 @@ export function CheckoutPage() {
     setCardError(null);
   };
 
+  // Resolve FAQ: dynamic from storeInfo or static fallback
+  const resolveFaqItems = () => {
+    return faqItems || getFaqItems(t);
+  };
+
   // Toggle FAQ items
   const toggleFaq = (idx) => {
     setExpandedFaq(prev => ({
@@ -1117,10 +1138,11 @@ export function CheckoutPage() {
           <div className="faq" id="checkoutFAQ" aria-label="Perguntas frequentes" style={{ background: 'var(--card)', borderRadius: '14px', border: '1px solid var(--border)', padding: '16px' }}>
             <h3 style={{ margin: '0 0 16px', fontSize: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>{t.faqTitle}</h3>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {getFaqItems(t).map((item, idx) => {
+              {resolveFaqItems().map((item, idx) => {
                 const isOpen = !!expandedFaq[idx];
+                const items = resolveFaqItems();
                 return (
-                  <div key={idx} style={{ borderBottom: idx < getFaqItems(t).length - 1 ? '1px solid var(--border)' : 'none', padding: '10px 0' }}>
+                  <div key={idx} style={{ borderBottom: idx < items.length - 1 ? '1px solid var(--border)' : 'none', padding: '10px 0' }}>
                     <button 
                       onClick={() => toggleFaq(idx)}
                       style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', color: 'var(--text)', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', padding: 0, textAlign: 'left' }}
