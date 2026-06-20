@@ -17,9 +17,6 @@ const getFaqItems = (t) => [
   { q: t.faq5q, a: t.faq5a }
 ];
 
-// Dynamic FAQ Data — resolved later from storeInfo.checkout_faq with static fallback
-let faqItems = null;
-
 // Static Testimonials
 const getTestimonials = (t) => [
   { name: 'Gabriel S.', stars: 5, text: t.t1 },
@@ -101,7 +98,8 @@ export function CheckoutPage() {
 
   // Resolve FAQ dynamically: if storeInfo has checkout_faq, parse it.
   // Otherwise, fallback to getFaqItems(t).
-  if (!faqItems && storeInfo && storeInfo.checkout_faq) {
+  let faqItems = null;
+  if (storeInfo && storeInfo.checkout_faq) {
     try {
       const parsed = JSON.parse(storeInfo.checkout_faq);
       if (Array.isArray(parsed) && parsed.length > 0) {
