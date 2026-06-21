@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import api from '@/services/api';
+import { getPersistedStoreId } from '@/utils/auth';
 
 function UserAvatar({ email }) {
   const initials = email
@@ -38,6 +41,37 @@ function LogoIcon() {
 
 export function Navbar() {
   const { user, logout } = useAuth();
+  const [storeName, setStoreName] = useState(() => {
+    const storeId = getPersistedStoreId() || (user?.storeId ? Number(user.storeId) : null);
+    if (storeId) {
+      const cached = localStorage.getItem(`storeLogoLabel_${storeId}`);
+      if (cached) return cached;
+    }
+    return 'Digital Store Games';
+  });
+
+  useEffect(() => {
+    const storeId = getPersistedStoreId() || (user?.storeId ? Number(user.storeId) : null);
+    if (storeId) {
+      const cached = localStorage.getItem(`storeLogoLabel_${storeId}`);
+      if (cached) {
+        setStoreName(cached);
+        return;
+      }
+      
+      api.get(`/store/${storeId}/checkout_info`)
+        .then(({ data }) => {
+          if (data && data.store && data.store.checkout_logo_label) {
+            const label = data.store.checkout_logo_label.trim() || 'Digital Store Games';
+            setStoreName(label);
+            localStorage.setItem(`storeLogoLabel_${storeId}`, label);
+          }
+        })
+        .catch(err => {
+          console.error("Navbar: failed to fetch store info", err);
+        });
+    }
+  }, [user]);
 
   return (
     <nav className="sticky top-0 z-10 border-b border-gray-800 bg-gray-900/80 backdrop-blur-md">
@@ -45,23 +79,40 @@ export function Navbar() {
         {/* Logo */}
         <div className="flex items-center gap-3">
           <LogoIcon />
-          <div className="hidden sm:flex flex-col leading-none" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 600, letterSpacing: '1px', color: '#fff', textTransform: 'uppercase' }}>
-              Digital Store
-            </span>
-            <span style={{
-              fontSize: '1.25rem',
-              fontWeight: 800,
-              letterSpacing: '2px',
-              textTransform: 'uppercase',
-              background: 'linear-gradient(90deg, #fff 0%, #a0a0b0 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}>
-              Games
-            </span>
-          </div>
+          {storeName === 'Digital Store Games' ? (
+            <div className="hidden sm:flex flex-col leading-none" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600, letterSpacing: '1px', color: '#fff', textTransform: 'uppercase' }}>
+                Digital Store
+              </span>
+              <span style={{
+                fontSize: '1.25rem',
+                fontWeight: 800,
+                letterSpacing: '2px',
+                textTransform: 'uppercase',
+                background: 'linear-gradient(90deg, #fff 0%, #a0a0b0 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}>
+                Games
+              </span>
+            </div>
+          ) : (
+            <div className="hidden sm:flex flex-col leading-none" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+              <span style={{
+                fontSize: '1.1rem',
+                fontWeight: 800,
+                letterSpacing: '1.5px',
+                textTransform: 'uppercase',
+                background: 'linear-gradient(90deg, #fff 0%, #a0a0b0 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}>
+                {storeName}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Usuário + logout */}
@@ -85,3 +136,4 @@ export function Navbar() {
     </nav>
   );
 }
+

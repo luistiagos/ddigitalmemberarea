@@ -1,3 +1,8 @@
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import api from '@/services/api';
+import { getPersistedStoreId } from '@/utils/auth';
+
 /**
  * Ícone gamepad FA solid com gradiente ciano→pink (igual ao site original)
  */
@@ -29,6 +34,42 @@ function LogoIcon() {
  * Exibe o logo, título e subtítulo sobre um card estilizado.
  */
 export function AuthLayout({ title, subtitle, children }) {
+  const [searchParams] = useSearchParams();
+  const [storeName, setStoreName] = useState(() => {
+    const rawStoreId = searchParams.get('store_id') || searchParams.get('storeid');
+    const storeId = rawStoreId ? Number(rawStoreId) : getPersistedStoreId();
+    if (storeId) {
+      const cached = localStorage.getItem(`storeLogoLabel_${storeId}`);
+      if (cached) return cached;
+    }
+    return 'Digital Store Games';
+  });
+
+  useEffect(() => {
+    const rawStoreId = searchParams.get('store_id') || searchParams.get('storeid');
+    const storeId = rawStoreId ? Number(rawStoreId) : getPersistedStoreId();
+    
+    if (storeId) {
+      const cached = localStorage.getItem(`storeLogoLabel_${storeId}`);
+      if (cached) {
+        setStoreName(cached);
+        return;
+      }
+      
+      api.get(`/store/${storeId}/checkout_info`)
+        .then(({ data }) => {
+          if (data && data.store && data.store.checkout_logo_label) {
+            const label = data.store.checkout_logo_label.trim() || 'Digital Store Games';
+            setStoreName(label);
+            localStorage.setItem(`storeLogoLabel_${storeId}`, label);
+          }
+        })
+        .catch(err => {
+          console.error("AuthLayout: failed to fetch store info", err);
+        });
+    }
+  }, [searchParams]);
+
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       {/* Gradiente de fundo decorativo */}
@@ -47,23 +88,40 @@ export function AuthLayout({ title, subtitle, children }) {
           {/* Logo: ícone + texto lado a lado (igual ao site original) */}
           <div className="inline-flex items-center gap-3 mb-5">
             <LogoIcon />
-            <div style={{ fontFamily: "'Rajdhani', sans-serif", lineHeight: 0.85, textAlign: 'left' }}>
-              <div style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: '1px', color: '#fff', textTransform: 'uppercase' }}>
-                Digital Store
+            {storeName === 'Digital Store Games' ? (
+              <div style={{ fontFamily: "'Rajdhani', sans-serif", lineHeight: 0.85, textAlign: 'left' }}>
+                <div style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: '1px', color: '#fff', textTransform: 'uppercase' }}>
+                  Digital Store
+                </div>
+                <div style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 800,
+                  letterSpacing: '2px',
+                  textTransform: 'uppercase',
+                  background: 'linear-gradient(90deg, #fff, #a0a0b0)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}>
+                  Games
+                </div>
               </div>
-              <div style={{
-                fontSize: '1.5rem',
-                fontWeight: 800,
-                letterSpacing: '2px',
-                textTransform: 'uppercase',
-                background: 'linear-gradient(90deg, #fff, #a0a0b0)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}>
-                Games
+            ) : (
+              <div style={{ fontFamily: "'Rajdhani', sans-serif", lineHeight: 1.1, textAlign: 'left' }}>
+                <div style={{
+                  fontSize: '1.4rem',
+                  fontWeight: 800,
+                  letterSpacing: '1.5px',
+                  textTransform: 'uppercase',
+                  background: 'linear-gradient(90deg, #fff, #a0a0b0)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}>
+                  {storeName}
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">{title}</h1>
           {subtitle && (
@@ -78,9 +136,10 @@ export function AuthLayout({ title, subtitle, children }) {
 
         {/* Rodapé */}
         <p className="mt-6 text-center text-xs text-gray-600">
-          © {new Date().getFullYear()} Digital Store Games · Todos os direitos reservados
+          © {new Date().getFullYear()} {storeName} · Todos os direitos reservados
         </p>
       </div>
     </div>
   );
 }
+
