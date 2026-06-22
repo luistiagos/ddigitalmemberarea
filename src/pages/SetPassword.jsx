@@ -27,14 +27,49 @@ export function SetPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  // Verifica no load se a senha já existe; enquanto checa, não mostra o form.
+  const [checkingEntry, setCheckingEntry] = useState(Boolean(email));
 
   // Persiste o storeId da URL após o primeiro render
   useEffect(() => {
     if (storeId != null) persistStoreId(storeId);
   }, [storeId]);
 
+  // Se a senha já foi criada, este link não deve reabrir o formulário de criação:
+  // manda direto para o login (correto: para trocar, usa "Esqueci minha senha").
+  // Cobre inclusive links de emails antigos que apontam direto para /criar-senha.
+  useEffect(() => {
+    if (!email) return;
+    let active = true;
+    (async () => {
+      try {
+        const { data } = await api.get('/auth/access-entry', { params: { email } });
+        if (active && data?.entry === 'login') {
+          const storeParam = storeId != null ? `&store_id=${storeId}` : '';
+          navigate(`/login?email=${encodeURIComponent(email)}${storeParam}`, { replace: true });
+          return;
+        }
+      } catch {
+        // Falha na checagem não bloqueia: mostra o form; o 409 no submit ainda protege.
+      }
+      if (active) setCheckingEntry(false);
+    })();
+    return () => { active = false; };
+  }, [email, storeId, navigate]);
+
   if (isAuthenticated()) {
     return <Navigate to="/area-cliente" replace />;
+  }
+
+  // Enquanto verifica se a senha já existe, evita piscar o formulário de criação.
+  if (checkingEntry) {
+    return (
+      <AuthLayout title="Crie sua senha" subtitle="Carregando...">
+        <div className="flex justify-center py-8">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-600 border-t-green-400" />
+        </div>
+      </AuthLayout>
+    );
   }
 
   const strength = calcStrength(password);
