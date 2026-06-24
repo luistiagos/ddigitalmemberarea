@@ -6,6 +6,7 @@ import { ResetPassword } from './pages/ResetPassword';
 import { CustomerArea } from './pages/CustomerArea';
 import { StoreSelector } from './pages/StoreSelector';
 import { CheckoutPage } from './pages/CheckoutPage';
+import { PtBrAccess } from './pages/access/worldcup/ptbr';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -38,6 +39,16 @@ function App() {
           element={
             <ProtectedRoute>
               <CustomerArea />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Página de Acesso protegida */}
+        <Route
+          path="/access/worldcup/ptbr"
+          element={
+            <ProtectedRoute>
+              <PtBrAccess />
             </ProtectedRoute>
           }
         />
