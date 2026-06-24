@@ -5,7 +5,7 @@ import CardModal from '@/components/ui/CardModal';
 import api from '@/services/api';
 
 const CUSTOMER_AREA_REFRESH_KEY = 'customerAreaNeedsRefresh';
-const MP_PUBLIC_KEY = 'APP_USR-f344722f-528a-459f-8949-8e50f7db0e03';
+const MP_PUBLIC_KEY = 'APP_USR-747cf787-a851-4ed5-971c-62041281ed91';
 
 function formatBRL(val) {
   return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

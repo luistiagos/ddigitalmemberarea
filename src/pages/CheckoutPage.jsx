@@ -559,7 +559,7 @@ export function CheckoutPage() {
     if (!container) return;
     container.innerHTML = '';
 
-    const MP_PUBLIC_KEY = 'APP_USR-f344722f-528a-459f-8949-8e50f7db0e03';
+    const MP_PUBLIC_KEY = 'APP_USR-747cf787-a851-4ed5-971c-62041281ed91';
     const amount = getCartTotal();
 
     try {
