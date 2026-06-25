@@ -6,7 +6,8 @@ import { ResetPassword } from './pages/ResetPassword';
 import { CustomerArea } from './pages/CustomerArea';
 import { StoreSelector } from './pages/StoreSelector';
 import { CheckoutPage } from './pages/CheckoutPage';
-import { PtBrAccess } from './pages/access/worldcup/ptbr';
+import { PtBrAccess as PtBrAccessWorldCup } from './pages/access/worldcup/ptbr';
+import { PtBrAccess as PtBrAccessPapper } from './pages/access/pappersoccerplayers/ptbr';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -43,12 +44,20 @@ function App() {
           }
         />
 
-        {/* Página de Acesso protegida */}
+        {/* Páginas de Acesso protegidas */}
         <Route
           path="/access/worldcup/ptbr"
           element={
             <ProtectedRoute>
-              <PtBrAccess />
+              <PtBrAccessWorldCup />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/access/pappersoccerplayers/ptbr"
+          element={
+            <ProtectedRoute>
+              <PtBrAccessPapper />
             </ProtectedRoute>
           }
         />
