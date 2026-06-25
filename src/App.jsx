@@ -8,6 +8,7 @@ import { StoreSelector } from './pages/StoreSelector';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { PtBrAccess as PtBrAccessWorldCup } from './pages/access/worldcup/ptbr';
 import { PtBrAccess as PtBrAccessPapper } from './pages/access/pappersoccerplayers/ptbr';
+import { PtBrAccess as PtBrAccessTrofeu } from './pages/access/trofeu/ptbr';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -58,6 +59,14 @@ function App() {
           element={
             <ProtectedRoute>
               <PtBrAccessPapper />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/access/trofeu/ptbr"
+          element={
+            <ProtectedRoute>
+              <PtBrAccessTrofeu />
             </ProtectedRoute>
           }
         />
