@@ -9,6 +9,7 @@ import { CheckoutPage } from './pages/CheckoutPage';
 import { PtBrAccess as PtBrAccessWorldCup } from './pages/access/worldcup/ptbr';
 import { PtBrAccess as PtBrAccessPapper } from './pages/access/pappersoccerplayers/ptbr';
 import { PtBrAccess as PtBrAccessTrofeu } from './pages/access/trofeu/ptbr';
+import { PtBrAccess as PtBrAccessHLP } from './pages/access/HLP World Cup 2026 Group, Matches & Scores Printable/ptbr';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -67,6 +68,38 @@ function App() {
           element={
             <ProtectedRoute>
               <PtBrAccessTrofeu />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/access/HLP World Cup 2026 Group, Matches & Scores Printable/ptbr"
+          element={
+            <ProtectedRoute>
+              <PtBrAccessHLP />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/access/HLP World Cup 2026 Group, Matches %26 Scores Printable/ptbr"
+          element={
+            <ProtectedRoute>
+              <PtBrAccessHLP />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/access/HLP%20World%20Cup%202026%20Group,%20Matches%20%26%20Scores%20Printable/ptbr"
+          element={
+            <ProtectedRoute>
+              <PtBrAccessHLP />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/access/HLP%20World%20Cup%202026%20Group,%20Matches%20&%20Scores%20Printable/ptbr"
+          element={
+            <ProtectedRoute>
+              <PtBrAccessHLP />
             </ProtectedRoute>
           }
         />
