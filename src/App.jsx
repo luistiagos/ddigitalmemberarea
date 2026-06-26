@@ -105,7 +105,7 @@ function App() {
           }
         />
         <Route
-          path="/access/HLP%20World%20Cup%202026%20Group,%20Matches%20&%20Scores%20Printable/ptbr"
+          path="/access/HLP/ptbr"
           element={
             <ProtectedRoute>
               <PtBrAccessHLP />
