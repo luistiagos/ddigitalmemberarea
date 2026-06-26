@@ -54,12 +54,17 @@ export function CheckoutPage() {
 
   const lang = TRANSLATIONS[langParam] ? langParam : 'ptbr';
   const t = TRANSLATIONS[lang];
-  const isUSD = lang === 'en' || lang === 'es';
 
   // Page States
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [storeInfo, setStoreInfo] = useState(null);
+
+  // Moeda da loja é a fonte de verdade do checkout: define o símbolo exibido e o
+  // meio de pagamento (USD → Stripe; BRL/null/qualquer outro → PIX/Mercado Pago).
+  // O parâmetro `lang` controla apenas o idioma do texto, não a moeda.
+  const storeCurrency = (storeInfo?.currency || 'BRL').toUpperCase();
+  const isUSD = storeCurrency === 'USD';
   const [mainProduct, setMainProduct] = useState(null);
   const [orderBumps, setOrderBumps] = useState([]);
   const [selectedBumps, setSelectedBumps] = useState(new Set());
@@ -404,7 +409,7 @@ export function CheckoutPage() {
           telefone: cleanPhone || undefined,
           storeid: storeId,
           cupom: couponCode.trim() || undefined,
-          base_currency: 'usd'
+          base_currency: storeCurrency.toLowerCase()
         }
       });
 
