@@ -4,11 +4,13 @@ import { Gamepad2, Store } from 'lucide-react';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
+import { useLang } from '@/hooks/useLang';
 import api from '@/services/api';
 import { persistStoreId } from '@/utils/auth';
 
 export function StoreSelector() {
   const navigate = useNavigate();
+  const { lang, t } = useLang();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -17,39 +19,37 @@ export function StoreSelector() {
     api.get('/user/stores')
       .then(({ data }) => {
         if (data.length === 1) {
-          // Single store — skip selector, go straight in
           persistStoreId(data[0].id);
           navigate(`/area-cliente?store_id=${data[0].id}`, { replace: true });
           return;
         }
         setStores(data);
       })
-      .catch(() => setError('Não foi possível carregar suas lojas. Tente novamente.'))
+      .catch(() => setError(t.errLoadStores))
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const handleSelect = (storeId) => {
     persistStoreId(storeId);
-    navigate(`/area-cliente?store_id=${storeId}`);
+    const langParam = lang !== 'ptbr' ? `&lang=${lang}` : '';
+    navigate(`/area-cliente?store_id=${storeId}${langParam}`);
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <LoadingSpinner message="Carregando suas lojas..." />
+        <LoadingSpinner message={t.loadingStores} />
       </div>
     );
   }
 
   return (
-    <AuthLayout
-      title="Selecione sua loja"
-      subtitle="Você tem acesso a múltiplas lojas. Escolha qual deseja acessar."
-    >
+    <AuthLayout title={t.selectStoreTitle} subtitle={t.selectStoreSubtitle}>
       {error && <Alert variant="error" message={error} className="mb-4" />}
 
       {!error && stores.length === 0 && (
-        <Alert variant="error" message="Nenhuma loja encontrada para sua conta." />
+        <Alert variant="error" message={t.noStoresFound} />
       )}
 
       <div className="space-y-3">
@@ -75,7 +75,7 @@ export function StoreSelector() {
               <p className="text-white font-semibold truncate group-hover:text-green-400 transition-colors">
                 {store.name}
               </p>
-              <p className="text-gray-400 text-sm">Loja #{store.id}</p>
+              <p className="text-gray-400 text-sm">{t.storeHash}{store.id}</p>
             </div>
             <Gamepad2 className="h-5 w-5 text-gray-600 group-hover:text-green-400 transition-colors flex-shrink-0" />
           </button>

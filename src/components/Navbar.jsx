@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useLang } from '@/hooks/useLang';
 import api from '@/services/api';
 import { getPersistedStoreId } from '@/utils/auth';
 
@@ -15,7 +16,6 @@ function UserAvatar({ email }) {
   );
 }
 
-/** Ícone gamepad FA solid com gradiente ciano→pink (igual ao site original) */
 function LogoIcon() {
   return (
     <svg
@@ -41,6 +41,7 @@ function LogoIcon() {
 
 export function Navbar() {
   const { user, logout } = useAuth();
+  const { t } = useLang();
   const [storeName, setStoreName] = useState(() => {
     const storeId = getPersistedStoreId() || (user?.storeId ? Number(user.storeId) : null);
     if (storeId) {
@@ -58,7 +59,7 @@ export function Navbar() {
         setStoreName(cached);
         return;
       }
-      
+
       api.get(`/store/${storeId}/checkout_info`)
         .then(({ data }) => {
           if (data && data.store && data.store.checkout_logo_label) {
@@ -76,7 +77,6 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-10 border-b border-gray-800 bg-gray-900/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        {/* Logo */}
         <div className="flex items-center gap-3">
           <LogoIcon />
           {storeName === 'Digital Store Games' ? (
@@ -115,7 +115,6 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Usuário + logout */}
         <div className="flex items-center gap-3">
           {user && (
             <>
@@ -129,11 +128,10 @@ export function Navbar() {
             onClick={logout}
             className="ml-1 rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-400 hover:border-red-500/50 hover:text-red-400 transition-colors"
           >
-            Sair
+            {t.logoutBtn}
           </button>
         </div>
       </div>
     </nav>
   );
 }
-

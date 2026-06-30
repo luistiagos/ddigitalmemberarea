@@ -5,18 +5,16 @@ import { AuthLayout } from '@/components/layout/AuthLayout';
 import { InputField } from '@/components/ui/InputField';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
+import { useLang } from '@/hooks/useLang';
 import api from '@/services/api';
 import { storeUser, persistStoreId, isAuthenticated } from '@/utils/auth';
-import { calcStrength, STRENGTH_LABELS, STRENGTH_COLORS } from '@/utils/password';
+import { calcStrength, STRENGTH_COLORS } from '@/utils/password';
 import { logError } from '@/utils/logError';
 
-/**
- * Página de criação/redefinição de senha.
- * Acessada via query string ?email=xxx@yyy.com
- */
 export function SetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { lang, t } = useLang();
   const email = searchParams.get('email') || '';
   // Aceita tanto ?store_id= quanto ?storeid= (compatibilidade com links antigos)
   const rawStoreId = searchParams.get('store_id') || searchParams.get('storeid');
@@ -27,17 +25,13 @@ export function SetPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  // Verifica no load se a senha já existe; enquanto checa, não mostra o form.
   const [checkingEntry, setCheckingEntry] = useState(Boolean(email));
 
-  // Persiste o storeId da URL após o primeiro render
   useEffect(() => {
     if (storeId != null) persistStoreId(storeId);
   }, [storeId]);
 
-  // Se a senha já foi criada, este link não deve reabrir o formulário de criação:
-  // manda direto para o login (correto: para trocar, usa "Esqueci minha senha").
-  // Cobre inclusive links de emails antigos que apontam direto para /criar-senha.
+  // Se a senha já foi criada, manda direto para o login.
   useEffect(() => {
     if (!email) return;
     let active = true;
@@ -46,25 +40,25 @@ export function SetPassword() {
         const { data } = await api.get('/auth/access-entry', { params: { email } });
         if (active && data?.entry === 'login') {
           const storeParam = storeId != null ? `&store_id=${storeId}` : '';
-          navigate(`/login?email=${encodeURIComponent(email)}${storeParam}`, { replace: true });
+          const langParam = lang !== 'ptbr' ? `&lang=${lang}` : '';
+          navigate(`/login?email=${encodeURIComponent(email)}${storeParam}${langParam}`, { replace: true });
           return;
         }
       } catch {
-        // Falha na checagem não bloqueia: mostra o form; o 409 no submit ainda protege.
+        // Falha na checagem não bloqueia o form.
       }
       if (active) setCheckingEntry(false);
     })();
     return () => { active = false; };
-  }, [email, storeId, navigate]);
+  }, [email, storeId, lang, navigate]);
 
   if (isAuthenticated()) {
     return <Navigate to="/area-cliente" replace />;
   }
 
-  // Enquanto verifica se a senha já existe, evita piscar o formulário de criação.
   if (checkingEntry) {
     return (
-      <AuthLayout title="Crie sua senha" subtitle="Carregando...">
+      <AuthLayout title={t.createPasswordTitle} subtitle={t.passwordLoading}>
         <div className="flex justify-center py-8">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-600 border-t-green-400" />
         </div>
@@ -82,15 +76,15 @@ export function SetPassword() {
     e.preventDefault();
 
     if (!email) {
-      setError('E-mail inválido. Volte à tela de login.');
+      setError(t.invalidEmailError);
       return;
     }
     if (password.length < 8) {
-      setError('A senha deve ter pelo menos 8 caracteres.');
+      setError(t.passwordMinError);
       return;
     }
     if (password !== confirm) {
-      setError('As senhas não coincidem.');
+      setError(t.passwordMismatchError);
       return;
     }
 
@@ -103,20 +97,19 @@ export function SetPassword() {
       const response = await api.post('/auth/set-password', body);
       if (response.data.success) {
         const userData = response.data.user ?? { email, id: '' };
-        // Garante que o storeId da URL seja salvo mesmo que o backend
-        // não o devolva (ex.: fallback sem token após login interno falhar)
         if (storeId != null && userData.storeId == null) {
           userData.storeId = storeId;
         }
         storeUser(userData, response.data.token ?? null);
         setSuccess(true);
-        setTimeout(() => navigate('/area-cliente'), 1500);
+        const langParam = lang !== 'ptbr' ? `?lang=${lang}` : '';
+        setTimeout(() => navigate(`/area-cliente${langParam}`), 1500);
       }
     } catch (err) {
       if (err.response?.status === 409) {
-        // Usuário já tem senha — manda para login preservando store_id
         const storeParam = storeId != null ? `&store_id=${storeId}` : '';
-        navigate(`/login?email=${encodeURIComponent(email)}${storeParam}`, { replace: true });
+        const langParam = lang !== 'ptbr' ? `&lang=${lang}` : '';
+        navigate(`/login?email=${encodeURIComponent(email)}${storeParam}${langParam}`, { replace: true });
         return;
       }
       const userMessage = err.response?.data?.error || 'Erro ao definir senha. Tente novamente.';
@@ -131,19 +124,18 @@ export function SetPassword() {
 
   return (
     <AuthLayout
-      title="Crie sua senha"
+      title={t.createPasswordTitle}
       subtitle={
         email
-          ? `Definindo senha para ${email}`
-          : 'Por favor, crie uma senha para acessar sua conta'
+          ? `${t.settingPasswordFor} ${email}`
+          : t.createPasswordSubtitle
       }
     >
-      {/* E-mail (readonly, informativo) */}
       <div className="mb-5">
         <InputField
           id="email-display"
           type="email"
-          label="E-mail"
+          label={t.emailLabel}
           icon={Mail}
           value={email}
           readOnly
@@ -153,67 +145,64 @@ export function SetPassword() {
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         {success ? (
-          <Alert variant="success" message="Senha criada! Redirecionando..." />
+          <Alert variant="success" message={t.passwordCreated} />
         ) : (
           <>
             {error && (
               <Alert variant="error" message={error} onClose={() => setError(null)} />
             )}
 
-            {/* Senha */}
             <div className="space-y-2">
-          <InputField
-            id="password"
-            label="Nova senha"
-            placeholder="••••••••"
-            icon={Lock}
-            showPasswordToggle
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoFocus
-            autoComplete="new-password"
-          />
+              <InputField
+                id="password"
+                label={t.newPasswordLabel}
+                placeholder="••••••••"
+                icon={Lock}
+                showPasswordToggle
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoFocus
+                autoComplete="new-password"
+              />
 
-          {/* Barra de força */}
-          {password && (
-            <div className="space-y-1 animate-fade-in-fast">
-              <div className="h-1 w-full rounded-full bg-gray-700">
-                <div
-                  className={`strength-bar ${STRENGTH_COLORS[strength]}`}
-                  style={{ width: strengthWidth }}
-                />
-              </div>
-              <p className={`text-xs ${strength >= 3 ? 'text-green-400' : 'text-gray-500'}`}>
-                Força: {STRENGTH_LABELS[strength]}
-              </p>
+              {password && (
+                <div className="space-y-1 animate-fade-in-fast">
+                  <div className="h-1 w-full rounded-full bg-gray-700">
+                    <div
+                      className={`strength-bar ${STRENGTH_COLORS[strength]}`}
+                      style={{ width: strengthWidth }}
+                    />
+                  </div>
+                  <p className={`text-xs ${strength >= 3 ? 'text-green-400' : 'text-gray-500'}`}>
+                    {t.passwordStrength} {t.strengthLabels[strength]}
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Confirmar senha */}
-        <InputField
-          id="confirm"
-          label="Confirmar senha"
-          placeholder="••••••••"
-          icon={Lock}
-          showPasswordToggle
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          required
-          autoComplete="new-password"
-          error={passwordMismatch ? 'As senhas não coincidem' : undefined}
-        />
+            <InputField
+              id="confirm"
+              label={t.confirmPasswordLabel}
+              placeholder="••••••••"
+              icon={Lock}
+              showPasswordToggle
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
+              autoComplete="new-password"
+              error={passwordMismatch ? t.passwordMismatchError : undefined}
+            />
 
-        <Button
-          type="submit"
-          variant="primary"
-          loading={loading}
-          disabled={!password || !passwordMatch || loading}
-          className="w-full py-3 text-base font-semibold mt-2"
-        >
-          {loading ? 'Salvando...' : 'Salvar senha e entrar'}
-        </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              loading={loading}
+              disabled={!password || !passwordMatch || loading}
+              className="w-full py-3 text-base font-semibold mt-2"
+            >
+              {loading ? t.saving : t.saveAndEnter}
+            </Button>
           </>
         )}
       </form>

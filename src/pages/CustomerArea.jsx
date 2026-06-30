@@ -7,6 +7,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { useProducts } from '@/hooks/useProducts';
+import { useLang } from '@/hooks/useLang';
 import { getStoredUser, storeUser, persistStoreId } from '@/utils/auth';
 import api from '@/services/api';
 import PromoModal from '@/components/PromoModal';
@@ -14,43 +15,37 @@ import PromoModal from '@/components/PromoModal';
 const CUSTOMER_AREA_REFRESH_KEY = 'customerAreaNeedsRefresh';
 const PROMO_MODAL_SHOWN_KEY = 'promoModalShownThisSession';
 
-function EmptyState() {
+function EmptyState({ t }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 px-4 text-center animate-fade-in">
       <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gray-800 border border-gray-700 mb-5">
         <Package className="h-10 w-10 text-gray-600" />
       </div>
-      <h2 className="text-xl font-semibold text-white mb-2">Nenhum produto disponível</h2>
-      <p className="text-gray-400 text-sm max-w-sm">
-        Esta loja ainda não possui produtos ativos.
-      </p>
+      <h2 className="text-xl font-semibold text-white mb-2">{t.noProductsTitle}</h2>
+      <p className="text-gray-400 text-sm max-w-sm">{t.noProductsDesc}</p>
     </div>
   );
 }
 
 export function CustomerArea() {
   const [searchParams] = useSearchParams();
+  const { lang, t } = useLang();
   const rawStoreId = searchParams.get('store_id') || searchParams.get('storeid');
   const urlStoreId = rawStoreId ? Number(rawStoreId) : null;
 
-  // Persist store_id from URL immediately — this is the fix for cross-store leakage.
-  // The email access link carries ?store_id=XXXXXX; without this, CustomerArea would
-  // fall back to whatever storeId was last written to localStorage (the previous store).
+  // Persist store_id from URL immediately — fix for cross-store leakage.
   useEffect(() => {
     if (urlStoreId != null) persistStoreId(urlStoreId);
   }, [urlStoreId]);
 
   const user = getStoredUser();
-  // URL store_id takes precedence over whatever is in localStorage
   const effectiveStoreId = urlStoreId ?? user?.storeId ?? null;
   const { products, loading, error, refetch } = useProducts(user?.email, effectiveStoreId);
 
-  const [promoData, setPromoData] = useState(null); // { products: [...] }
+  const [promoData, setPromoData] = useState(null);
   const [promoSeen, setPromoSeen] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
 
-  // Refresh JWT only when token has no store_id (old tokens issued before first purchase).
-  // Cross-store access is handled upstream by ProtectedRoute (logout + redirect to login).
   useEffect(() => {
     if (user?.storeId) return;
     api.post('/auth/refresh')
@@ -76,14 +71,11 @@ export function CustomerArea() {
     }
   }, []);
 
-  // Registra o acesso à área do cliente
   useEffect(() => {
     const body = effectiveStoreId ? { store_id: effectiveStoreId } : {};
-    api.post('/area-cliente/access', body).catch(() => {/* silencioso — não bloqueia a UI */});
+    api.post('/area-cliente/access', body).catch(() => {});
   }, [effectiveStoreId]);
 
-  // Verifica se o modal promocional deve ser exibido.
-  // Sai imediatamente se já foi exibido nesta sessão (persiste em reloads do mesmo tab).
   useEffect(() => {
     if (sessionStorage.getItem(PROMO_MODAL_SHOWN_KEY)) return;
     const params = effectiveStoreId ? { store_id: effectiveStoreId } : {};
@@ -93,7 +85,7 @@ export function CustomerArea() {
           setPromoData(data);
         }
       })
-      .catch(() => {/* silencioso */});
+      .catch(() => {});
   }, [user?.storeId]);
 
   useEffect(() => {
@@ -107,7 +99,6 @@ export function CustomerArea() {
         triggerPageReload();
         return;
       }
-
       if (document.visibilityState === 'visible') {
         triggerAutoRefresh();
       }
@@ -133,49 +124,55 @@ export function CustomerArea() {
   const ownedProducts = products.filter((p) => p.owned);
   const availableProducts = products.filter((p) => !p.owned);
 
+  const productCountLabel = (() => {
+    const total = products.length;
+    const owned = ownedProducts.length;
+    const totalLabel = total === 1 ? t.productsItem : t.productsItemPlural;
+    const ownedLabel = owned === 1 ? t.productsAcquired : t.productsAcquiredPlural;
+    return `${owned} ${t.productsOf} ${total} ${totalLabel} ${ownedLabel}`;
+  })();
+
   return (
     <AppLayout>
-      {/* Cabeçalho */}
       <div className="flex items-center justify-between mb-8 gap-4 flex-wrap animate-fade-in">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
             <Gamepad2 className="h-6 w-6 text-amber-500" />
-            Meus Produtos
+            {t.myProductsTitle}
           </h1>
           <p className="mt-1 text-sm text-gray-400">
             {!loading && !error && products.length > 0
-              ? `${ownedProducts.length} de ${products.length} produto${products.length !== 1 ? 's' : ''} adquirido${ownedProducts.length !== 1 ? 's' : ''}`
-              : 'Jogos e produtos digitais da sua conta'}
+              ? productCountLabel
+              : t.productsTagline}
           </p>
         </div>
         {isAutoRefreshing && (
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/35 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300 animate-pulse">
-            Atualizando seus produtos...
+            {t.updatingProducts}
           </div>
         )}
       </div>
 
-      {loading && <LoadingSpinner message="Carregando produtos..." />}
+      {loading && <LoadingSpinner message={t.loadingProducts} />}
 
       {error && !loading && (
         <div className="max-w-lg space-y-3">
           <Alert variant="error" message={error} />
           <Button variant="ghost" onClick={refetch} className="text-sm">
-            Tentar novamente
+            {t.tryAgain}
           </Button>
         </div>
       )}
 
-      {!loading && !error && products.length === 0 && <EmptyState />}
+      {!loading && !error && products.length === 0 && <EmptyState t={t} />}
 
       {!loading && !error && products.length > 0 && (
         <div className="space-y-10">
-          {/* Seção: produtos adquiridos */}
           {ownedProducts.length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-                Adquiridos
+                {t.purchasedSection}
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {ownedProducts.map((product) => (
@@ -184,6 +181,7 @@ export function CustomerArea() {
                     product={product}
                     userEmail={user?.email}
                     storeId={effectiveStoreId ?? 1}
+                    lang={lang}
                     onPaymentFlowClosed={triggerPageReload}
                   />
                 ))}
@@ -191,12 +189,11 @@ export function CustomerArea() {
             </section>
           )}
 
-          {/* Seção: produtos disponíveis para compra */}
           {availableProducts.length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5 text-lime-400" />
-                Desbloqueie por uma oferta especial
+                {t.unlockSpecial}
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {availableProducts.map((product) => (
@@ -205,6 +202,7 @@ export function CustomerArea() {
                     product={product}
                     userEmail={user?.email}
                     storeId={effectiveStoreId ?? 1}
+                    lang={lang}
                     onPaymentFlowClosed={triggerPageReload}
                   />
                 ))}
@@ -214,15 +212,12 @@ export function CustomerArea() {
         </div>
       )}
 
-      {/* Modal promocional */}
       {promoData && (
         <PromoModal
           products={promoData.products}
           storeId={effectiveStoreId ?? null}
+          lang={lang}
           onShown={() => {
-            // Só grava no sessionStorage e no servidor quando o modal
-            // está de fato renderizado na tela. Isso evita o falso-positivo
-            // onde o reload do refresh de JWT disparava antes do render.
             if (!promoSeen) {
               setPromoSeen(true);
               sessionStorage.setItem(PROMO_MODAL_SHOWN_KEY, '1');

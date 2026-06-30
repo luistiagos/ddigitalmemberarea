@@ -5,11 +5,13 @@ import { AuthLayout } from '@/components/layout/AuthLayout';
 import { InputField } from '@/components/ui/InputField';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
+import { useLang } from '@/hooks/useLang';
 import api from '@/services/api';
 import { getPersistedStoreId, isAuthenticated } from '@/utils/auth';
 
 export function ForgotPassword() {
   const [searchParams] = useSearchParams();
+  const { lang, t } = useLang();
   const [email, setEmail] = useState(searchParams.get('email') || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -40,22 +42,18 @@ export function ForgotPassword() {
     }
   };
 
+  const loginHref = lang !== 'ptbr' ? `/login?lang=${lang}` : '/login';
+
   return (
-    <AuthLayout
-      title="Recuperar senha"
-      subtitle="Informe seu e-mail e enviaremos um link para redefinir sua senha"
-    >
+    <AuthLayout title={t.recoverTitle} subtitle={t.recoverSubtitle}>
       {sent ? (
         <div className="space-y-5">
-          <Alert
-            variant="success"
-            message="Se este e-mail estiver cadastrado, você receberá as instruções em instantes. Verifique sua caixa de spam."
-          />
+          <Alert variant="success" message={t.recoverSuccessMsg} />
           <Link
-            to="/login"
+            to={loginHref}
             className="block text-center text-sm text-green-400 hover:text-green-300 transition-colors"
           >
-            ← Voltar para o login
+            {t.backToLogin}
           </Link>
         </div>
       ) : (
@@ -67,8 +65,8 @@ export function ForgotPassword() {
           <InputField
             id="email"
             type="email"
-            label="E-mail"
-            placeholder="seu@email.com"
+            label={t.emailLabel}
+            placeholder={t.emailPlaceholder}
             icon={Mail}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -84,14 +82,14 @@ export function ForgotPassword() {
             disabled={!email.trim()}
             className="w-full py-3 text-base font-semibold"
           >
-            {loading ? 'Enviando...' : 'Enviar link de recuperação'}
+            {loading ? t.sendingLink : t.sendRecoveryLink}
           </Button>
 
           <Link
-            to="/login"
+            to={loginHref}
             className="block text-center text-sm text-gray-400 hover:text-gray-300 transition-colors"
           >
-            ← Voltar para o login
+            {t.backToLogin}
           </Link>
         </form>
       )}
