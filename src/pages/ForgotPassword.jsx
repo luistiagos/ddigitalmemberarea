@@ -30,7 +30,7 @@ export function ForgotPassword() {
 
     try {
       const storeId = getPersistedStoreId();
-      const body = { email: email.trim().toLowerCase() };
+      const body = { email: email.trim().toLowerCase(), lang };
       if (storeId != null) body.store_id = storeId;
       await api.post('/auth/forgot-password', body);
       setSent(true);
