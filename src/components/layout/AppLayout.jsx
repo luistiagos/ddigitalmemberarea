@@ -1,12 +1,13 @@
 import { Navbar } from '@/components/Navbar';
 import { MessageCircle, Mail } from 'lucide-react';
+import { useLang } from '@/hooks/useLang';
 
-function SupportFooter() {
+function SupportFooter({ t }) {
   return (
     <footer className="mt-16 border-t border-gray-800/60">
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-0">
-          <span className="text-xs text-gray-600 sm:mr-3">Precisa de ajuda?</span>
+          <span className="text-xs text-gray-600 sm:mr-3">{t.helpNeeded}</span>
           <div className="flex items-center gap-4">
             <a
               href="https://wa.me/554196260115"
@@ -37,13 +38,14 @@ function SupportFooter() {
  * Inclui a Navbar fixa, o conteúdo principal centralizado e o rodapé de suporte.
  */
 export function AppLayout({ children }) {
+  const { t } = useLang();
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       <Navbar />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
         {children}
       </main>
-      <SupportFooter />
+      <SupportFooter t={t} />
     </div>
   );
 }

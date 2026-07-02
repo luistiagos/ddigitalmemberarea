@@ -182,6 +182,7 @@ export const TRANSLATIONS = {
 
     // ── Navbar ────────────────────────────────────────────────────────────────
     logoutBtn: "Sair",
+    allRightsReserved: "Todos os direitos reservados",
 
     // ── ProductCard (customer area) ───────────────────────────────────────────
     enjoyMsg: "Aqui está o que você comprou, divirta-se!",
@@ -212,6 +213,29 @@ export const TRANSLATIONS = {
     pixCopiedFallback: "Não foi possível copiar automaticamente.",
     pixExpiredMsg: "⚠️ PIX cancelado ou expirado.",
     economyLabel: "economia",
+    preparingPixInfo: "Estamos preparando o PIX para você copiar ou escanear.",
+    takesFewSeconds: "Isso costuma levar apenas alguns segundos.",
+
+    // ── PromoModal (upsell) ───────────────────────────────────────────────────
+    promoTitle25: "🔥 Oferta Exclusiva — Só Agora!",
+    promoTitle50: "⚠️ Último Aviso!",
+    promoSubtitle25: "Esta promoção expira quando você fechar esta janela.",
+    promoSubtitle50: "Esta é sua última chance. A oferta desaparece quando você clicar em \"Não quero\".",
+    promoText25_1: "Detectamos que você ainda não possui este(s) produto(s) da loja. Desbloqueie agora com ",
+    promoText25_2: " de desconto!",
+    promoText50_1: "Ok, entendemos que aquele valor ainda era muito. Que tal levar tudo por apenas ",
+    promoText50_2: " — essa é a nossa oferta final com ",
+    promoText50_3: " de desconto?",
+    promoCta25: "Quero {discount} de desconto agora!",
+    promoCta50: "Aceitar {discount} de desconto",
+    promoDecline25: "Vou perder essa oportunidade",
+    promoDecline50: "Não, quero mesmo assim perder",
+    promoTotalWithDiscount: "Total com desconto",
+    promoSuccessCard: "✅ Pagamento aprovado! Sua compra foi concluída.",
+    promoAlreadyPaidBtn: "✅ Já paguei",
+    promoBackBtn: "Voltar",
+    promoInvalidValueCard: "Valor inválido. Não é possível processar o pagamento com cartão.",
+    promoErrorCheckout: "Erro ao criar checkout. Tente novamente.",
   },
 
   en: {
@@ -397,6 +421,7 @@ export const TRANSLATIONS = {
 
     // ── Navbar ────────────────────────────────────────────────────────────────
     logoutBtn: "Sign out",
+    allRightsReserved: "All rights reserved",
 
     // ── ProductCard (customer area) ───────────────────────────────────────────
     enjoyMsg: "Here's what you purchased, enjoy!",
@@ -427,6 +452,29 @@ export const TRANSLATIONS = {
     pixCopiedFallback: "Could not copy automatically.",
     pixExpiredMsg: "⚠️ PIX cancelled or expired.",
     economyLabel: "savings",
+    preparingPixInfo: "We are preparing the PIX for you to copy or scan.",
+    takesFewSeconds: "This usually takes just a few seconds.",
+
+    // ── PromoModal (upsell) ───────────────────────────────────────────────────
+    promoTitle25: "🔥 Exclusive Offer — Only Now!",
+    promoTitle50: "⚠️ Last Warning!",
+    promoSubtitle25: "This promotion expires when you close this window.",
+    promoSubtitle50: "This is your last chance. The offer disappears when you click \"I don't want it\".",
+    promoText25_1: "We detected that you do not own these product(s) from the store yet. Unlock now with ",
+    promoText25_2: " discount!",
+    promoText50_1: "Okay, we understand that price was still too much. How about getting everything for just ",
+    promoText50_2: " — this is our final offer with ",
+    promoText50_3: " discount?",
+    promoCta25: "I want {discount} discount now!",
+    promoCta50: "Accept {discount} discount",
+    promoDecline25: "I will pass up this opportunity",
+    promoDecline50: "No, I want to skip it anyway",
+    promoTotalWithDiscount: "Total with discount",
+    promoSuccessCard: "✅ Payment confirmed! Your purchase is complete.",
+    promoAlreadyPaidBtn: "✅ I already paid",
+    promoBackBtn: "Back",
+    promoInvalidValueCard: "Invalid value. Cannot process card payment.",
+    promoErrorCheckout: "Error creating checkout. Try again.",
   },
 
   es: {
@@ -612,6 +660,7 @@ export const TRANSLATIONS = {
 
     // ── Navbar ────────────────────────────────────────────────────────────────
     logoutBtn: "Cerrar sesión",
+    allRightsReserved: "Todos los derechos reservados",
 
     // ── ProductCard (customer area) ───────────────────────────────────────────
     enjoyMsg: "¡Aquí tienes lo que compraste, disfrútalo!",
@@ -642,5 +691,28 @@ export const TRANSLATIONS = {
     pixCopiedFallback: "No se pudo copiar automáticamente.",
     pixExpiredMsg: "⚠️ PIX cancelado o expirado.",
     economyLabel: "ahorro",
+    preparingPixInfo: "Estamos preparando el PIX para que lo copies o escanees.",
+    takesFewSeconds: "Esto suele tardar solo unos segundos.",
+
+    // ── PromoModal (upsell) ───────────────────────────────────────────────────
+    promoTitle25: "🔥 Oferta Exclusiva — ¡Solo Ahora!",
+    promoTitle50: "⚠️ ¡Último Aviso!",
+    promoSubtitle25: "Esta promoción expira quando cierres esta ventana.",
+    promoSubtitle50: "Esta es tu última oportunidad. La oferta desaparece cuando haces clic en \"No la quiero\".",
+    promoText25_1: "Detectamos que aún no tienes este/os producto/s de la tienda. Desbloquéalos ahora con ",
+    promoText25_2: " de descuento!",
+    promoText50_1: "Ok, entendemos que ese valor aún era demasiado. ¿Qué tal si te llevas todo por solo ",
+    promoText50_2: " — esta es nuestra oferta final con ",
+    promoText50_3: " de desconto?",
+    promoCta25: "¡Quero {discount} de descuento ahora!",
+    promoCta50: "Aceptar {discount} de descuento",
+    promoDecline25: "Voy a perder esta oportunidad",
+    promoDecline50: "No, de todas formas quiero perderlo",
+    promoTotalWithDiscount: "Total con descuento",
+    promoSuccessCard: "✅ ¡Pago confirmado! Tu compra ha sido completada.",
+    promoAlreadyPaidBtn: "✅ Ya pagué",
+    promoBackBtn: "Volver",
+    promoInvalidValueCard: "Valor inválido. No se puede procesar el pago con tarjeta.",
+    promoErrorCheckout: "Error al crear checkout. Inténtalo de nuevo.",
   },
 };

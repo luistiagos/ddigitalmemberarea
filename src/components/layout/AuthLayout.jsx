@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '@/services/api';
 import { getPersistedStoreId } from '@/utils/auth';
+import { useLang } from '@/hooks/useLang';
 
 /**
  * Ícone gamepad FA solid com gradiente ciano→pink (igual ao site original)
@@ -34,6 +35,7 @@ function LogoIcon() {
  * Exibe o logo, título e subtítulo sobre um card estilizado.
  */
 export function AuthLayout({ title, subtitle, children }) {
+  const { t } = useLang();
   const [searchParams] = useSearchParams();
   const [storeName, setStoreName] = useState(() => {
     const rawStoreId = searchParams.get('store_id') || searchParams.get('storeid');
@@ -136,7 +138,7 @@ export function AuthLayout({ title, subtitle, children }) {
 
         {/* Rodapé */}
         <p className="mt-6 text-center text-xs text-gray-600">
-          © {new Date().getFullYear()} {storeName} · Todos os direitos reservados
+          © {new Date().getFullYear()} {storeName} · {t.allRightsReserved}
         </p>
       </div>
     </div>

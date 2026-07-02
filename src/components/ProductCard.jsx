@@ -3,12 +3,14 @@ import { createPortal } from 'react-dom';
 import { Gamepad2, ExternalLink, Lock, Loader2, X, CreditCard, QrCode, Wallet } from 'lucide-react';
 import CardModal from '@/components/ui/CardModal';
 import api from '@/services/api';
+import { TRANSLATIONS } from '@/pages/translations';
 
 const CUSTOMER_AREA_REFRESH_KEY = 'customerAreaNeedsRefresh';
 const MP_PUBLIC_KEY = 'APP_USR-747cf787-a851-4ed5-971c-62041281ed91';
 
-function formatBRL(val) {
-  return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+function formatBRL(val, lang = 'ptbr') {
+  const locale = lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'pt-BR';
+  return Number(val).toLocaleString(locale, { style: 'currency', currency: 'BRL' });
 }
 
 /**
@@ -18,7 +20,8 @@ function formatBRL(val) {
  *
  * @param {{ product, userEmail, storeId, onPaymentFlowClosed }}
  */
-export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }) {
+export function ProductCard({ product, userEmail, storeId, lang, onPaymentFlowClosed }) {
+  const t = TRANSLATIONS[lang] || TRANSLATIONS['ptbr'];
   const { productid, title, image, owned, price, relprice, description, deliverlink } = product;
   const displayPrice = price != null ? Number(price) : null;
   const [buying, setBuying] = useState(false);
@@ -68,7 +71,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
     // 'no_payment_method_for_provided_bin' for every BIN when amount is 0.
     if (!displayPrice || displayPrice <= 0) {
       const el = document.getElementById(containerId);
-      if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">Preço inválido. Não é possível processar o pagamento com cartão.</p>';
+      if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.invalidPriceError}</p>`;
       return;
     }
 
@@ -112,7 +115,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
                   setCardStatusMsg(data.error);
                 } else if (data.status === 'approved') {
                   setCardStatus('success');
-                  setCardStatusMsg('\u2705 Pagamento aprovado!');
+                  setCardStatusMsg(t.paymentApprovedMsg);
                   if (mpBricksCtrl.current) {
                     try { mpBricksCtrl.current.unmount(); } catch (_) {}
                     mpBricksCtrl.current = null;
@@ -123,15 +126,15 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
                   }, 2000);
                 } else if (data.status === 'in_process' || data.status === 'pending') {
                   setCardStatus('pending');
-                  setCardStatusMsg('\u23f3 Pagamento em an\u00e1lise. Voc\u00ea receber\u00e1 um e-mail de confirma\u00e7\u00e3o em breve.');
+                  setCardStatusMsg(t.paymentPendingMsg);
                   setTimeout(() => { setCardModalOpen(false); onPaymentFlowClosed?.(); }, 3000);
                 } else {
                   setCardStatus('error');
-                  setCardStatusMsg(`Pagamento n\u00e3o aprovado (${data.status_detail || data.status}). Verifique os dados e tente novamente.`);
+                  setCardStatusMsg(`${t.paymentDeclinedMsg} (${data.status_detail || data.status})`);
                 }
               } catch {
                 setCardStatus('error');
-                setCardStatusMsg('Erro ao processar pagamento. Tente novamente.');
+                setCardStatusMsg(t.paymentErrMsg);
               }
             },
             onError: (err) => {
@@ -140,7 +143,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
               // Only surface critical errors — non_critical fires during BIN typing and is expected
               if (err?.type !== 'non_critical') {
                 setCardStatus('error');
-                setCardStatusMsg('Erro no formulário de cartão. Tente novamente ou use outra forma de pagamento.');
+                setCardStatusMsg(t.cardFormErrMsg);
               }
             },
           },
@@ -148,7 +151,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
       } catch (e) {
         console.error('ProductCard initBrick error:', e);
         const el = document.getElementById(containerId);
-        if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">Erro ao carregar formul\u00e1rio. Use PIX ou Mercado Pago.</p>';
+        if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.cardFormLoadError}</p>`;
       }
     }
 
@@ -160,7 +163,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
       script.onload = initBrick;
       script.onerror = () => {
         const el = document.getElementById(containerId);
-        if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">N\u00e3o foi poss\u00edvel carregar o formul\u00e1rio. Use PIX ou Mercado Pago.</p>';
+        if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.cardFormLoadError}</p>`;
       };
       document.head.appendChild(script);
     }
@@ -207,7 +210,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
     setBuyError(null);
     setPaymentModalOpen(true);
     setPaymentModalLoading(true);
-    setPaymentActionLabel('Preparando formas de pagamento...');
+    setPaymentActionLabel(t.preparingPayments);
 
     ensureCheckoutLink()
       .catch(() => {
@@ -223,7 +226,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
     setBuying(true);
     setBuyError(null);
     setPaymentModalLoading(true);
-    setPaymentActionLabel('Redirecionando para o Mercado Pago...');
+    setPaymentActionLabel(t.redirectingToMP);
     try {
       const checkoutUrl = await ensureCheckoutLink();
       if (checkoutUrl) {
@@ -232,11 +235,11 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
         window.location.href = checkoutUrl;
       } else {
         checkoutUrlRef.current = null;
-        setBuyError('Não foi possível gerar o link. Tente novamente.');
+        setBuyError(t.noLinkError);
       }
     } catch {
       checkoutUrlRef.current = null;
-      setBuyError('Erro ao processar. Tente novamente.');
+      setBuyError(t.processError);
     } finally {
       setPaymentModalLoading(false);
       setPaymentActionLabel('');
@@ -259,12 +262,12 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
     setBuyError(null);
     setPixCopyMsg('');
     setPaymentModalLoading(true);
-    setPaymentActionLabel('Gerando QR Code PIX...');
+    setPaymentActionLabel(t.generatingQRCode);
     try {
       const body = { sids: getSids(), email: userEmail, storeid: storeId };
       const res = await api.post('/create_pix_payment', body);
       if (res.data?.error) {
-        setBuyError(res.data.error || 'Erro ao gerar PIX.');
+        setBuyError(res.data.error || t.pixGenError);
       } else if (res.data?.qr_code) {
         setPaymentModalOpen(false);
         setPixData(res.data);
@@ -278,23 +281,23 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
               const d = statusRes.data;
               if (d.status === 'approved') {
                 clearPixPolling();
-                setPixCopyMsg('✅ Pagamento confirmado!');
+                setPixCopyMsg(t.paymentApprovedMsg);
                 setTimeout(() => {
                   setPixModalOpen(false);
                   onPaymentFlowClosed?.();
                 }, 2500);
               } else if (['rejected', 'cancelled', 'expired'].includes(d.status)) {
                 clearPixPolling();
-                setPixCopyMsg('⚠️ PIX cancelado ou expirado.');
+                setPixCopyMsg(t.pixExpiredMsg);
               }
             } catch (err) { /* silent */ }
           }, 5000);
         }
       } else {
-        setBuyError('Não foi possível gerar o PIX. Tente novamente.');
+        setBuyError(t.pixUnavailable);
       }
     } catch {
-      setBuyError('Erro ao gerar PIX. Tente novamente.');
+      setBuyError(t.pixGenError);
     } finally {
       setPaymentModalLoading(false);
       setPaymentActionLabel('');
@@ -306,9 +309,9 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
     if (!pixData?.qr_code) return;
     try {
       await navigator.clipboard.writeText(pixData.qr_code);
-      setPixCopyMsg('Código PIX copiado!');
+      setPixCopyMsg(t.pixCopiedMsg);
     } catch {
-      setPixCopyMsg('Não foi possível copiar automaticamente.');
+      setPixCopyMsg(t.pixCopiedFallback);
     }
   };
 
@@ -348,7 +351,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
           <h2 className="font-semibold text-white text-sm leading-tight line-clamp-2">{title}</h2>
 
           {/* Tagline */}
-          <p className="text-xs text-gray-400">Aqui está o que você comprou, divirta-se!</p>
+          <p className="text-xs text-gray-400">{t.enjoyMsg}</p>
 
           {/* Botão Acessar */}
           <div className="mt-auto">
@@ -360,10 +363,10 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
                 className="inline-flex items-center gap-2 justify-center rounded-lg bg-green-500 hover:bg-green-400 active:bg-green-600 text-white font-semibold text-sm py-2.5 px-6 transition-colors w-full"
               >
                 <ExternalLink className="h-4 w-4" />
-                Acessar
+                {t.accessBtn}
               </a>
             ) : (
-              <span className="text-xs text-gray-600 italic">Link de acesso indisponível</span>
+              <span className="text-xs text-gray-600 italic">{t.noAccessLink}</span>
             )}
           </div>
         </div>
@@ -414,12 +417,12 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
           {displayPrice != null && (
             <div className="flex items-baseline gap-2 flex-wrap mt-auto">
               {displayRelPrice && displayRelPrice > displayPrice && (
-                <span className="text-xs text-gray-500 line-through">{formatBRL(displayRelPrice)}</span>
+                <span className="text-xs text-gray-500 line-through">{formatBRL(displayRelPrice, lang)}</span>
               )}
-              <span className="text-base font-bold text-white">{formatBRL(displayPrice)}</span>
+              <span className="text-base font-bold text-white">{formatBRL(displayPrice, lang)}</span>
               {discount && (
                 <span className="text-xs text-green-400 font-medium">
-                  economia {formatBRL(displayRelPrice - displayPrice)}
+                  {t.economyLabel} {formatBRL(displayRelPrice - displayPrice, lang)}
                 </span>
               )}
             </div>
@@ -434,7 +437,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
             {buying
               ? <Loader2 className="h-4 w-4 animate-spin" />
               : <Lock className="h-4 w-4" />}
-            {buying ? 'Aguarde...' : 'Pagar'}
+            {buying ? t.waitBtn : t.payBtn}
           </button>
           {buyError && (
             <p className="text-xs text-red-400 text-center mt-1">{buyError}</p>
@@ -446,7 +449,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
           <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
-              <h3 className="text-white font-semibold">Escolha como pagar</h3>
+              <h3 className="text-white font-semibold">{t.choosePayment}</h3>
               <button onClick={() => closePaymentModal()} disabled={paymentModalLoading || buying} className="text-gray-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">
                 <X className="h-5 w-5" />
               </button>
@@ -456,11 +459,11 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
               {paymentModalLoading ? (
                 <div className="flex flex-col items-center justify-center rounded-xl border border-gray-700 bg-gray-900/60 px-4 py-8 text-center">
                   <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
-                  <p className="mt-4 text-sm font-medium text-white">{paymentActionLabel || 'Preparando pagamento...'}</p>
+                  <p className="mt-4 text-sm font-medium text-white">{paymentActionLabel || t.preparingPayments}</p>
                   <p className="mt-1 text-xs text-gray-400">
-                    {paymentActionLabel === 'Gerando QR Code PIX...'
-                      ? 'Estamos preparando o PIX para voce copiar ou escanear.'
-                      : 'Isso costuma levar apenas alguns segundos.'}
+                    {paymentActionLabel === t.generatingQRCode
+                      ? t.preparingPixInfo
+                      : t.takesFewSeconds}
                   </p>
                 </div>
               ) : (
@@ -471,7 +474,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
                     className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
                   >
                     <Wallet className="h-4 w-4" />
-                    Link Mercado Pago
+                    {t.mpLinkBtn}
                   </button>
 
                   <button
@@ -480,7 +483,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
                     className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
                   >
                     <QrCode className="h-4 w-4" />
-                    PIX
+                    {t.pixBtn}
                   </button>
 
                   <button
@@ -489,7 +492,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
                     className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
                   >
                     <CreditCard className="h-4 w-4" />
-                    Cartão
+                    {t.cardBtn}
                   </button>
                 </>
               )}
@@ -513,7 +516,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-gray-900 font-semibold">Pagar com PIX</h3>
+              <h3 className="text-gray-900 font-semibold">{t.payWithPixTitle}</h3>
               <button onClick={closePixModal} className="text-gray-500 hover:text-gray-700">
                 <X className="h-5 w-5" />
               </button>
@@ -528,7 +531,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
             )}
 
             {pixData.amount != null && (
-              <p className="text-center text-gray-900 font-bold text-lg mt-3">{formatBRL(pixData.amount)}</p>
+              <p className="text-center text-gray-900 font-bold text-lg mt-3">{formatBRL(pixData.amount, lang)}</p>
             )}
 
             <p className="text-[11px] text-gray-600 mt-3 break-all bg-gray-100 rounded-lg p-2.5">
@@ -539,7 +542,7 @@ export function ProductCard({ product, userEmail, storeId, onPaymentFlowClosed }
               onClick={copyPixCode}
               className="mt-3 w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-semibold text-sm py-2.5"
             >
-              Copiar código PIX
+              {t.copyPixBtn}
             </button>
             {pixCopyMsg && <p className="text-xs text-center text-gray-600 mt-2">{pixCopyMsg}</p>}
           </div>

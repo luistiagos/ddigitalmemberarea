@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { CreditCard, Loader2, QrCode, Wallet } from 'lucide-react';
 import CardModal from '@/components/ui/CardModal';
 import api from '@/services/api';
+import { TRANSLATIONS } from '@/pages/translations';
 
 const MP_PUBLIC_KEY = 'APP_USR-747cf787-a851-4ed5-971c-62041281ed91';
 
@@ -16,7 +17,8 @@ const MP_PUBLIC_KEY = 'APP_USR-747cf787-a851-4ed5-971c-62041281ed91';
  *   onClose    — called when the user rejects both offers
  *   onAccepted — called with the checkout URL after a successful promo checkout
  */
-export default function PromoModal({ products, storeId = null, onClose, onPaymentComplete, onAccepted, onShown }) {
+export default function PromoModal({ products, storeId = null, lang, onClose, onPaymentComplete, onAccepted, onShown }) {
+  const t = TRANSLATIONS[lang] || TRANSLATIONS['ptbr'];
   const [step, setStep]             = useState('25');
   const [loading, setLoading]       = useState(false);
   const [loadingLabel, setLoadingLabel] = useState('');
@@ -75,7 +77,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
     // 'no_payment_method_for_provided_bin' for every BIN when amount is 0.
     if (!totalShown || totalShown <= 0) {
       const el = document.getElementById('promo-card-brick-container');
-      if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">Valor inválido. Não é possível processar o pagamento com cartão.</p>';
+      if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.promoInvalidValueCard}</p>`;
       return;
     }
 
@@ -84,7 +86,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
       if (!container) return;
       container.innerHTML = '';
       try {
-        const mp = new window.MercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });
+        const mp = new window.MercadoPago(MP_PUBLIC_KEY, { locale: lang === 'es' ? 'es' : lang === 'en' ? 'en' : 'pt-BR' });
         console.log('[PromoCardBrick] Initializing with amount:', totalShown, 'step:', step);
         mp.bricks().create('cardPayment', 'promo-card-brick-container', {
           initialization: { amount: totalShown },
@@ -98,7 +100,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
             onReady: () => { console.log('[PromoCardBrick] Ready'); },
             onSubmit: async (cardData) => {
               setLoading(true);
-              setLoadingLabel('Processando pagamento...');
+              setLoadingLabel(t.cardProcessing);
               setCardStatus('');
               setCardStatusMsg('');
               try {
@@ -120,7 +122,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
                   setCardStatusMsg(data.error);
                 } else if (data.status === 'approved') {
                   setCardStatus('success');
-                  setCardStatusMsg('✅ Pagamento aprovado! Sua compra foi concluída.');
+                  setCardStatusMsg(t.promoSuccessCard);
                   if (mpBricksCtrl.current) {
                     try { mpBricksCtrl.current.unmount(); } catch (_) {}
                     mpBricksCtrl.current = null;
@@ -128,15 +130,15 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
                   setTimeout(() => (onPaymentComplete ?? onClose)(), 2500);
                 } else if (data.status === 'in_process' || data.status === 'pending') {
                   setCardStatus('pending');
-                  setCardStatusMsg('⏳ Pagamento em análise. Você receberá um e-mail de confirmação em breve.');
+                  setCardStatusMsg(t.paymentPendingMsg);
                   setTimeout(() => (onPaymentComplete ?? onClose)(), 3000);
                 } else {
                   setCardStatus('error');
-                  setCardStatusMsg(`Pagamento não aprovado (${data.status_detail || data.status}). Verifique os dados e tente novamente.`);
+                  setCardStatusMsg(`${t.paymentDeclinedMsg} (${data.status_detail || data.status})`);
                 }
               } catch {
                 setCardStatus('error');
-                setCardStatusMsg('Erro ao processar pagamento. Tente novamente.');
+                setCardStatusMsg(t.paymentErrMsg);
               } finally {
                 setLoading(false);
                 setLoadingLabel('');
@@ -148,7 +150,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
               // Only surface critical errors — non_critical fires during BIN typing and is expected
               if (err?.type !== 'non_critical') {
                 setCardStatus('error');
-                setCardStatusMsg('Erro no formulário de cartão. Tente novamente ou use outra forma de pagamento.');
+                setCardStatusMsg(t.cardFormErrMsg);
               }
             },
           },
@@ -156,7 +158,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
       } catch (e) {
         console.error('PromoModal initBrick error:', e);
         const el = document.getElementById('promo-card-brick-container');
-        if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">Erro ao carregar formulário. Use PIX ou Mercado Pago.</p>';
+        if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.cardFormLoadError}</p>`;
       }
     }
 
@@ -168,7 +170,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
       script.onload = initBrick;
       script.onerror = () => {
         const el = document.getElementById('promo-card-brick-container');
-        if (el) el.innerHTML = '<p style="color:#f87171;text-align:center;padding:20px">Não foi possível carregar o formulário. Use PIX ou Mercado Pago.</p>';
+        if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.cardFormLoadError}</p>`;
       };
       document.head.appendChild(script);
     }
@@ -182,10 +184,12 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentStep, totalShown]);
 
-  const fmt = (v) =>
-    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const fmt = (v) => {
+    const locale = lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'pt-BR';
+    return v.toLocaleString(locale, { style: 'currency', currency: 'BRL' });
+  };
 
-  async function handleMercadoPago(discountPct, label = 'Gerando link de pagamento...') {
+  async function handleMercadoPago(discountPct, label = t.redirectingToMP) {
     setLoading(true);
     setLoadingLabel(label);
     setError('');
@@ -196,10 +200,10 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
       if (data.checkout_url) {
         onAccepted(data.checkout_url);
       } else {
-        setError('Não foi possível gerar o link. Tente novamente.');
+        setError(t.noLinkError);
       }
     } catch {
-      setError('Erro ao criar checkout. Tente novamente.');
+      setError(t.promoErrorCheckout);
     } finally {
       setLoading(false);
       setLoadingLabel('');
@@ -208,7 +212,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
 
   async function handlePix(discountPct) {
     setLoading(true);
-    setLoadingLabel('Gerando QR Code PIX...');
+    setLoadingLabel(t.generatingQRCode);
     setError('');
     setPixCopyMsg('');
     try {
@@ -229,7 +233,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
               const d = statusRes.data;
               if (d.status === 'approved') {
                 clearPixPolling();
-                setPixCopyMsg('✅ Pagamento confirmado!');
+                setPixCopyMsg(t.paymentApprovedMsg);
                 setTimeout(() => {
                   if (onPaymentComplete) {
                     onPaymentComplete();
@@ -239,16 +243,16 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
                 }, 2500);
               } else if (['rejected', 'cancelled', 'expired'].includes(d.status)) {
                 clearPixPolling();
-                setPixCopyMsg('⚠️ PIX cancelado ou expirado.');
+                setPixCopyMsg(t.pixExpiredMsg);
               }
             } catch (err) { /* silent */ }
           }, 5000);
         }
       } else {
-        setError('Não foi possível gerar o PIX. Tente novamente.');
+        setError(t.pixUnavailable);
       }
     } catch {
-      setError('Erro ao criar pagamento PIX. Tente novamente.');
+      setError(t.pixGenError);
     } finally {
       setLoading(false);
       setLoadingLabel('');
@@ -259,9 +263,9 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
     if (!pixData?.qr_code) return;
     try {
       await navigator.clipboard.writeText(pixData.qr_code);
-      setPixCopyMsg('Código PIX copiado!');
+      setPixCopyMsg(t.pixCopiedMsg);
     } catch {
-      setPixCopyMsg('Não foi possível copiar automaticamente.');
+      setPixCopyMsg(t.pixCopiedFallback);
     }
   }
 
@@ -285,12 +289,12 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
             {loading ? (
               <div className="flex flex-col items-center justify-center py-8 gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
-                <p className="text-sm font-medium text-white">{loadingLabel || 'Processando...'}</p>
+                <p className="text-sm font-medium text-white">{loadingLabel || t.waitBtn}</p>
               </div>
             ) : paymentStep === 'pix' && pixData ? (
               /* PIX QR Code */
               <div className="flex flex-col items-center gap-3">
-                <p className="text-sm font-semibold text-white">Pagar com PIX</p>
+                <p className="text-sm font-semibold text-white">{t.payWithPixTitle}</p>
                 {pixData.qr_code_base64 && (
                   <img
                     src={pixData.qr_code_base64.startsWith('data:') ? pixData.qr_code_base64 : `data:image/png;base64,${pixData.qr_code_base64}`}
@@ -308,7 +312,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
                   onClick={copyPixCode}
                   className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-semibold text-sm transition-colors"
                 >
-                  Copiar código PIX
+                  {t.copyPixBtn}
                 </button>
                 {pixCopyMsg && (
                   <p className="text-xs text-center text-gray-400">{pixCopyMsg}</p>
@@ -317,13 +321,13 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
                   onClick={() => { clearPixPolling(); (onPaymentComplete ?? onClose)(); }}
                   className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-sm transition-colors"
                 >
-                  ✅ Já paguei
+                  {t.promoAlreadyPaidBtn}
                 </button>
                 <button
                   onClick={() => { clearPixPolling(); setPaymentStep('options'); setPixData(null); setChoosingMethod(true); }}
                   className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
                 >
-                  Voltar
+                  {t.promoBackBtn}
                 </button>
               </div>
             ) : paymentStep === 'card' ? null : (
@@ -331,7 +335,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
               <>
                 {/* Compact total */}
                 <div className="flex items-center justify-between bg-gray-800 rounded-xl px-4 py-3">
-                  <span className="text-gray-400 text-sm">Total com desconto</span>
+                  <span className="text-gray-400 text-sm">{t.promoTotalWithDiscount}</span>
                   <div className="text-right">
                     <p className="text-xs text-gray-500 line-through">{fmt(totalFull)}</p>
                     <p className={`font-bold text-base ${is25 ? 'text-amber-400' : 'text-red-400'}`}>
@@ -342,7 +346,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
 
                 {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
-                <p className="text-center text-xs text-gray-400">Escolha como pagar</p>
+                <p className="text-center text-xs text-gray-400">{t.choosePayment}</p>
 
                 <div className="space-y-2">
                   <button
@@ -351,7 +355,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
                     className="w-full py-3 rounded-xl font-bold bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-gray-900 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     <Wallet className="h-4 w-4" />
-                    Link Mercado Pago
+                    {t.mpLinkBtn}
                   </button>
 
                   <button
@@ -360,7 +364,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
                     className="w-full py-3 rounded-xl font-bold bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-gray-900 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     <QrCode className="h-4 w-4" />
-                    PIX
+                    {t.pixBtn}
                   </button>
 
                   <button
@@ -369,14 +373,14 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
                     className="w-full py-3 rounded-xl font-bold bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     <CreditCard className="h-4 w-4" />
-                    Cartão
+                    {t.cardBtn}
                   </button>
 
                   <button
                     onClick={() => setChoosingMethod(false)}
                     className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
                   >
-                    Voltar
+                    {t.promoBackBtn}
                   </button>
                 </div>
               </>
@@ -389,22 +393,30 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
             {/* Title */}
             <div className="text-center space-y-1">
               <p className="text-2xl font-bold text-white">
-                {is25 ? '🔥 Oferta Exclusiva — Só Agora!' : '⚠️ Último Aviso!'}
+                {is25 ? t.promoTitle25 : t.promoTitle50}
               </p>
               <p className="text-sm text-gray-400">
-                {is25
-                  ? 'Esta promoção expira quando você fechar esta janela.'
-                  : 'Esta é sua última chance. A oferta desaparece quando você clicar em "Não quero".'}
+                {is25 ? t.promoSubtitle25 : t.promoSubtitle50}
               </p>
             </div>
 
             {/* FOMO body */}
             <p className="text-gray-300 text-sm leading-relaxed text-center">
-              {is25
-                ? `Detectamos que você ainda não possui ${products.length > 1 ? `${products.length} produto(s)` : 'este produto'} da loja. Desbloqueie agora com `
-                : `Ok, entendemos que ${fmt(total25)} ainda era muito. Que tal levar tudo por apenas `}
-              <span className={`font-bold ${is25 ? 'text-amber-400' : 'text-red-400'}`}>{fmt(totalShown)}</span>
-              {is25 ? ` (${discountLabel} de desconto)!` : ` — ${discountLabel} de desconto? Essa é a nossa oferta final.`}
+              {is25 ? (
+                <>
+                  {t.promoText25_1}
+                  <span className="font-bold text-amber-400">{fmt(totalShown)}</span>
+                  {` (${discountLabel}${t.promoText25_2})`}
+                </>
+              ) : (
+                <>
+                  {t.promoText50_1}
+                  <span className="font-bold text-red-400">{fmt(totalShown)}</span>
+                  {t.promoText50_2}
+                  <span className="font-bold text-red-400">{discountLabel}</span>
+                  {t.promoText50_3}
+                </>
+              )}
             </p>
 
             {/* Product list */}
@@ -435,7 +447,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
 
             {/* Total */}
             <div className="flex justify-between items-center bg-gray-800 rounded-xl px-4 py-3">
-              <span className="text-gray-400 text-sm">Total com desconto</span>
+              <span className="text-gray-400 text-sm">{t.promoTotalWithDiscount}</span>
               <div className="text-right">
                 <p className="text-xs text-gray-500 line-through">{fmt(totalFull)}</p>
                 <p className={`font-bold text-lg ${is25 ? 'text-amber-400' : 'text-red-400'}`}>
@@ -453,14 +465,16 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
                     ? 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600'
                     : 'bg-red-500 hover:bg-red-400 active:bg-red-600'}`}
               >
-                {is25 ? `🚀 Quero ${discountLabel} de desconto agora!` : `✅ Aceitar ${discountLabel} de desconto`}
+                {is25
+                  ? `🚀 ${t.promoCta25.replace('{discount}', discountLabel)}`
+                  : `✅ ${t.promoCta50.replace('{discount}', discountLabel)}`}
               </button>
 
               <button
                 onClick={() => (is25 ? setStep('50') : onClose())}
                 className="w-full py-2 rounded-xl text-sm text-gray-500 hover:text-gray-300 transition-colors"
               >
-                {is25 ? 'Vou perder essa oportunidade' : 'Não, quero mesmo assim perder'}
+                {is25 ? t.promoDecline25 : t.promoDecline50}
               </button>
             </div>
 
@@ -485,7 +499,7 @@ export default function PromoModal({ products, storeId = null, onClose, onPaymen
             onClick={() => { setPaymentStep('options'); setChoosingMethod(true); }}
             className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
           >
-            Voltar
+            {t.promoBackBtn}
           </button>
         ) : null
       }
