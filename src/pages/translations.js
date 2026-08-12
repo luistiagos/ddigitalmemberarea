@@ -155,6 +155,8 @@ export const TRANSLATIONS = {
     newPasswordSubtitle: "Crie uma nova senha para sua conta",
     passwordReset: "Senha redefinida! Redirecionando para o login...",
     saveNewPassword: "Salvar nova senha",
+    resetPasswordError: "Erro ao redefinir senha. Tente novamente.",
+    connectionError: "Não conseguimos falar com o servidor. Verifique sua conexão e tente novamente.",
 
     // ── CustomerArea ──────────────────────────────────────────────────────────
     myProductsTitle: "Meus Produtos",
@@ -394,6 +396,8 @@ export const TRANSLATIONS = {
     newPasswordSubtitle: "Create a new password for your account",
     passwordReset: "Password reset! Redirecting to login...",
     saveNewPassword: "Save new password",
+    resetPasswordError: "Error resetting password. Please try again.",
+    connectionError: "We couldn't reach the server. Check your connection and try again.",
 
     // ── CustomerArea ──────────────────────────────────────────────────────────
     myProductsTitle: "My Products",
@@ -633,6 +637,8 @@ export const TRANSLATIONS = {
     newPasswordSubtitle: "Crea una nueva contraseña para tu cuenta",
     passwordReset: "¡Contraseña restablecida! Redirigiendo al inicio de sesión...",
     saveNewPassword: "Guardar nueva contraseña",
+    resetPasswordError: "Error al restablecer la contraseña. Inténtalo de nuevo.",
+    connectionError: "No pudimos conectar con el servidor. Verifica tu conexión e inténtalo de nuevo.",
 
     // ── CustomerArea ──────────────────────────────────────────────────────────
     myProductsTitle: "Mis Productos",

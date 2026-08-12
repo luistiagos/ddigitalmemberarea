@@ -76,7 +76,10 @@ export function ResetPassword() {
         setTimeout(() => navigate(`/login${email ? `?email=${encodeURIComponent(email)}${storeParam}${langParam}` : ''}`), 2000);
       }
     } catch (err) {
-      const userMessage = err.response?.data?.error || 'Erro ao redefinir senha. Tente novamente.';
+      // Sem `err.response` a requisição nem chegou ao servidor (rede/offline) —
+      // culpar o servidor manda o cliente tentar de novo pelo motivo errado.
+      const fallback = err.response ? t.resetPasswordError : t.connectionError;
+      const userMessage = err.response?.data?.error || fallback;
       setError(userMessage);
       const httpStatus = err.response?.status ?? 'no_response';
       const originalMsg = err.message || String(err);
