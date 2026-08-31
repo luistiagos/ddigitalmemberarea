@@ -36,8 +36,24 @@ export function useAuth() {
       if (effectiveStoreId != null) body.store_id = effectiveStoreId;
       const response = await api.post('/auth/login', body);
       if (response.data.success) {
-        const canonicalStoreId = response.data.user?.storeId ?? null;
-        storeUser(response.data.user, response.data.token);
+        let userData = response.data.user;
+        let canonicalStoreId = userData?.storeId ?? null;
+        storeUser(userData, response.data.token);
+
+        // Revalidate the login response against the current grants. This also
+        // protects clients while an older backend still echoes a stale store_id.
+        try {
+          const storesResponse = await api.get('/user/stores');
+          const currentStoreIds = (storesResponse.data || []).map((store) => Number(store.id));
+          if (!currentStoreIds.includes(Number(canonicalStoreId))) {
+            canonicalStoreId = currentStoreIds.length === 1 ? currentStoreIds[0] : null;
+            userData = { ...userData, storeId: canonicalStoreId };
+            storeUser(userData, response.data.token);
+          }
+        } catch {
+          // The backend login response remains the fallback if this check is unavailable.
+        }
+
         if (canonicalStoreId != null) {
           navigate(`/area-cliente?store_id=${canonicalStoreId}`);
         } else {
