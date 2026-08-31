@@ -97,9 +97,6 @@ export function SetPassword() {
       const response = await api.post('/auth/set-password', body);
       if (response.data.success) {
         const userData = response.data.user ?? { email, id: '' };
-        if (storeId != null && userData.storeId == null) {
-          userData.storeId = storeId;
-        }
         storeUser(userData, response.data.token ?? null);
         setSuccess(true);
         const langParam = lang !== 'ptbr' ? `?lang=${lang}` : '';

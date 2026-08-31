@@ -36,11 +36,12 @@ export function useAuth() {
       if (effectiveStoreId != null) body.store_id = effectiveStoreId;
       const response = await api.post('/auth/login', body);
       if (response.data.success) {
+        const canonicalStoreId = response.data.user?.storeId ?? null;
         storeUser(response.data.user, response.data.token);
-        if (effectiveStoreId != null) {
-          navigate(`/area-cliente?store_id=${effectiveStoreId}`);
+        if (canonicalStoreId != null) {
+          navigate(`/area-cliente?store_id=${canonicalStoreId}`);
         } else {
-          // No store_id available — let store selector resolve which store to show
+          // No unambiguous current store — let the selector resolve it.
           navigate('/selecionar-loja');
         }
       }

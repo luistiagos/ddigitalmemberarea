@@ -34,7 +34,12 @@ export function storeUser(user, token) {
   localStorage.setItem(USER_EMAIL_KEY, user.email);
   localStorage.setItem(USER_ID_KEY, String(user.id));
   if (token) localStorage.setItem(TOKEN_KEY, token);
-  if (user.storeId != null) localStorage.setItem(STORE_ID_KEY, String(user.storeId));
+  if (user.storeId != null) {
+    localStorage.setItem(STORE_ID_KEY, String(user.storeId));
+  } else {
+    // The server is authoritative. Do not let a stale store survive a package exchange.
+    localStorage.removeItem(STORE_ID_KEY);
+  }
 }
 
 /**
