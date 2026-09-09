@@ -96,3 +96,22 @@ export function isTokenExpired() {
 export function isAuthenticated() {
   return Boolean(localStorage.getItem(USER_EMAIL_KEY)) && !isTokenExpired();
 }
+
+/**
+ * O e-mail do link de acesso é o MESMO da sessão guardada?
+ *
+ * Tolera só o que não muda a identidade (espaço e caixa). Qualquer outra
+ * diferença é tratada como conta diferente de propósito: foi assim que um
+ * `localStorage` com `cliente@gmail.com.` sobreviveu à correção do cadastro no
+ * admin e continuou consultando pela grafia velha por até 30 dias — enquanto o
+ * link novo, com a grafia certa, era engolido pelo atalho da tela de login.
+ * Na dúvida, pedir a senha custa um login; manter a sessão errada custa o acesso.
+ *
+ * @param {string | null | undefined} email e-mail vindo do link
+ * @returns {boolean} false quando não há sessão ou quando as grafias divergem
+ */
+export function isSameStoredAccount(email) {
+  const guardado = localStorage.getItem(USER_EMAIL_KEY);
+  if (!guardado || !email) return false;
+  return guardado.trim().toLowerCase() === String(email).trim().toLowerCase();
+}

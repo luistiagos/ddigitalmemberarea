@@ -7,23 +7,36 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { useAuth } from '@/hooks/useAuth';
 import { useLang } from '@/hooks/useLang';
-import { isAuthenticated, persistStoreId } from '@/utils/auth';
+import { isAuthenticated, isSameStoredAccount, clearAuth, persistStoreId } from '@/utils/auth';
 
 export function Login() {
   const { login, loading, error, setError } = useAuth();
   const [searchParams] = useSearchParams();
   const { lang, t } = useLang();
-  const [email, setEmail] = useState(searchParams.get('email') || '');
+  const urlEmail = searchParams.get('email') || '';
+  const [email, setEmail] = useState(urlEmail);
   const [password, setPassword] = useState('');
   // Aceita tanto ?store_id= quanto ?storeid= (compatibilidade com links antigos)
   const rawStoreId = searchParams.get('store_id') || searchParams.get('storeid');
   const storeId = rawStoreId ? Number(rawStoreId) : null;
 
+  // O link de acesso aponta para OUTRA conta que a sessão guardada. Antes, o
+  // atalho abaixo mandava direto para /area-cliente e o `?email=` do link era
+  // descartado — então o link que o suporte manda para consertar um
+  // `localStorage` defasado não consertava nada, e o cliente seguia vendo
+  // "0 de N produtos adquiridos" pela grafia velha. O link manda: derruba a
+  // sessão e pede a senha.
+  const contaDivergente = isAuthenticated() && Boolean(urlEmail) && !isSameStoredAccount(urlEmail);
+
   useEffect(() => {
     if (storeId != null) persistStoreId(storeId);
   }, [storeId]);
 
-  if (isAuthenticated()) {
+  useEffect(() => {
+    if (contaDivergente) clearAuth();
+  }, [contaDivergente]);
+
+  if (isAuthenticated() && !contaDivergente) {
     const dest = storeId != null ? `/area-cliente?store_id=${storeId}` : '/area-cliente';
     return <Navigate to={dest} replace />;
   }
