@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { storeUser, clearAuth, getStoredUser, getPersistedStoreId, persistStoreId } from '@/utils/auth';
-import { logError } from '@/utils/logError';
+import { logApiError } from '@/utils/logError';
 
 /**
  * Hook de autenticação.
@@ -68,16 +68,7 @@ export function useAuth() {
       } else {
         const userMessage = err.response?.data?.error || 'Ocorreu um erro ao fazer login.';
         setError(userMessage);
-
-        // Erros de credencial inválida são erros do usuário, não do sistema — não logar
-        const isCredentialError = err.response?.status === 401;
-        if (!isCredentialError) {
-          // Monta mensagem de diagnóstico com contexto completo do erro
-          const httpStatus = err.response?.status ?? 'no_response';
-          const originalMsg = err.message || String(err);
-          const diagMessage = `[HTTP ${httpStatus}] ${originalMsg} | user_msg: ${userMessage}`;
-          logError('useAuth.js', 'login', diagMessage);
-        }
+        logApiError('useAuth.js', 'login', err, userMessage);
       }
     } finally {
       setLoading(false);

@@ -9,7 +9,7 @@ import { useLang } from '@/hooks/useLang';
 import api from '@/services/api';
 import { persistStoreId, isAuthenticated } from '@/utils/auth';
 import { calcStrength, STRENGTH_COLORS } from '@/utils/password';
-import { logError } from '@/utils/logError';
+import { logApiError } from '@/utils/logError';
 
 export function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -81,9 +81,7 @@ export function ResetPassword() {
       const fallback = err.response ? t.resetPasswordError : t.connectionError;
       const userMessage = err.response?.data?.error || fallback;
       setError(userMessage);
-      const httpStatus = err.response?.status ?? 'no_response';
-      const originalMsg = err.message || String(err);
-      logError('ResetPassword.jsx', 'handleSubmit', `[HTTP ${httpStatus}] ${originalMsg} | user_msg: ${userMessage}`);
+      logApiError('ResetPassword.jsx', 'handleSubmit', err, userMessage);
     } finally {
       setLoading(false);
     }

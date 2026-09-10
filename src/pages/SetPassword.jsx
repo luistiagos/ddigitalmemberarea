@@ -9,7 +9,7 @@ import { useLang } from '@/hooks/useLang';
 import api from '@/services/api';
 import { storeUser, persistStoreId, isAuthenticated } from '@/utils/auth';
 import { calcStrength, STRENGTH_COLORS } from '@/utils/password';
-import { logError } from '@/utils/logError';
+import { logApiError } from '@/utils/logError';
 
 export function SetPassword() {
   const [searchParams] = useSearchParams();
@@ -111,9 +111,7 @@ export function SetPassword() {
       }
       const userMessage = err.response?.data?.error || 'Erro ao definir senha. Tente novamente.';
       setError(userMessage);
-      const httpStatus = err.response?.status ?? 'no_response';
-      const originalMsg = err.message || String(err);
-      logError('SetPassword.jsx', 'handleSubmit', `[HTTP ${httpStatus}] ${originalMsg} | user_msg: ${userMessage}`);
+      logApiError('SetPassword.jsx', 'handleSubmit', err, userMessage);
     } finally {
       setLoading(false);
     }
