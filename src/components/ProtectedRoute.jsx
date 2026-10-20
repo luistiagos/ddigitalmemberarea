@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { isAuthenticated, clearAuth, getStoredUser, getPersistedStoreId } from '@/utils/auth';
+import { lerAtivacaoPendente } from '@/utils/ativacao';
 
 /**
  * Componente de rota protegida.
@@ -8,7 +9,9 @@ import { isAuthenticated, clearAuth, getStoredUser, getPersistedStoreId } from '
  * 1. Não autenticado → /login preservando query params (store_id segue junto).
  * 2. Autenticado + URL tem store_id diferente do JWT → logout + /login?store_id=
  *    (cada loja é independente — sem reuso de sessão entre lojas)
- * 3. Autenticado + rota /area-cliente sem store_id em lugar algum → /selecionar-loja
+ * 3. Autenticado + código de ativação do app pendente → /ativar?code=
+ *    (todo login termina aqui: senha, "Primeiro acesso" e reset; ver utils/ativacao.js)
+ * 4. Autenticado + rota /area-cliente sem store_id em lugar algum → /selecionar-loja
  *    (fallback extremo: usuário multi-loja sem referência de qual loja acessar)
  */
 export function ProtectedRoute({ children }) {
@@ -29,6 +32,12 @@ export function ProtectedRoute({ children }) {
   if (urlStoreId != null && sessionStoreId != null && sessionStoreId !== urlStoreId) {
     clearAuth();
     return <Navigate to={`/login${location.search}`} replace />;
+  }
+
+  // Logged in with an app activation waiting for it: back to /ativar (it clears the pending code).
+  const ativacaoPendente = lerAtivacaoPendente();
+  if (ativacaoPendente) {
+    return <Navigate to={`/ativar?code=${encodeURIComponent(ativacaoPendente)}`} replace />;
   }
 
   // Fallback: no store_id in URL and none in localStorage → store selector

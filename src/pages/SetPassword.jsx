@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, Navigate } from 'react-router-dom';
 import { Lock, Mail } from 'lucide-react';
 import { AuthLayout } from '@/components/layout/AuthLayout';
@@ -26,6 +26,11 @@ export function SetPassword() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [checkingEntry, setCheckingEntry] = useState(Boolean(email));
+  // O redirecionamento atrasado do sucesso morre com a página. Com a sessão gravada,
+  // o `isAuthenticated()` abaixo já navega na hora — e, com ativação do app pendente,
+  // o `ProtectedRoute` leva à /ativar; o timer vivo a arrancaria de lá 1,5 s depois.
+  const sucessoTimer = useRef(null);
+  useEffect(() => () => clearTimeout(sucessoTimer.current), []);
 
   useEffect(() => {
     if (storeId != null) persistStoreId(storeId);
@@ -100,7 +105,7 @@ export function SetPassword() {
         storeUser(userData, response.data.token ?? null);
         setSuccess(true);
         const langParam = lang !== 'ptbr' ? `?lang=${lang}` : '';
-        setTimeout(() => navigate(`/area-cliente${langParam}`), 1500);
+        sucessoTimer.current = setTimeout(() => navigate(`/area-cliente${langParam}`), 1500);
       }
     } catch (err) {
       if (err.response?.status === 409) {

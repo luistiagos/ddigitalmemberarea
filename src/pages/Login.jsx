@@ -8,6 +8,7 @@ import { Alert } from '@/components/ui/Alert';
 import { useAuth } from '@/hooks/useAuth';
 import { useLang } from '@/hooks/useLang';
 import { isAuthenticated, isSameStoredAccount, clearAuth, persistStoreId } from '@/utils/auth';
+import { lerAtivacaoPendente } from '@/utils/ativacao';
 
 export function Login() {
   const { login, loading, error, setError } = useAuth();
@@ -53,6 +54,9 @@ export function Login() {
   return (
     <AuthLayout title={t.loginTitle} subtitle={t.loginSubtitle}>
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        {/* Veio do QR do app (/ativar): diz por que pedimos o login. */}
+        {lerAtivacaoPendente() && <Alert variant="info" message={t.ativarLoginAviso} />}
+
         {error && (
           <Alert variant="error" message={error} onClose={() => setError(null)} />
         )}

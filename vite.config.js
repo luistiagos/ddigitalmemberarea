@@ -98,6 +98,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
       },
+      '/api': {
+        target: 'https://digitalstoregames.pythonanywhere.com',
+        changeOrigin: true,
+        secure: true,
+      },
     },
   },
 });

@@ -6,6 +6,7 @@ import { ResetPassword } from './pages/ResetPassword';
 import { CustomerArea } from './pages/CustomerArea';
 import { StoreSelector } from './pages/StoreSelector';
 import { CheckoutPage } from './pages/CheckoutPage';
+import { Ativar } from './pages/Ativar';
 import { PtBrAccess as PtBrAccessWorldCup } from './pages/access/worldcup/ptbr';
 import { PtBrAccess as PtBrAccessPapper } from './pages/access/pappersoccerplayers/ptbr';
 import { PtBrAccess as PtBrAccessTrofeu } from './pages/access/trofeu/ptbr';
@@ -26,6 +27,9 @@ function App() {
 
         {/* Global Public Checkout Page */}
         <Route path="/checkout" element={<CheckoutPage />} />
+
+        {/* Ativação do app pelo QR — trata o login ela mesma (guarda o código antes) */}
+        <Route path="/ativar" element={<Ativar />} />
 
         {/* Seletor de loja — fallback quando nenhum store_id disponível */}
         <Route
