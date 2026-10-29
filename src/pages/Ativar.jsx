@@ -38,7 +38,7 @@ function nomeDoDispositivo(dispositivo) {
 }
 
 function Conteudos({ conteudos, t }) {
-  const { estado, systems = [], slices = [], em_preparacao: emPreparacao = [] } = conteudos || {};
+  const { systems = [], slices = [] } = conteudos || {};
   const chips = (itens) => (
     <div className="flex flex-wrap gap-2">
       {itens.map((item) => (
@@ -51,9 +51,7 @@ function Conteudos({ conteudos, t }) {
 
   return (
     <div className="space-y-3 rounded-xl border border-gray-700/60 bg-gray-900/40 p-4 text-sm">
-      {estado === 'em_configuracao' ? (
-        <p className="text-gray-300">{t.ativarEmConfiguracao}</p>
-      ) : systems.length || slices.length ? (
+      {systems.length || slices.length ? (
         <>
           <p className="text-gray-300">{t.ativarConteudosTitulo}</p>
           {systems.length > 0 && (
@@ -71,14 +69,6 @@ function Conteudos({ conteudos, t }) {
         </>
       ) : (
         <p className="text-gray-300">{t.ativarSemConteudo}</p>
-      )}
-      {emPreparacao.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wide text-gray-500">{t.ativarEmPreparacao}</p>
-          <ul className="list-disc pl-5 text-gray-400">
-            {emPreparacao.map((p) => <li key={p.id}>{p.titulo}</li>)}
-          </ul>
-        </div>
       )}
     </div>
   );
