@@ -4,6 +4,7 @@ import { SetPassword } from './pages/SetPassword';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
 import { CustomerArea } from './pages/CustomerArea';
+import { AccessRedirect } from './pages/AccessRedirect';
 import { StoreSelector } from './pages/StoreSelector';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { Ativar } from './pages/Ativar';
@@ -47,6 +48,15 @@ function App() {
           element={
             <ProtectedRoute>
               <CustomerArea />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/acesso"
+          element={
+            <ProtectedRoute>
+              <AccessRedirect />
             </ProtectedRoute>
           }
         />

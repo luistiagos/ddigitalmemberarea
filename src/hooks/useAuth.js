@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
-import { storeUser, clearAuth, getStoredUser, getPersistedStoreId, persistStoreId } from '@/utils/auth';
+import { storeUser, clearAuth, getStoredUser, getPersistedStoreId, persistStoreId, getSafeRedirectUrl } from '@/utils/auth';
 import { logApiError } from '@/utils/logError';
 
 /**
@@ -21,7 +21,7 @@ export function useAuth() {
    * Em caso de sucesso, armazena dados e redireciona para /area-cliente.
    * Em caso de `needs_set_password`, redireciona para /criar-senha.
    */
-  const login = async (email, password, storeId = null) => {
+  const login = async (email, password, storeId = null, redirectUrl = null) => {
     setLoading(true);
     setError(null);
 
@@ -54,7 +54,19 @@ export function useAuth() {
           // The backend login response remains the fallback if this check is unavailable.
         }
 
-        if (canonicalStoreId != null) {
+                if (redirectUrl) {
+          const safeTarget = getSafeRedirectUrl(redirectUrl, response.data.token);
+          if (safeTarget) {
+            if (safeTarget.startsWith('http://') || safeTarget.startsWith('https://')) {
+              window.location.href = safeTarget;
+              return;
+            }
+            navigate(safeTarget);
+            return;
+          }
+        }
+
+if (canonicalStoreId != null) {
           navigate(`/area-cliente?store_id=${canonicalStoreId}`);
         } else {
           // No unambiguous current store — let the selector resolve it.

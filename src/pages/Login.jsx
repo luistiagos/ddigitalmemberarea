@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { useAuth } from '@/hooks/useAuth';
 import { useLang } from '@/hooks/useLang';
-import { isAuthenticated, isSameStoredAccount, clearAuth, persistStoreId } from '@/utils/auth';
+import { isAuthenticated, isSameStoredAccount, clearAuth, persistStoreId, getToken, getSafeRedirectUrl } from '@/utils/auth';
 import { lerAtivacaoPendente } from '@/utils/ativacao';
 
 export function Login() {
@@ -37,7 +37,20 @@ export function Login() {
     if (contaDivergente) clearAuth();
   }, [contaDivergente]);
 
+  const rawRedirect = searchParams.get('redirect') || searchParams.get('return_to');
+  const redirectUrl = rawRedirect ? decodeURIComponent(rawRedirect) : null;
+
   if (isAuthenticated() && !contaDivergente) {
+    if (redirectUrl) {
+      const safeTarget = getSafeRedirectUrl(redirectUrl, getToken());
+      if (safeTarget) {
+        if (safeTarget.startsWith('http://') || safeTarget.startsWith('https://')) {
+          window.location.href = safeTarget;
+          return null;
+        }
+        return <Navigate to={safeTarget} replace />;
+      }
+    }
     const dest = storeId != null ? `/area-cliente?store_id=${storeId}` : '/area-cliente';
     return <Navigate to={dest} replace />;
   }
@@ -45,7 +58,7 @@ export function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim() || !password) return;
-    await login(email.trim(), password, storeId);
+    await login(email.trim(), password, storeId, redirectUrl);
   };
 
   const langSuffix = lang !== 'ptbr' ? `&lang=${lang}` : '';

@@ -115,3 +115,44 @@ export function isSameStoredAccount(email) {
   if (!guardado || !email) return false;
   return guardado.trim().toLowerCase() === String(email).trim().toLowerCase();
 }
+
+/**
+ * Valida e formata uma URL de redirecionamento pos-login.
+ * Previne open-redirect aceitando apenas caminhos relativos ou dominios da organizacao (.digitalstoregames.com).
+ * Se a URL for externa autorizada e um token for fornecido, anexa o token na query string.
+ * @param {string | null | undefined} urlStr
+ * @param {string | null} [token]
+ * @returns {string | null}
+ */
+export function getSafeRedirectUrl(urlStr, token = null) {
+  if (!urlStr) return null;
+  const str = String(urlStr).trim();
+  if (!str) return null;
+
+  // Caminho relativo seguro (ex: /area-cliente, /acesso)
+  if (str.startsWith('/') && !str.startsWith('//') && !str.startsWith('/\\')) {
+    return str;
+  }
+
+  // URL absoluta (http/https)
+  try {
+    const parsed = new URL(str, window.location.origin);
+    const host = parsed.hostname.toLowerCase();
+    const isDsDomain =
+      host === 'digitalstoregames.com' ||
+      host.endsWith('.digitalstoregames.com') ||
+      host === 'localhost' ||
+      host === '127.0.0.1';
+
+    if (isDsDomain) {
+      if (token) {
+        parsed.searchParams.set('token', token);
+      }
+      return parsed.toString();
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
