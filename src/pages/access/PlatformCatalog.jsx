@@ -451,3 +451,4 @@ export function PlatformCatalog() {
     </div>
   );
 }
+

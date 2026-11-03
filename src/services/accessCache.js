@@ -117,3 +117,4 @@ export async function clearCachedCatalog(platformId) {
     // ignora
   }
 }
+

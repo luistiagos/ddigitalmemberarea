@@ -24,3 +24,4 @@ test('filterPlatformsByEntitlements - returns empty array if no systems or inval
   assert.deepEqual(filterPlatformsByEntitlements(ALL_PLATFORMS, []), []);
   assert.deepEqual(filterPlatformsByEntitlements(null, ['ps2']), []);
 });
+

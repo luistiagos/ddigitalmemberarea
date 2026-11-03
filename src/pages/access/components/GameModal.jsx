@@ -195,3 +195,4 @@ export function GameModal({ game, platform, onClose, onShowToast }) {
     </div>
   );
 }
+

@@ -153,3 +153,4 @@ export function GameCard({ game, platform, viewMode, onSelectGame }) {
     </div>
   );
 }
+
