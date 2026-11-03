@@ -156,6 +156,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 4.2;
+  min-height: 0;
   perspective: 1000px;
 }
 
@@ -163,6 +164,7 @@
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 0;
   border-radius: 0.5rem;
   overflow: hidden;
   background: #111827;
@@ -301,14 +303,18 @@
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
   background: #090d16;
 }
 
 .box-art-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
   transition: transform 0.3s ease;
 }
@@ -319,6 +325,8 @@
 
 /* Fallback de capa */
 .box-art-fallback {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: flex;

@@ -62,3 +62,25 @@ body {
   border-radius: 2px;
   transition: width 0.3s ease, background-color 0.3s ease;
 }
+
+/* =============================================
+   Garante fontes e icones 100% brancos em botoes e links verdes
+   ============================================= */
+a.bg-green-500,
+button.bg-green-500,
+a[class*="bg-green-"],
+button[class*="bg-green-"],
+.btn-green,
+.game-btn-download {
+  color: #ffffff !important;
+}
+
+a.bg-green-500 *,
+button.bg-green-500 *,
+a[class*="bg-green-"] *,
+button[class*="bg-green-"] *,
+.btn-green *,
+.game-btn-download * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}

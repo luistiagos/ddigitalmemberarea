@@ -13,6 +13,8 @@ function formatBRL(val, lang = 'ptbr') {
   return Number(val).toLocaleString(locale, { style: 'currency', currency: 'BRL' });
 }
 
+import { getEffectiveProductImage } from '../utils/productImages.js';
+
 /**
  * Card de produto para a área do cliente.
  * - owned=true  → imagem + "Aqui está o que você comprou, divirta-se!" + botão verde Acessar
@@ -23,6 +25,13 @@ function formatBRL(val, lang = 'ptbr') {
 export function ProductCard({ product, userEmail, storeId, lang, onPaymentFlowClosed }) {
   const t = TRANSLATIONS[lang] || TRANSLATIONS['ptbr'];
   const { productid, title, image, owned, price, relprice, description, deliverlink } = product;
+  const effectiveImage = getEffectiveProductImage(title, image);
+  const [imgSrc, setImgSrc] = useState(effectiveImage);
+
+  useEffect(() => {
+    setImgSrc(effectiveImage);
+  }, [effectiveImage]);
+
   const displayPrice = price != null ? Number(price) : null;
   const [buying, setBuying] = useState(false);
   const [buyError, setBuyError] = useState(null);
@@ -339,9 +348,12 @@ export function ProductCard({ product, userEmail, storeId, lang, onPaymentFlowCl
       <article className="flex flex-col rounded-xl border border-gray-700/60 bg-gray-800/50 overflow-hidden animate-fade-in transition-all duration-200 hover:border-green-500/40 hover:shadow-lg hover:shadow-green-500/5">
         {/* Imagem full-width */}
         <div className="relative w-full h-44 bg-gray-900 overflow-hidden shrink-0">
-          {image
-            ? <img src={image} alt={title} className="w-full h-full object-cover" />
-            : <div className="w-full h-full flex items-center justify-center"><Gamepad2 className="h-16 w-16 text-gray-600" /></div>}
+          <img
+            src={imgSrc}
+            alt={title}
+            className="w-full h-full object-cover"
+            onError={() => setImgSrc('https://emulators.digitalstoregames.com/images/multigames.png')}
+          />
           <div className="absolute inset-0 bg-linear-to-t from-gray-900/70 via-transparent to-transparent" />
         </div>
 
@@ -360,10 +372,13 @@ export function ProductCard({ product, userEmail, storeId, lang, onPaymentFlowCl
                 href={deliverlink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 justify-center rounded-lg bg-green-500 hover:bg-green-400 active:bg-green-600 text-white font-semibold text-sm py-2.5 px-6 transition-colors w-full"
+                style={{ color: '#ffffff' }}
+                className="inline-flex items-center gap-2 justify-center rounded-lg bg-green-500 hover:bg-green-400 active:bg-green-600 !text-white text-white font-bold text-sm py-2.5 px-6 transition-colors w-full no-underline shadow-md"
               >
-                <ExternalLink className="h-4 w-4" />
-                {t.accessBtn}
+                <ExternalLink className="h-4 w-4 !text-white text-white shrink-0" style={{ stroke: '#ffffff', color: '#ffffff' }} />
+                <span className="!text-white text-white font-bold" style={{ color: '#ffffff' }}>
+                  {t.accessBtn}
+                </span>
               </a>
             ) : (
               <span className="text-xs text-gray-600 italic">{t.noAccessLink}</span>
@@ -386,9 +401,12 @@ export function ProductCard({ product, userEmail, storeId, lang, onPaymentFlowCl
       <article className="flex flex-col rounded-xl border border-gray-700/60 bg-gray-800/50 overflow-hidden animate-fade-in transition-all duration-200 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/5">
         {/* Imagem com overlay e cadeado */}
         <div className="relative w-full h-44 bg-gray-900 overflow-hidden shrink-0">
-          {image
-            ? <img src={image} alt={title} className="w-full h-full object-cover opacity-55" />
-            : <div className="w-full h-full flex items-center justify-center"><Gamepad2 className="h-16 w-16 text-gray-600" /></div>}
+          <img
+            src={imgSrc}
+            alt={title}
+            className="w-full h-full object-cover opacity-55"
+            onError={() => setImgSrc('https://emulators.digitalstoregames.com/images/multigames.png')}
+          />
           {/* Gradiente escuro na base */}
           <div className="absolute inset-0 bg-linear-to-t from-gray-900/70 via-transparent to-transparent" />
           {/* Cadeado central */}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Package, Gamepad2, Sparkles } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProductCard } from '@/components/ProductCard';
@@ -168,28 +168,6 @@ export function CustomerArea() {
 
       {!loading && !error && products.length > 0 && (
         <div className="space-y-10">
-          {/* Banner de Acesso ao Catalogo e Downloads */}
-          <div className="rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-950/60 via-indigo-950/40 to-gray-900 p-5 shadow-lg shadow-purple-950/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="h-12 w-12 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center shrink-0">
-                <Gamepad2 className="h-6 w-6 text-purple-400" />
-              </div>
-              <div>
-                <h3 className="font-bold text-white text-base">Acessar Catálogo &amp; Baixar ROMs</h3>
-                <p className="text-xs text-gray-300">
-                  Consulte os sistemas liberados na sua conta, visualize capinhas 3D e baixe seus jogos diretamente.
-                </p>
-              </div>
-            </div>
-            <Link
-              to="/acesso"
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs py-2.5 px-4 transition-all shadow-md shrink-0"
-            >
-              <Sparkles className="h-4 w-4" />
-              Abrir Catálogo de Downloads
-            </Link>
-          </div>
-
           {ownedProducts.length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">

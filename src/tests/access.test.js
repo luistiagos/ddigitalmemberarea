@@ -4,6 +4,7 @@ import { filterPlatformsByEntitlements } from '../services/accessService.js';
 import { getCachedCatalog, setCachedCatalog, CACHE_TTL_MS } from '../services/accessCache.js';
 import { ALL_PLATFORMS } from '../pages/access/data/platformsData.js';
 import { processAndGroupEntries } from '../pages/access/utils/catalogProcessor.js';
+import { getEffectiveProductImage } from '../utils/productImages.js';
 
 test('test_hub_renders_entitled_platforms', () => {
   const userSystems = ['atomiswave', 'ps2'];
@@ -134,4 +135,18 @@ test('test_unauthenticated_redirect', () => {
 
   assert.deepEqual(checkToken(null), { redirect: '/login' });
   assert.deepEqual(checkToken('valid-jwt-token'), { redirect: null });
+});
+
+test('test_effective_product_image_fallbacks', () => {
+  // Existing image should be preserved if not blank
+  assert.equal(getEffectiveProductImage('Sega Saturn', 'https://custom.com/saturn.jpg'), 'https://custom.com/saturn.jpg');
+  // Blank or null image should fallback based on title
+  assert.equal(getEffectiveProductImage('Sega Saturn', null), 'https://emulators.digitalstoregames.com/52emul/checkout2/images/saturnbox.webp');
+  assert.equal(getEffectiveProductImage('Sega Saturn', ''), 'https://emulators.digitalstoregames.com/52emul/checkout2/images/saturnbox.webp');
+  assert.equal(getEffectiveProductImage('Nintendo Switch Colecao', ''), 'https://emulators.digitalstoregames.com/52emul/checkout2/images/switchbox.webp');
+  assert.equal(getEffectiveProductImage('Xbox 360 Completo', null), 'https://emulators.digitalstoregames.com/52emul/checkout2/images/xbox360.webp');
+  assert.equal(getEffectiveProductImage('Xbox Classico', null), 'https://emulators.digitalstoregames.com/52emul/checkout2/images/xboxclassicbox.webp');
+  assert.equal(getEffectiveProductImage('PlayStation 2 Completo', null), 'https://emulators.digitalstoregames.com/ps2/checkout2/images/ps1ps3psp.webp');
+  assert.equal(getEffectiveProductImage('Super Nintendo SNES', null), 'https://emulators.digitalstoregames.com/ps2/checkout2/images/nintendocollection.webp');
+  assert.equal(getEffectiveProductImage('Pacote Desconhecido', null), 'https://emulators.digitalstoregames.com/images/multigames.png');
 });
