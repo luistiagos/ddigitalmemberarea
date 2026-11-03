@@ -167,13 +167,20 @@ export function PlatformCatalog() {
       result = result.filter((g) => g.regions.has('Japão'));
     }
 
-    // Ordenação
-    if (sortBy === 'az') {
-      return [...result].sort((a, b) => a.displayTitle.localeCompare(b.displayTitle, 'pt-BR'));
-    }
+    // Ordenação: Jogos com capa SEMPRE primeiro; sem capa SEMPRE por último
+    return [...result].sort((a, b) => {
+      const aHas = a.hasCover ? 1 : 0;
+      const bHas = b.hasCover ? 1 : 0;
+      if (bHas !== aHas) return bHas - aHas;
 
-    // 'popular': Preserva ordem padrão calculada pelo processAndGroupEntries
-    return result;
+      if (sortBy === 'popular') {
+        if (b.popularityScore !== a.popularityScore) {
+          return b.popularityScore - a.popularityScore;
+        }
+      }
+
+      return a.displayTitle.localeCompare(b.displayTitle, 'pt-BR');
+    });
   }, [groupedGames, searchQuery, selectedRegion, sortBy]);
 
   // Observer de Scroll Infinito

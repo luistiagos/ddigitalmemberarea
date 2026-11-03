@@ -30,6 +30,7 @@ export function GameCard({ game, platform, viewMode, onSelectGame }) {
               alt={game.displayTitle}
               className="game-list-thumb"
               loading="lazy"
+              referrerPolicy="no-referrer"
               onError={() => setImgError(true)}
             />
           ) : (
@@ -107,6 +108,7 @@ export function GameCard({ game, platform, viewMode, onSelectGame }) {
                 alt={game.displayTitle}
                 className="box-art-img"
                 loading="lazy"
+                referrerPolicy="no-referrer"
                 onError={() => setImgError(true)}
               />
             ) : (

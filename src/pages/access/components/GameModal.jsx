@@ -71,6 +71,7 @@ export function GameModal({ game, platform, onClose, onShowToast }) {
                 <img
                   src={game.coverUrl}
                   alt={game.displayTitle}
+                  referrerPolicy="no-referrer"
                   onError={() => setImgError(true)}
                 />
               ) : (

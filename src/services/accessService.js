@@ -40,7 +40,6 @@ export async function getPlatformManifest(mnemonic) {
     mnemonicos: [
       {
         name: mnemonic,
-        infos: ['image_url', 'cover2d_url', 'genre', 'players'],
       },
     ],
   };
