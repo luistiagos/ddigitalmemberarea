@@ -34,3 +34,4 @@ export function getEffectiveProductImage(title, image) {
   }
   return 'https://emulators.digitalstoregames.com/images/multigames.png';
 }
+

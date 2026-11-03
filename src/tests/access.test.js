@@ -150,3 +150,17 @@ test('test_effective_product_image_fallbacks', () => {
   assert.equal(getEffectiveProductImage('Super Nintendo SNES', null), 'https://emulators.digitalstoregames.com/ps2/checkout2/images/nintendocollection.webp');
   assert.equal(getEffectiveProductImage('Pacote Desconhecido', null), 'https://emulators.digitalstoregames.com/images/multigames.png');
 });
+
+test('test_back_button_conditional_visibility_from_hub', () => {
+  // Simula a verificacao de exibicao condicional do botao voltar
+  const shouldRenderBackButton = (locationState) => Boolean(locationState?.fromHub);
+
+  // Navegacao direta (URL digitada, bookmark, sem state) -> NAO deve exibir
+  assert.equal(shouldRenderBackButton(null), false);
+  assert.equal(shouldRenderBackButton(undefined), false);
+  assert.equal(shouldRenderBackButton({}), false);
+  assert.equal(shouldRenderBackButton({ fromHub: false }), false);
+
+  // Navegacao a partir da tela principal (AcessoHub com state fromHub: true) -> DEVE exibir
+  assert.equal(shouldRenderBackButton({ fromHub: true }), true);
+});

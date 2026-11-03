@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { Gamepad2, ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getUserEntitledSystems, getPlatformManifest } from '@/services/accessService';
@@ -15,6 +15,8 @@ const BATCH_SIZE = 48;
 
 export function PlatformCatalog() {
   const { platformId } = useParams();
+  const location = useLocation();
+  const fromHub = Boolean(location?.state?.fromHub);
   const { user } = useAuth();
 
   const [authLoading, setAuthLoading] = useState(true);
@@ -277,8 +279,18 @@ export function PlatformCatalog() {
       <header className="sticky top-0 z-30 bg-gray-950/85 backdrop-blur-md border-b border-gray-800/80">
         <div className="access-container flex items-center justify-between py-3.5 flex-wrap gap-4">
           <div className="flex items-center gap-3">
+            {fromHub && (
+              <Link
+                to="/acesso"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900/90 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 text-xs font-semibold text-white transition-all shadow-sm shrink-0 active:scale-95"
+                title="Voltar para a tela principal"
+              >
+                <ArrowLeft className="w-4 h-4 text-emerald-400" />
+                <span>Voltar</span>
+              </Link>
+            )}
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0"
               style={{
                 background: platform.accent || '#10b981',
                 boxShadow: `0 0 16px ${platform.accent || '#10b981'}44`,
@@ -302,13 +314,6 @@ export function PlatformCatalog() {
           </div>
 
           <div className="flex items-center gap-2.5">
-            <Link
-              to="/acesso"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-800 text-xs font-semibold text-gray-300 hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Meus Sistemas</span>
-            </Link>
             <Link
               to="/area-cliente"
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-800 text-xs font-semibold text-gray-300 hover:text-white transition-colors"

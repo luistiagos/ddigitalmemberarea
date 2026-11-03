@@ -243,6 +243,7 @@ export function AcessoHub() {
                     <Link
                       key={p.id}
                       to={`/acesso/${p.id}`}
+                      state={{ fromHub: true }}
                       className="hub-card"
                       style={{
                         '--card-accent': cardAccent,
