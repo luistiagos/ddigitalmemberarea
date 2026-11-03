@@ -199,7 +199,21 @@ export function processAndGroupEntries(rawEntries, platform) {
   for (let i = 0; i < processed.length; i++) {
     const entry = processed[i];
     const rawPath = entry.path || '';
-    const baseTitle = getBaseTitle(rawPath);
+    const rawStem = (rawPath.includes('/') || rawPath.includes('\\')
+      ? rawPath.substring(Math.max(rawPath.lastIndexOf('/'), rawPath.lastIndexOf('\\')) + 1)
+      : rawPath).replace(/\.[^/.]+$/, '').trim();
+
+    let baseTitle = getBaseTitle(rawPath);
+    if (entry.name && typeof entry.name === 'string') {
+      const cleanEntryName = entry.name.trim();
+      const isArcadeStem = /^[a-z0-9_]{1,10}$/i.test(rawStem) && !rawStem.includes(' ');
+      if (isArcadeStem && cleanEntryName.length > rawStem.length) {
+        baseTitle = cleanEntryName;
+      } else if (!baseTitle) {
+        baseTitle = cleanEntryName;
+      }
+    }
+
     const compKey = getComparisonKey(baseTitle) || rawPath.toLowerCase();
     const coverUrl = resolveCoverUrl(entry);
     const coverKey = getCoverKey(coverUrl);

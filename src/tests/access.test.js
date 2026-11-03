@@ -46,6 +46,43 @@ test('test_platform_catalog_loads_games', () => {
   assert.ok(games[0].versions[0].link.startsWith('https://'));
 });
 
+test('test_arcade_game_title_and_cover_resolution', () => {
+  const rawArcadeEntries = [
+    {
+      path: 'anmlbskt.zip',
+      name: 'Animal Basket',
+      cover2d_url: 'https://adb.arcadeitalia.net/?mame=anmlbskt&type=flyer&resize=0',
+      genre: 'Sports / Basketball',
+      size: '15.88 MiB',
+      link: 'https://archive.org/download/atomiswave/anmlbskt.zip'
+    },
+    {
+      path: '1941.zip',
+      name: '1941 - Counter Attack (World)',
+      cover2d_url: 'https://adb.arcadeitalia.net/?mame=1941&type=flyer&resize=0',
+      genre: 'Shooter / Flying Vertical',
+      size: '1.35 MiB',
+      link: 'https://archive.org/download/cps1/1941.zip'
+    }
+  ];
+  const platform = { id: 'cps1', mnemonic: 'cps1', name: 'Capcom Play System 1' };
+  const games = processAndGroupEntries(rawArcadeEntries, platform);
+
+  assert.equal(games.length, 2);
+  const game1 = games.find((g) => g.displayTitle.includes('1941'));
+  const game2 = games.find((g) => g.displayTitle.includes('Animal Basket'));
+
+  assert.ok(game1, 'Jogo 1941 deve ser encontrado com título humano');
+  assert.equal(game1.displayTitle, '1941 - Counter Attack (World)');
+  assert.equal(game1.coverUrl, 'https://adb.arcadeitalia.net/?mame=1941&type=flyer&resize=0');
+  assert.equal(game1.hasCover, true);
+
+  assert.ok(game2, 'Jogo Animal Basket deve ser encontrado com título humano');
+  assert.equal(game2.displayTitle, 'Animal Basket');
+  assert.equal(game2.coverUrl, 'https://adb.arcadeitalia.net/?mame=anmlbskt&type=flyer&resize=0');
+  assert.equal(game2.hasCover, true);
+});
+
 test('test_platform_catalog_unauthorized_guard', () => {
   const userSystems = ['ps2', 'wii'];
   const isAuthorized = (platformId, mnemonic) => {
