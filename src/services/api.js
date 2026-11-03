@@ -3,7 +3,7 @@ import axios from 'axios';
 // URL da API lida da variável de ambiente Vite.
 // Em dev, VITE_API_URL é vazio → baseURL fica '' → usa proxy do Vite (sem CORS)
 // Em prod, VITE_API_URL aponta direto para o backend
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || '';
 
 const api = axios.create({
   baseURL: BASE_URL,
