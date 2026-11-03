@@ -282,11 +282,12 @@ export function PlatformCatalog() {
             {fromHub && (
               <Link
                 to="/acesso"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900/90 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 text-xs font-semibold text-white transition-all shadow-sm shrink-0 active:scale-95"
+                style={{ color: '#ffffff' }}
+                className="btn-nav-header shrink-0 active:scale-95"
                 title="Voltar para a tela principal"
               >
                 <ArrowLeft className="w-4 h-4 text-emerald-400" />
-                <span>Voltar</span>
+                <span style={{ color: '#ffffff' }}>Voltar</span>
               </Link>
             )}
             <div
@@ -316,9 +317,10 @@ export function PlatformCatalog() {
           <div className="flex items-center gap-2.5">
             <Link
               to="/area-cliente"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-800 text-xs font-semibold text-gray-300 hover:text-white transition-colors"
+              style={{ color: '#ffffff' }}
+              className="btn-nav-header"
             >
-              <span>Área do Cliente</span>
+              <span style={{ color: '#ffffff' }}>Área do Cliente</span>
             </Link>
           </div>
         </div>

@@ -99,10 +99,11 @@ export function AcessoHub() {
             )}
             <Link
               to="/area-cliente"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-800 text-xs font-semibold text-gray-300 hover:text-white transition-colors"
+              style={{ color: '#ffffff' }}
+              className="btn-nav-header"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Área do Cliente</span>
+              <ArrowLeft className="w-3.5 h-3.5" style={{ color: '#ffffff', stroke: '#ffffff' }} />
+              <span style={{ color: '#ffffff' }}>Área do Cliente</span>
             </Link>
             <button
               onClick={logout}

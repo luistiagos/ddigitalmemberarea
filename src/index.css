@@ -84,3 +84,18 @@ button[class*="bg-green-"] *,
   color: #ffffff !important;
   stroke: #ffffff !important;
 }
+
+/* =============================================
+   Garante fontes 100% brancas em botoes de navegacao (Voltar e Area do Cliente)
+   ============================================= */
+.btn-nav-header,
+a[href*="/acesso"]:not(.hub-card),
+a[href*="/area-cliente"] {
+  color: #ffffff !important;
+}
+
+.btn-nav-header *,
+a[href*="/acesso"]:not(.hub-card) *,
+a[href*="/area-cliente"] * {
+  color: #ffffff !important;
+}
