@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { Package, Gamepad2, Sparkles } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProductCard } from '@/components/ProductCard';
@@ -181,13 +181,13 @@ export function CustomerArea() {
                 </p>
               </div>
             </div>
-            <a
-              href="/acesso"
+            <Link
+              to="/acesso"
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs py-2.5 px-4 transition-all shadow-md shrink-0"
             >
               <Sparkles className="h-4 w-4" />
               Abrir Catálogo de Downloads
-            </a>
+            </Link>
           </div>
 
           {ownedProducts.length > 0 && (

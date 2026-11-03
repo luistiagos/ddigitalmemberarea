@@ -4,7 +4,8 @@ import { SetPassword } from './pages/SetPassword';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
 import { CustomerArea } from './pages/CustomerArea';
-import { AccessRedirect } from './pages/AccessRedirect';
+import { AcessoHub } from './pages/access/AcessoHub';
+import { PlatformCatalog } from './pages/access/PlatformCatalog';
 import { StoreSelector } from './pages/StoreSelector';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { Ativar } from './pages/Ativar';
@@ -56,7 +57,15 @@ function App() {
           path="/acesso"
           element={
             <ProtectedRoute>
-              <AccessRedirect />
+              <AcessoHub />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/acesso/:platformId"
+          element={
+            <ProtectedRoute>
+              <PlatformCatalog />
             </ProtectedRoute>
           }
         />
