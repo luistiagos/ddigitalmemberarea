@@ -529,7 +529,7 @@ export function hydrateGroupedCatalog(cachedData, platform) {
 export async function processAndGroupEntriesAsync(entries, platform) {
   if (!Array.isArray(entries) || entries.length === 0) return [];
 
-  if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
+  if (typeof Worker !== 'undefined') {
     try {
       return await new Promise((resolve) => {
         let worker;

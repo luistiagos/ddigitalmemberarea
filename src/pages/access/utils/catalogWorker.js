@@ -5,12 +5,15 @@
 import { processAndGroupEntries } from './catalogProcessor.js';
 
 self.onmessage = (e) => {
-  const { id, entries, platform } = e.data || {};
   try {
+    if (!e || !e.data) {
+      throw new Error('Mensagem vazia ou inválida');
+    }
+    const { id, entries, platform } = e.data;
     const grouped = processAndGroupEntries(entries || [], platform);
     self.postMessage({ id, success: true, grouped });
   } catch (err) {
-    self.postMessage({ id, success: false, error: err?.message || String(err) });
+    self.postMessage({ id: e?.data?.id, success: false, error: err?.message || String(err) });
   }
 };
 

@@ -329,10 +329,106 @@ test('E2E - Agrupamento Assíncrono com Fallback Resiliente', async () => {
     { path: 'ps2/God of War (Brasil).iso', cover2d_url: 'https://cdn/gow.png' },
   ];
 
+  // 1. Fallback síncrono padrão quando Worker não está disponível (ex: Node sem mock)
   const result = await processAndGroupEntriesAsync(sampleEntries, { id: 'ps2', mnemonic: 'ps2' });
   assert.equal(result.length, 1);
   assert.equal(result[0].displayTitle, 'God of War');
   assert.equal(result[0].versions.length, 2);
+
+  // 2. Caminho com Web Worker ativo e resposta de sucesso
+  class MockWorker {
+    constructor(url, options) {
+      this.url = url;
+      this.options = options;
+      this.terminated = false;
+      MockWorker.lastInstance = this;
+    }
+    postMessage(msg) {
+      this.lastPostedMessage = msg;
+      setImmediate(() => {
+        if (this.onmessage) {
+          this.onmessage({
+            data: {
+              id: msg.id,
+              success: true,
+              grouped: [
+                {
+                  id: 'ps2_mock_sentinel',
+                  displayTitle: 'Mock Worker Game',
+                  hasCover: true,
+                  popularityScore: 100,
+                  versions: [{ path: 'ps2/mock.iso' }],
+                  regions: ['USA'],
+                  discs: [1],
+                }
+              ]
+            }
+          });
+        }
+      });
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  }
+
+  globalThis.Worker = MockWorker;
+  try {
+    const workerResult = await processAndGroupEntriesAsync(sampleEntries, { id: 'ps2', mnemonic: 'ps2' });
+    assert.equal(workerResult.length, 1);
+    assert.equal(workerResult[0].displayTitle, 'Mock Worker Game', 'Deve hidratar e devolver a resposta emitida pelo Worker');
+    assert.ok(workerResult[0].regions instanceof Set, 'Deve hidratar Set de regiões');
+    assert.equal(MockWorker.lastInstance.terminated, true, 'Worker deve ser terminado após a resposta');
+
+    // 3. Caminho de erro do Worker (deve fazer fallback transparente para síncrono)
+    class FailingMockWorker extends MockWorker {
+      postMessage(msg) {
+        setImmediate(() => {
+          if (this.onerror) this.onerror(new Error('Worker out of memory'));
+        });
+      }
+    }
+    globalThis.Worker = FailingMockWorker;
+    const fallbackResult = await processAndGroupEntriesAsync(sampleEntries, { id: 'ps2', mnemonic: 'ps2' });
+    assert.equal(fallbackResult.length, 1);
+    assert.equal(fallbackResult[0].displayTitle, 'God of War', 'Em caso de erro no worker deve usar o fallback síncrono');
+  } finally {
+    delete globalThis.Worker;
+  }
+});
+
+test('catalogWorker - processa mensagem e devolve postMessage com agrupamento', async () => {
+  let posted = null;
+  globalThis.self = {
+    postMessage: (data) => { posted = data; }
+  };
+  await import('../pages/access/utils/catalogWorker.js');
+
+  assert.equal(typeof globalThis.self.onmessage, 'function', 'Worker deve registrar self.onmessage');
+  globalThis.self.onmessage({
+    data: {
+      id: 999,
+      entries: [
+        { path: 'ps2/Crash (USA).iso', cover2d_url: 'https://cdn/crash.png' },
+        { path: 'ps2/Crash (Europe).iso', cover2d_url: 'https://cdn/crash.png' },
+      ],
+      platform: { id: 'ps2', mnemonic: 'ps2' }
+    }
+  });
+
+  assert.ok(posted, 'Deve chamar postMessage');
+  assert.equal(posted.id, 999);
+  assert.equal(posted.success, true);
+  assert.equal(posted.grouped.length, 1);
+  assert.equal(posted.grouped[0].displayTitle, 'Crash');
+  assert.equal(posted.grouped[0].versions.length, 2);
+
+  // Testa captura de erro no worker
+  globalThis.self.onmessage({
+    data: null
+  });
+  assert.equal(posted.success, false);
+  assert.ok(posted.error);
 });
 
 // ============================================================================
