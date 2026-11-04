@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { filterPlatformsByEntitlements, buildManifestPayload } from '../services/accessService.js';
+import { filterPlatformsByEntitlements, buildManifestPayload, classifyEntitlementResult } from '../services/accessService.js';
 import { getCachedCatalog, setCachedCatalog, CACHE_TTL_MS, DB_NAME } from '../services/accessCache.js';
 import { ALL_PLATFORMS } from '../pages/access/data/platformsData.js';
 import { processAndGroupEntries } from '../pages/access/utils/catalogProcessor.js';
@@ -183,4 +183,28 @@ test('test_t5_contract_manifest_payload_and_cache_db_name', () => {
   ], { id: 'cps2', mnemonic: 'cps2' });
   assert.equal(ordered[0].displayTitle, 'Zeta With Cover', 'Jogos com capa devem vir primeiro');
   assert.equal(ordered[1].displayTitle, 'Alpha No Cover', 'Jogos sem capa devem ficar por ultimo');
+});
+
+test('test_classify_entitlement_result_distinguishes_denied_error_and_login', () => {
+  const ps2 = { id: 'ps2', mnemonic: 'ps2' };
+  assert.equal(
+    classifyEntitlementResult({ data: { success: true, systems: ['ps2'] }, platform: ps2 }),
+    'authorized'
+  );
+  assert.equal(
+    classifyEntitlementResult({ data: { success: true, systems: ['wii'] }, platform: ps2 }),
+    'denied'
+  );
+  assert.equal(
+    classifyEntitlementResult({ data: { success: false, systems: [] }, platform: ps2 }),
+    'error'
+  );
+  assert.equal(
+    classifyEntitlementResult({ error: new Error('Network Error'), platform: ps2 }),
+    'error'
+  );
+  assert.equal(
+    classifyEntitlementResult({ error: { response: { status: 401 } }, platform: ps2 }),
+    'login'
+  );
 });

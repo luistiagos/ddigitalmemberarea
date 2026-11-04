@@ -29,9 +29,10 @@ export async function getUserEntitledSystems() {
 }
 
 /**
- * Consulta o manifesto de jogos de um mnemônico/plataforma.
- * @param {string} mnemonic Mnemônico do sistema (ex: 'ps2', 'atomiswave', 'wii')
- * @returns {Promise<Array<object>>}
+ * Monta o payload da requisição de manifesto sem restringir colunas `infos`,
+ * garantindo que o backend retorne todos os metadados enriquecidos (incluindo `name`).
+ * @param {string} mnemonic
+ * @returns {{ mnemonicos: Array<{ name: string }> }}
  */
 export function buildManifestPayload(mnemonic) {
   return {
@@ -43,6 +44,11 @@ export function buildManifestPayload(mnemonic) {
   };
 }
 
+/**
+ * Consulta o manifesto de jogos de um mnemônico/plataforma.
+ * @param {string} mnemonic Mnemônico do sistema (ex: 'ps2', 'atomiswave', 'wii')
+ * @returns {Promise<Array<object>>}
+ */
 export async function getPlatformManifest(mnemonic) {
   if (!mnemonic) return [];
 
@@ -85,4 +91,26 @@ export function filterPlatformsByEntitlements(allPlatforms, userSystems) {
     const pMnemonic = (p.mnemonic || '').toLowerCase();
     return systemSet.has(pId) || systemSet.has(pMnemonic);
   });
+}
+
+/**
+ * Classifica o resultado (ou erro) da consulta de direitos para uma plataforma.
+ * @param {{ data?: { success?: boolean, systems?: string[] } | null, error?: any, platform?: { id?: string, mnemonic?: string } | null }} params
+ * @returns {'authorized' | 'denied' | 'error' | 'login'}
+ */
+export function classifyEntitlementResult({ data = null, error = null, platform = null } = {}) {
+  if (error) {
+    if (error?.response?.status === 401) {
+      return 'login';
+    }
+    return 'error';
+  }
+  if (!data || data.success !== true) {
+    return 'error';
+  }
+  if (!platform) {
+    return 'denied';
+  }
+  const matched = filterPlatformsByEntitlements([platform], data.systems || []);
+  return matched.length > 0 ? 'authorized' : 'denied';
 }

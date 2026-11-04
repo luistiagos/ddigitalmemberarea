@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { Gamepad2, ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getUserEntitledSystems, getPlatformManifest } from '@/services/accessService';
+import { getUserEntitledSystems, getPlatformManifest, classifyEntitlementResult } from '@/services/accessService';
 import { getCachedCatalog, setCachedCatalog } from '@/services/accessCache';
 import { ALL_PLATFORMS } from './data/platformsData';
 import { processAndGroupEntries } from './utils/catalogProcessor';
@@ -20,7 +20,7 @@ export function PlatformCatalog() {
   const { user } = useAuth();
 
   const [authLoading, setAuthLoading] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [authStatus, setAuthStatus] = useState('loading');
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -59,57 +59,6 @@ export function PlatformCatalog() {
     }
   }, [platform]);
 
-  // Verificação de Direitos de Acesso do Usuário para esta Plataforma
-  useEffect(() => {
-    let isMounted = true;
-    async function checkAuthorization() {
-      setAuthLoading(true);
-      setError(null);
-
-      if (!platform) {
-        if (isMounted) {
-          setIsAuthorized(false);
-          setAuthLoading(false);
-        }
-        return;
-      }
-
-      try {
-        const entitlementData = await getUserEntitledSystems();
-        if (!isMounted) return;
-
-        if (entitlementData && entitlementData.success) {
-          const userSystems = (entitlementData.systems || []).map((s) => String(s).toLowerCase());
-          const hasAll = userSystems.includes('all') || userSystems.includes('*');
-          const pId = platform.id.toLowerCase();
-          const pMnemonic = (platform.mnemonic || '').toLowerCase();
-
-          const authorized = hasAll || userSystems.includes(pId) || userSystems.includes(pMnemonic);
-          setIsAuthorized(authorized);
-
-          if (authorized) {
-            loadCatalog(false);
-          }
-        } else {
-          setIsAuthorized(false);
-        }
-      } catch (err) {
-        console.error('Erro ao verificar direitos:', err);
-        if (isMounted) {
-          setError('Falha ao autenticar permissões de acesso ao sistema.');
-        }
-      } finally {
-        if (isMounted) setAuthLoading(false);
-      }
-    }
-
-    checkAuthorization();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [platform]);
-
   // Carrega Catálogo com Caching IndexedDB
   const loadCatalog = async (forceRefresh = false) => {
     if (!platform) return;
@@ -140,6 +89,50 @@ export function PlatformCatalog() {
       setCatalogLoading(false);
     }
   };
+
+  // Verificação de Direitos de Acesso do Usuário para esta Plataforma
+  const checkAuthorization = useCallback(async (isMountedRef = { current: true }) => {
+    setAuthLoading(true);
+    setError(null);
+
+    if (!platform) {
+      if (isMountedRef.current) {
+        setAuthStatus('denied');
+        setAuthLoading(false);
+      }
+      return;
+    }
+
+    try {
+      const entitlementData = await getUserEntitledSystems();
+      if (!isMountedRef.current) return;
+
+      const status = classifyEntitlementResult({ data: entitlementData, platform });
+      setAuthStatus(status);
+
+      if (status === 'authorized') {
+        loadCatalog(false);
+      } else if (status === 'error') {
+        setError('Não foi possível verificar suas permissões de acesso ao sistema.');
+      }
+    } catch (err) {
+      console.error('Erro ao verificar direitos:', err);
+      if (!isMountedRef.current) return;
+      const status = classifyEntitlementResult({ error: err, platform });
+      setAuthStatus(status);
+      setError('Falha ao autenticar permissões de acesso ao sistema.');
+    } finally {
+      if (isMountedRef.current) setAuthLoading(false);
+    }
+  }, [platform]);
+
+  useEffect(() => {
+    const isMountedRef = { current: true };
+    checkAuthorization(isMountedRef);
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [checkAuthorization]);
 
   // Filtragem e Ordenação em tempo real no Client
   const filteredGames = useMemo(() => {
@@ -242,8 +235,38 @@ export function PlatformCatalog() {
     );
   }
 
-  // Guard de Acesso Restrito
-  if (!isAuthorized) {
+  // Erro na consulta de direitos (rede/5xx/resposta inválida) — permite tentar novamente
+  if (authStatus === 'error') {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 text-center">
+        <div className="max-w-md w-full p-6 rounded-2xl bg-red-950/40 border border-red-500/30 text-center">
+          <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <h2 className="text-xl font-bold text-white mb-2">Erro ao verificar permissões</h2>
+          <p className="text-xs text-gray-400 mb-5">
+            {error || 'Falha ao autenticar permissões de acesso ao sistema.'}
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => checkAuthorization({ current: true })}
+              className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-gray-950 font-bold text-xs transition-colors"
+            >
+              Tentar Novamente
+            </button>
+            <Link
+              to="/acesso"
+              className="px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-300 hover:text-white font-bold text-xs transition-colors"
+            >
+              Voltar para Meus Sistemas
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard de Acesso Restrito (somente quando a consulta respondeu com sucesso e o sistema não consta)
+  if (authStatus !== 'authorized') {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 text-center">
         <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mb-4 shadow-lg shadow-red-500/10">
@@ -465,4 +488,3 @@ export function PlatformCatalog() {
     </div>
   );
 }
-
