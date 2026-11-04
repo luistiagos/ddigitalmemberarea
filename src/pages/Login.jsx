@@ -38,7 +38,7 @@ export function Login() {
   }, [contaDivergente]);
 
   const rawRedirect = searchParams.get('redirect') || searchParams.get('return_to');
-  const redirectUrl = rawRedirect ? decodeURIComponent(rawRedirect) : null;
+  const redirectUrl = rawRedirect || null;
 
   if (isAuthenticated() && !contaDivergente) {
     if (redirectUrl) {
