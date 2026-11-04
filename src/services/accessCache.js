@@ -35,14 +35,17 @@ export async function getCachedCatalog(platformId) {
 
   // 1. Fallback em memória primeiro
   const mem = memoryCache.get(platformId);
-  if (mem && Date.now() - mem.timestamp < CACHE_TTL_MS) {
-    return mem.data;
+  if (mem) {
+    if (Date.now() - mem.timestamp < CACHE_TTL_MS) {
+      return mem.data;
+    }
+    memoryCache.delete(platformId);
   }
 
   // 2. IndexedDB
   try {
     const db = await openDatabase();
-    if (!db) return mem ? mem.data : null;
+    if (!db) return null;
 
     return new Promise((resolve) => {
       try {
@@ -117,4 +120,3 @@ export async function clearCachedCatalog(platformId) {
     // ignora
   }
 }
-

@@ -124,10 +124,65 @@ test('test_indexeddb_catalog_cache', async () => {
   const platformId = 'atomiswave';
   const testData = [{ id: 'test_game', displayTitle: 'Test Game' }];
 
-  await setCachedCatalog(platformId, testData);
-  const cached = await getCachedCatalog(platformId);
+  const idbStore = new Map();
+  const fakeDb = {
+    objectStoreNames: { contains: () => true },
+    createObjectStore: () => ({}),
+    transaction: () => ({
+      objectStore: () => ({
+        get: (key) => {
+          const req = { result: idbStore.get(key) };
+          queueMicrotask(() => req.onsuccess && req.onsuccess());
+          return req;
+        },
+        put: (val) => {
+          idbStore.set(val.id, val);
+          const req = {};
+          queueMicrotask(() => req.onsuccess && req.onsuccess());
+          return req;
+        },
+        delete: (key) => {
+          idbStore.delete(key);
+          const req = {};
+          queueMicrotask(() => req.onsuccess && req.onsuccess());
+          return req;
+        }
+      })
+    })
+  };
+  const prevWindow = globalThis.window;
+  const prevIndexedDB = globalThis.indexedDB;
+  const realDateNow = Date.now;
+  let fakeNow = 1_700_000_000_000;
 
-  assert.deepEqual(cached, testData);
+  globalThis.indexedDB = {
+    open: () => {
+      const req = { result: fakeDb };
+      queueMicrotask(() => req.onsuccess && req.onsuccess({ target: { result: fakeDb } }));
+      return req;
+    }
+  };
+  globalThis.window = { indexedDB: globalThis.indexedDB };
+  Date.now = () => fakeNow;
+
+  try {
+    await setCachedCatalog(platformId, testData);
+    assert.equal(idbStore.has(platformId), true, 'Deve persistir registro no IndexedDB');
+
+    // Dentro de 24h -> retorna os dados
+    fakeNow += CACHE_TTL_MS - 1000;
+    const cachedValid = await getCachedCatalog(platformId);
+    assert.deepEqual(cachedValid, testData);
+
+    // Após 24h -> expira tanto na memória quanto no IndexedDB e retorna null
+    fakeNow += 2000;
+    const cachedExpired = await getCachedCatalog(platformId);
+    assert.equal(cachedExpired, null, 'Cache com mais de 24h deve expirar e retornar null');
+  } finally {
+    Date.now = realDateNow;
+    globalThis.window = prevWindow;
+    globalThis.indexedDB = prevIndexedDB;
+  }
 });
 
 test('test_unauthenticated_redirect', () => {
