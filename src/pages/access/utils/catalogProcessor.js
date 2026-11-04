@@ -84,6 +84,7 @@ export function getCanonicalGameKey(baseTitle) {
   s = s
     .replace(/\b(dublado|legendado|traduzido|tradu[cç][aã]o|pt[\s_-]*br|portugues|português|espanhol|english|undub|iso|rom|chd|wbfs|pkg|ps1|psx|ps2|ps3|psp|snes|nes|n64|wii|gamecube|ngc|switch|xbox|xbox360|gba|gbc|gb|nds|3ds|megadrive|genesis|dreamcast|saturn|arcade|mame|finalburn|neogeo|cps1|cps2|cps3|atomiswave|naomi)\b/gi, ' ')
     .replace(/\b(remastered|remaster|definitive\s+edition|complete\s+edition|special\s+edition|collector'?s\s+edition|game\s+of\s+the\s+year\s+edition|goty\s+edition|greatest\s+hits|platinum|black\s+label|director'?s\s+cut|final\s+mix|redump|no[\s_-]*intro)\b/gi, ' ')
+    .replace(/\b(pt[\s_-]*pt|corrigido)\b/gi, ' ')
     .replace(/\b(e|em|de|do|da|para|com|by|the)\b/gi, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
@@ -93,7 +94,61 @@ export function getCanonicalGameKey(baseTitle) {
 const FORBIDDEN_VARIANTS = /^(alpha|turbo|super|plus|zero|collection|remix|hd|party|kart|racing|strikers|tennis|golf|baseball|soccer|fighter|tournament|championship|edition|ex|vs|cross|x|dash|prime|adventure|chronicles|gaiden|portable|advance|heroes|wars|origins|evolution)/;
 const MOD_FRANCHISES = /^(gta|grandtheftauto|bombapatch|pes\d+|winningeleven|fifa|ranma)/;
 
-export function isCompatibleForCoverMerge(titleA, titleB) {
+// Entradas que nao sao o jogo de prateleira. Fonte unica: as penalidades de computePopularityScore e o
+// descarte de regiao de extractReleaseRegions leem daqui.
+const NOT_RETAIL_TERMS = {
+  demo: /\b(demo|taikenban|trial|sample)\b/i,
+  beta: /\b(beta|proto|prototype)\b/i,
+  promo: /\b(promo|kiosk|preview|bonus disc|not for sale)\b/i,
+};
+const isNotRetail = (str) => NOT_RETAIL_TERMS.demo.test(str) || NOT_RETAIL_TERMS.beta.test(str) || NOT_RETAIL_TERMS.promo.test(str);
+
+// Tokens de regiao do No-Intro/Redump e das siglas do acervo. EU inclui paises europeus e Australia, de
+// proposito: o mesmo jogo europeu sai com nome diferente por pais menos vezes do que sai igual.
+const REGION_TOKENS = {
+  usa: 'US', us: 'US', america: 'US', canada: 'US',
+  europe: 'EU', eu: 'EU', france: 'EU', fr: 'EU', germany: 'EU', de: 'EU', ger: 'EU', spain: 'EU', es: 'EU',
+  italy: 'EU', it: 'EU', uk: 'EU', netherlands: 'EU', nl: 'EU', sweden: 'EU', scandinavia: 'EU', nordic: 'EU',
+  portugal: 'EU', greece: 'EU', poland: 'EU', russia: 'EU', australia: 'EU', au: 'EU', pal: 'EU',
+  japan: 'JP', jp: 'JP', jpn: 'JP', 'ntsc-j': 'JP', korea: 'KR', kr: 'KR', kor: 'KR',
+  asia: 'AS', as: 'AS', china: 'AS', cn: 'AS', taiwan: 'AS', tw: 'AS', 'hong kong': 'AS', hk: 'AS',
+  brazil: 'BR', brasil: 'BR', br: 'BR',
+};
+
+/**
+ * Regioes de lancamento de uma entrada (US, EU, JP, KR, AS, BR), lidas do nome do arquivo.
+ * Lista de idiomas, como "(En,Fr,De)", nao e regiao. Demo, beta e promo devolvem vazio: nao sao
+ * lancamento e nao podem bloquear a juncao do jogo de prateleira.
+ */
+export function extractReleaseRegions(rawPath) {
+  const out = new Set();
+  if (!rawPath || isNotRetail(rawPath)) return out;
+  const groupsInParens = rawPath.match(/\(([^)]*)\)/g) || [];
+  for (let gi = 0; gi < groupsInParens.length; gi++) {
+    const inner = groupsInParens[gi].slice(1, -1).trim();
+    if (/^[A-Z][a-z](,[A-Z][a-z])*$/.test(inner) && inner !== 'Eu') continue;
+    const tokens = inner.split(/\s*,\s*|\s+-\s+/);
+    for (let ti = 0; ti < tokens.length; ti++) {
+      const t = tokens[ti].trim().toLowerCase();
+      if (t === 'world') { out.add('US'); out.add('EU'); out.add('JP'); continue; }
+      if (REGION_TOKENS[t]) out.add(REGION_TOKENS[t]);
+    }
+  }
+  const outside = rawPath.replace(/\([^)]*\)/g, ' ');
+  if (/pt[\s_-]*br|traduzido|dublado|legendado/i.test(outside)) out.add('BR');
+  if (/pt[\s_-]*pt/i.test(outside)) out.add('EU');
+  return out;
+}
+
+/**
+ * Duas entradas de mesma capa sao o mesmo jogo?
+ * `regionsByKey` (chave de comparacao -> regioes de lancamento) liga a regra por regiao no caso de prefixo:
+ * o mesmo jogo localizado muda de nome entre regioes ("Breath of Fire" US / "Breath of Fire - Ryuu no
+ * Senshi" JP); dois nomes na mesma regiao sao, em geral, dois jogos ("Super Star Wars" / "... Return of the
+ * Jedi", ambos US). Sem regiao num dos lados vale a regra anterior, que exige digito no fim da chave curta.
+ * Medicao: docs/modules/area-membros/changes/2026-11-03-acesso-dinamico-react-frontend/passagem-analise-regra-de-capa.md
+ */
+export function isCompatibleForCoverMerge(titleA, titleB, regionsByKey) {
   const compA = getComparisonKey(titleA);
   const compB = getComparisonKey(titleB);
   if (!compA || !compB) return false;
@@ -102,6 +157,19 @@ export function isCompatibleForCoverMerge(titleA, titleB) {
   const canA = getCanonicalGameKey(titleA);
   const canB = getCanonicalGameKey(titleB);
   if (canA && canB && canA === canB) return true;
+
+  if (regionsByKey) {
+    const s = compA.length <= compB.length ? compA : compB;
+    const l = compA.length <= compB.length ? compB : compA;
+    if (l.startsWith(s) && s.length >= 6 && !MOD_FRANCHISES.test(s) && !/^\d/.test(l.slice(s.length))) {
+      const rs = regionsByKey.get(s);
+      const rl = regionsByKey.get(l);
+      if (rs && rl && rs.size && rl.size) {
+        for (const r of rs) if (rl.has(r)) return false;
+        return true;
+      }
+    }
+  }
 
   // Subtitle of a numbered sequel: only allowed if shorter ends with a digit
   const shorter = compA.length <= compB.length ? compA : compB;
@@ -210,9 +278,9 @@ export function computePopularityScore(displayTitle, rawPath, versionsCount, has
   if (hasCover) score += 50;
   if (isPTBR) score += 40;
 
-  if (/\b(demo|taikenban|trial|sample)\b/i.test(lower)) score -= 500;
-  if (/\b(beta|proto|prototype)\b/i.test(lower)) score -= 400;
-  if (/\b(promo|kiosk|preview|bonus disc|not for sale)\b/i.test(lower)) score -= 300;
+  if (NOT_RETAIL_TERMS.demo.test(lower)) score -= 500;
+  if (NOT_RETAIL_TERMS.beta.test(lower)) score -= 400;
+  if (NOT_RETAIL_TERMS.promo.test(lower)) score -= 300;
 
   return score;
 }
@@ -246,9 +314,13 @@ export function processAndGroupEntries(rawEntries, platform) {
   }
 
   const groups = [];
-  const coverMap = new Map();
+  const coverMap = new Map(); // coverKey -> grupos que usam a capa (o manifesto da a capa do jogo 1 as sequencias)
   const titleMap = new Map();
 
+  // Pre-passo: titulo e chave de cada entrada, e as regioes de lancamento de cada chave, que a regra de
+  // capa precisa conhecer antes de decidir (a entrada da outra regiao pode vir depois no manifesto).
+  const resolved = new Array(processed.length);
+  const regionsByKey = new Map();
   for (let i = 0; i < processed.length; i++) {
     const entry = processed[i];
     const rawPath = entry.path || '';
@@ -272,6 +344,16 @@ export function processAndGroupEntries(rawEntries, platform) {
     }
 
     const compKey = getComparisonKey(baseTitle) || rawPath.toLowerCase();
+    resolved[i] = { baseTitle, compKey };
+    if (!regionsByKey.has(compKey)) regionsByKey.set(compKey, new Set());
+    const keyRegions = regionsByKey.get(compKey);
+    for (const r of extractReleaseRegions(rawPath)) keyRegions.add(r);
+  }
+
+  for (let i = 0; i < processed.length; i++) {
+    const entry = processed[i];
+    const rawPath = entry.path || '';
+    const { baseTitle, compKey } = resolved[i];
     const coverUrl = resolveCoverUrl(entry);
     const coverKey = getCoverKey(coverUrl);
     const region = extractRegion(rawPath);
@@ -292,9 +374,11 @@ export function processAndGroupEntries(rawEntries, platform) {
     };
 
     let group = null;
-    if (coverKey && coverMap.has(coverKey)) {
-      const candidate = coverMap.get(coverKey);
-      if (candidate && isCompatibleForCoverMerge(candidate.displayTitle, baseTitle)) {
+    const coverCandidates = coverKey ? (coverMap.get(coverKey) || []) : [];
+    for (let ci = 0; ci < coverCandidates.length && !group; ci++) {
+      let candidate = coverCandidates[ci];
+      while (candidate._mergedInto) candidate = candidate._mergedInto;
+      if (isCompatibleForCoverMerge(candidate.displayTitle, baseTitle, regionsByKey)) {
         group = candidate;
       }
     }
@@ -322,14 +406,9 @@ export function processAndGroupEntries(rawEntries, platform) {
           group._titleKeys.push(k);
         }
       }
-      for (let kIdx = 0; kIdx < otherGroup._coverKeys.length; kIdx++) {
-        const k = otherGroup._coverKeys[kIdx];
-        if (coverMap.get(k) === otherGroup) {
-          coverMap.set(k, group);
-          group._coverKeys.push(k);
-        }
-      }
+      // As listas de capa seguem apontando para o grupo absorvido; quem le segue `_mergedInto`.
       otherGroup._merged = true;
+      otherGroup._mergedInto = group;
     }
 
     if (!group) {
@@ -347,8 +426,8 @@ export function processAndGroupEntries(rawEntries, platform) {
         bestSizeFormatted: versionData.sizeFormatted,
         rawPrimaryPath: rawPath,
         _titleKeys: [],
-        _coverKeys: [],
         _merged: false,
+        _mergedInto: null,
       };
       if (disc) group.discs.add(disc);
       if (region) group.regions.add(region);
@@ -370,9 +449,10 @@ export function processAndGroupEntries(rawEntries, platform) {
       }
     }
 
-    if (coverKey && !coverMap.has(coverKey)) {
-      coverMap.set(coverKey, group);
-      group._coverKeys.push(coverKey);
+    if (coverKey) {
+      if (!coverMap.has(coverKey)) coverMap.set(coverKey, []);
+      const coverGroups = coverMap.get(coverKey);
+      if (!coverGroups.includes(group)) coverGroups.push(group);
     }
     if (compKey && titleMap.get(compKey) !== group) {
       titleMap.set(compKey, group);
@@ -382,7 +462,7 @@ export function processAndGroupEntries(rawEntries, platform) {
 
   const activeGroups = groups.filter((g) => !g._merged);
   const groupedList = activeGroups.map((g) => {
-    const { _titleKeys, _coverKeys, _merged, ...cleanGroup } = g;
+    const { _titleKeys, _merged, _mergedInto, ...cleanGroup } = g;
     const discsArr = Array.from(cleanGroup.discs);
     const regionsArr = Array.from(cleanGroup.regions);
 

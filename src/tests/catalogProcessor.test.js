@@ -8,6 +8,7 @@ import {
   isGroupedCatalogCache,
   hydrateGroupedCatalog,
   computePopularityScore,
+  extractReleaseRegions,
 } from '../pages/access/utils/catalogProcessor.js';
 
 test('getBaseTitle - strips file extension and tags', () => {
@@ -126,4 +127,55 @@ test('processAndGroupEntries - nome de arquivo de uma palavra nao vira titulo co
     { path: 'cps2/sfa3.zip', name: 'Street Fighter Alpha 3 (Euro 980904)' },
   ], { id: 'cps2', mnemonic: 'cps2' });
   assert.equal(cps2[0].displayTitle, 'Street Fighter Alpha 3 (Euro 980904)', 'ROM de arcade segue usando o name');
+});
+
+test('extractReleaseRegions - regiao do nome do arquivo; idioma, demo e beta nao contam', () => {
+  assert.deepEqual([...extractReleaseRegions('snes/Breath of Fire (USA).sfc')], ['US']);
+  assert.deepEqual([...extractReleaseRegions('ps2/Burnout (Europe) (En,Fr,De,Es,It).chd')], ['EU']);
+  assert.deepEqual([...extractReleaseRegions('ps2/Death by Degrees (Japan) (Taikenban).chd')], []);
+  assert.deepEqual([...extractReleaseRegions('ps2/Silent Hill 3 Dublado PT-BR.iso')], ['BR']);
+  assert.deepEqual([...extractReleaseRegions('ps2/Sem Tag.iso')], []);
+});
+
+test('processAndGroupEntries - capa igual: o mesmo jogo com nome regional junta, nomes da mesma regiao separam', () => {
+  const group = (entries, id = 'snes') => processAndGroupEntries(entries, { id, mnemonic: id });
+
+  const bof = group([
+    { path: 'snes/Breath of Fire (USA).sfc', cover2d_url: 'https://cdn/bof.png' },
+    { path: 'snes/Breath of Fire - Ryuu no Senshi (Japan).sfc', cover2d_url: 'https://cdn/bof.png' },
+  ]);
+  assert.equal(bof.length, 1, 'Breath of Fire US e o titulo japones sao o mesmo jogo');
+
+  const ssw = group([
+    { path: 'snes/Super Star Wars (USA).sfc', cover2d_url: 'https://cdn/ssw.png' },
+    { path: 'snes/Super Star Wars - Return of the Jedi (USA).sfc', cover2d_url: 'https://cdn/ssw.png' },
+  ]);
+  assert.equal(ssw.length, 2, 'dois nomes na mesma regiao sao dois jogos');
+
+  const dw = group([
+    { path: 'ps2/Dynasty Warriors 4 (USA).chd', cover2d_url: 'https://cdn/dw4.png' },
+    { path: 'ps2/Dynasty Warriors 4 - Empires (USA).chd', cover2d_url: 'https://cdn/dw4.png' },
+  ], 'ps2');
+  assert.equal(dw.length, 2, 'spin-off Empires na mesma regiao fica separado');
+
+  const demo = group([
+    { path: 'ps2/Death by Degrees (USA).chd', cover2d_url: 'https://cdn/dbd.png' },
+    { path: 'ps2/Death by Degrees - Tekken - Nina Williams (Japan).chd', cover2d_url: 'https://cdn/dbd.png' },
+    { path: 'ps2/Death by Degrees (Japan) (Taikenban).chd', cover2d_url: 'https://cdn/dbd.png' },
+  ], 'ps2');
+  const dbdMain = demo.find((g) => g.versions.some((v) => v.rawPath.includes('Nina Williams')));
+  assert.ok(dbdMain.versions.some((v) => v.rawPath === 'ps2/Death by Degrees (USA).chd'),
+    'a demo japonesa nao faz o japones parecer sobreposto ao americano');
+});
+
+test('processAndGroupEntries - capa compartilhada por varios grupos: a entrada procura em todos', () => {
+  const cover = 'https://cdn/ratchet1.png';
+  const grouped = processAndGroupEntries([
+    { path: 'ps2/Ratchet & Clank (USA).chd', cover2d_url: cover },
+    { path: 'ps2/Ratchet & Clank 2 (USA).chd', cover2d_url: cover },
+    { path: 'ps2/Ratchet & Clank 2 - Gagaga! Ginga no Commando-ssu (Japan).chd', cover2d_url: cover },
+  ], { id: 'ps2', mnemonic: 'ps2' });
+  assert.equal(grouped.length, 2, 'Ratchet & Clank 1 e o 2 (com o titulo japones do 2) = 2 cards');
+  const r2 = grouped.find((g) => g.versions.some((v) => v.rawPath.includes('Clank 2 (USA)')));
+  assert.equal(r2.versions.length, 2, 'o titulo japones do 2 entra no card do 2, nao no do 1');
 });

@@ -241,14 +241,15 @@ test('E2E - Agrupamento por Capa: Separação de Sequências vs Fusão de Tradu�
   const rushingGroups = processAndGroupEntries(rushingEntries, { id: 'snes', mnemonic: 'snes' });
   assert.equal(rushingGroups.length, 3, 'Rushing Beat 1, Ran e Shura devem ser 3 cards separados');
 
-  // 3. Tiny Toon Adventures NUNCA deve fundir com Buster Busts Loose ou Wacky Sports
+  // 3. Tiny Toon Adventures - Buster Busts Loose! NUNCA deve fundir com Wacky Sports Challenge (jogos
+  //    distintos). "Tiny Toon Adventures" sozinho, no acervo real, e o titulo japones do Buster Busts Loose!:
+  //    por isso ele nao entra aqui como terceiro jogo.
   const tinyEntries = [
-    { path: 'snes/Tiny Toon Adventures.sfc', cover2d_url: sharedTinyCover },
     { path: 'snes/Tiny Toon Adventures - Buster Busts Loose!.sfc', cover2d_url: sharedTinyCover },
     { path: 'snes/Tiny Toon Adventures - Wacky Sports Challenge.sfc', cover2d_url: sharedTinyCover },
   ];
   const tinyGroups = processAndGroupEntries(tinyEntries, { id: 'snes', mnemonic: 'snes' });
-  assert.equal(tinyGroups.length, 3, 'Tiny Toon clássico, Buster e Wacky Sports devem ser 3 cards separados');
+  assert.equal(tinyGroups.length, 2, 'Buster Busts Loose! e Wacky Sports Challenge devem ser 2 cards separados');
 
   // 4. Street Fighter 2 clássico, Turbo e Alpha NUNCA devem fundir
   const sfEntries = [
