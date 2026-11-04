@@ -314,14 +314,21 @@ export function processAndGroupEntries(rawEntries, platform) {
         group.coverUrl = otherGroup.coverUrl;
         group.hasCover = true;
       }
-      for (const [k, g] of titleMap.entries()) {
-        if (g === otherGroup) titleMap.set(k, group);
+      for (let kIdx = 0; kIdx < otherGroup._titleKeys.length; kIdx++) {
+        const k = otherGroup._titleKeys[kIdx];
+        if (titleMap.get(k) === otherGroup) {
+          titleMap.set(k, group);
+          group._titleKeys.push(k);
+        }
       }
-      for (const [k, g] of coverMap.entries()) {
-        if (g === otherGroup) coverMap.set(k, group);
+      for (let kIdx = 0; kIdx < otherGroup._coverKeys.length; kIdx++) {
+        const k = otherGroup._coverKeys[kIdx];
+        if (coverMap.get(k) === otherGroup) {
+          coverMap.set(k, group);
+          group._coverKeys.push(k);
+        }
       }
-      const oIdx = groups.indexOf(otherGroup);
-      if (oIdx !== -1) groups.splice(oIdx, 1);
+      otherGroup._merged = true;
     }
 
     if (!group) {
@@ -338,6 +345,9 @@ export function processAndGroupEntries(rawEntries, platform) {
         versions: [versionData],
         bestSizeFormatted: versionData.sizeFormatted,
         rawPrimaryPath: rawPath,
+        _titleKeys: [],
+        _coverKeys: [],
+        _merged: false,
       };
       if (disc) group.discs.add(disc);
       if (region) group.regions.add(region);
@@ -359,28 +369,36 @@ export function processAndGroupEntries(rawEntries, platform) {
       }
     }
 
-    if (coverKey && !coverMap.has(coverKey)) coverMap.set(coverKey, group);
-    if (compKey) titleMap.set(compKey, group);
+    if (coverKey && !coverMap.has(coverKey)) {
+      coverMap.set(coverKey, group);
+      group._coverKeys.push(coverKey);
+    }
+    if (compKey && titleMap.get(compKey) !== group) {
+      titleMap.set(compKey, group);
+      group._titleKeys.push(compKey);
+    }
   }
 
-  const groupedList = groups.map((g) => {
-    const discsArr = Array.from(g.discs);
-    const regionsArr = Array.from(g.regions);
+  const activeGroups = groups.filter((g) => !g._merged);
+  const groupedList = activeGroups.map((g) => {
+    const { _titleKeys, _coverKeys, _merged, ...cleanGroup } = g;
+    const discsArr = Array.from(cleanGroup.discs);
+    const regionsArr = Array.from(cleanGroup.regions);
 
     const score = computePopularityScore(
-      g.displayTitle,
-      g.rawPrimaryPath,
-      g.versions.length,
-      g.hasCover,
-      g.isPTBR
+      cleanGroup.displayTitle,
+      cleanGroup.rawPrimaryPath,
+      cleanGroup.versions.length,
+      cleanGroup.hasCover,
+      cleanGroup.isPTBR
     );
 
     return {
-      ...g,
+      ...cleanGroup,
       discsCount: discsArr.length,
       discsLabel: discsArr.length > 1 ? `${discsArr.length} Discos` : '',
-      versionsCount: g.versions.length,
-      versionsLabel: g.versions.length > 1 ? `${g.versions.length} Versões` : '',
+      versionsCount: cleanGroup.versions.length,
+      versionsLabel: cleanGroup.versions.length > 1 ? `${cleanGroup.versions.length} Versões` : '',
       regionsLabel: regionsArr.join(', '),
       popularityScore: score,
     };
@@ -398,5 +416,21 @@ export function processAndGroupEntries(rawEntries, platform) {
   });
 
   return groupedList;
+}
+
+export function isGroupedCatalogCache(data) {
+  return Array.isArray(data) && data.length > 0 && Array.isArray(data[0]?.versions);
+}
+
+export function hydrateGroupedCatalog(cachedData, platform) {
+  if (!Array.isArray(cachedData) || cachedData.length === 0) return [];
+  if (!isGroupedCatalogCache(cachedData)) {
+    return processAndGroupEntries(cachedData, platform);
+  }
+  return cachedData.map((g) => ({
+    ...g,
+    discs: g.discs instanceof Set ? g.discs : new Set(Array.isArray(g.discs) ? g.discs : []),
+    regions: g.regions instanceof Set ? g.regions : new Set(Array.isArray(g.regions) ? g.regions : []),
+  }));
 }
 

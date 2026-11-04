@@ -5,6 +5,8 @@ import {
   getComparisonKey,
   isCompatibleForCoverMerge,
   processAndGroupEntries,
+  isGroupedCatalogCache,
+  hydrateGroupedCatalog,
   computePopularityScore,
 } from '../pages/access/utils/catalogProcessor.js';
 
@@ -80,4 +82,32 @@ test('processAndGroupEntries - merges translation and edition variants sharing t
   assert.equal(ps1Grouped.length, 1, 'Resident Evil 2 e sua traducao PT-BR com a mesma capa devem agrupar');
   assert.equal(ps1Grouped[0].versions.length, 2);
   assert.equal(isCompatibleForCoverMerge('Crash Bandicoot 2', 'Crash Bandicoot 2 Cortex Strikes Back'), true);
+});
+
+test('hydrateGroupedCatalog - restores pre-grouped cache without re-running grouping and preserves Set fields', () => {
+  const rawEntries = [
+    { path: 'ps1/Crash Bandicoot 2 (USA).chd', size: '500000000', link: 'https://dl/cb2_usa.chd', cover2d_url: 'https://cdn/cb2.png' },
+    { path: 'ps1/Crash Bandicoot 2 - Cortex Strikes Back (Brasil).chd', size: '510000000', link: 'https://dl/cb2_br.chd', cover2d_url: 'https://cdn/cb2.png' },
+    { path: 'ps1/Crash Bandicoot 2 (Japan) (Disc 1).chd', size: '490000000', link: 'https://dl/cb2_jp.chd' },
+  ];
+  const platform = { id: 'ps1', mnemonic: 'psx', name: 'PlayStation' };
+  const grouped = processAndGroupEntries(rawEntries, platform);
+
+  assert.equal(grouped.length, 1);
+  assert.equal(grouped[0].versions.length, 3);
+  assert.equal(isGroupedCatalogCache(grouped), true);
+  assert.equal(isGroupedCatalogCache(rawEntries), false);
+
+  // Simula serialização em que Set vira Array ou permanece Set no IndexedDB
+  const serialized = grouped.map((g) => ({
+    ...g,
+    discs: Array.from(g.discs),
+    regions: Array.from(g.regions),
+  }));
+  const hydrated = hydrateGroupedCatalog(serialized, platform);
+  assert.equal(hydrated.length, 1);
+  assert.equal(hydrated[0].regions.has('Brasil'), true);
+  assert.equal(hydrated[0].regions.has('USA'), true);
+  assert.equal(hydrated[0].regions.has('Japão'), true);
+  assert.equal(hydrated[0].discs.has('Disco 1'), true);
 });

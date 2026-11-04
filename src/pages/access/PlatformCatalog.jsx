@@ -7,7 +7,7 @@ import { logApiError } from '@/utils/logError';
 import { getUserEntitledSystems, getPlatformManifest, classifyEntitlementResult } from '@/services/accessService';
 import { getCachedCatalog, setCachedCatalog } from '@/services/accessCache';
 import { ALL_PLATFORMS } from './data/platformsData';
-import { processAndGroupEntries } from './utils/catalogProcessor';
+import { processAndGroupEntries, isGroupedCatalogCache, hydrateGroupedCatalog } from './utils/catalogProcessor';
 import { GameCard } from './components/GameCard';
 import { GameModal } from './components/GameModal';
 import { CatalogToolbar } from './components/CatalogToolbar';
@@ -62,27 +62,33 @@ export function PlatformCatalog() {
     }
   }, [platform]);
 
-  // Carrega Catálogo com Caching IndexedDB
+  // Carrega Catálogo com Caching IndexedDB (armazena o resultado já agrupado para restaurar sem bloquear a UI)
   const loadCatalog = async (forceRefresh = false) => {
     if (!platform) return;
     setCatalogLoading(true);
     setError(null);
 
     try {
-      let entries = null;
+      let cached = null;
       if (!forceRefresh) {
-        entries = await getCachedCatalog(platform.id);
+        cached = await getCachedCatalog(platform.id);
       }
 
-      if (!entries || entries.length === 0) {
-        entries = await getPlatformManifest(platform.mnemonic);
-        if (entries && entries.length > 0) {
-          setCachedCatalog(platform.id, entries);
+      let grouped = [];
+      if (cached && cached.length > 0) {
+        grouped = hydrateGroupedCatalog(cached, platform);
+        if (!isGroupedCatalogCache(cached) && grouped.length > 0) {
+          setCachedCatalog(platform.id, grouped);
+        }
+      } else {
+        const entries = await getPlatformManifest(platform.mnemonic);
+        setRawGames(entries || []);
+        grouped = processAndGroupEntries(entries || [], platform);
+        if (grouped.length > 0) {
+          setCachedCatalog(platform.id, grouped);
         }
       }
 
-      setRawGames(entries || []);
-      const grouped = processAndGroupEntries(entries || [], platform);
       setGroupedGames(grouped);
       setRenderedCount(BATCH_SIZE);
     } catch (err) {
