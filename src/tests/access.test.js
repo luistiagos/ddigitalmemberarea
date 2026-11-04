@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { filterPlatformsByEntitlements } from '../services/accessService.js';
-import { getCachedCatalog, setCachedCatalog, CACHE_TTL_MS } from '../services/accessCache.js';
+import { filterPlatformsByEntitlements, buildManifestPayload } from '../services/accessService.js';
+import { getCachedCatalog, setCachedCatalog, CACHE_TTL_MS, DB_NAME } from '../services/accessCache.js';
 import { ALL_PLATFORMS } from '../pages/access/data/platformsData.js';
 import { processAndGroupEntries } from '../pages/access/utils/catalogProcessor.js';
 import { getEffectiveProductImage } from '../utils/productImages.js';
@@ -164,3 +164,11 @@ test('test_back_button_conditional_visibility_from_hub', () => {
   // Navegacao a partir da tela principal (AcessoHub com state fromHub: true) -> DEVE exibir
   assert.equal(shouldRenderBackButton({ fromHub: true }), true);
 });
+
+test('test_t5_contract_manifest_payload_and_cache_db_name', () => {
+  const payload = buildManifestPayload('cps2');
+  assert.deepEqual(payload, { mnemonicos: [{ name: 'cps2' }] });
+  assert.equal('infos' in payload.mnemonicos[0], false, 'Payload do manifesto nao deve restringir infos');
+  assert.equal(DB_NAME, 'DSG_Access_Catalog_v2');
+});
+

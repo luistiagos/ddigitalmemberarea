@@ -33,16 +33,20 @@ export async function getUserEntitledSystems() {
  * @param {string} mnemonic Mnemônico do sistema (ex: 'ps2', 'atomiswave', 'wii')
  * @returns {Promise<Array<object>>}
  */
-export async function getPlatformManifest(mnemonic) {
-  if (!mnemonic) return [];
-
-  const payload = {
+export function buildManifestPayload(mnemonic) {
+  return {
     mnemonicos: [
       {
         name: mnemonic,
       },
     ],
   };
+}
+
+export async function getPlatformManifest(mnemonic) {
+  if (!mnemonic) return [];
+
+  const payload = buildManifestPayload(mnemonic);
 
   // Faz requisição POST para o manifesto
   const response = await axios.post(MANIFEST_API_URL, payload, {

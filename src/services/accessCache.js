@@ -3,7 +3,7 @@
  * Cache local de 24 horas para navegação rápida e baixo tráfego de rede.
  */
 
-const DB_NAME = 'DSG_Access_Catalog_v2';
+export const DB_NAME = 'DSG_Access_Catalog_v2';
 const DB_STORE = 'catalogs';
 export const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
 
