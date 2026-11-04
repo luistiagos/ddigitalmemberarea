@@ -111,3 +111,19 @@ test('hydrateGroupedCatalog - restores pre-grouped cache without re-running grou
   assert.equal(hydrated[0].regions.has('Japão'), true);
   assert.equal(hydrated[0].discs.has('Disco 1'), true);
 });
+
+test('processAndGroupEntries - nome de arquivo de uma palavra nao vira titulo com regiao (isArcadeStem)', () => {
+  const cover = 'https://cdn/covers/ps2/Burnout_Europe.png';
+  const ps2 = processAndGroupEntries([
+    { path: 'ps2/Burnout.chd', name: 'Burnout (Europe) (En,Fr,De,Es,It)', cover2d_url: cover },
+    { path: 'ps2/Burnout (USA).chd', name: 'Burnout (USA)', cover2d_url: cover },
+  ], { id: 'ps2', mnemonic: 'ps2' });
+  assert.equal(ps2.length, 1, 'Burnout.chd e Burnout (USA).chd sao o mesmo jogo: 1 card');
+  assert.equal(ps2[0].displayTitle, 'Burnout');
+  assert.equal(ps2[0].versions.length, 2);
+
+  const cps2 = processAndGroupEntries([
+    { path: 'cps2/sfa3.zip', name: 'Street Fighter Alpha 3 (Euro 980904)' },
+  ], { id: 'cps2', mnemonic: 'cps2' });
+  assert.equal(cps2[0].displayTitle, 'Street Fighter Alpha 3 (Euro 980904)', 'ROM de arcade segue usando o name');
+});

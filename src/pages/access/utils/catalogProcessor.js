@@ -259,7 +259,11 @@ export function processAndGroupEntries(rawEntries, platform) {
     let baseTitle = getBaseTitle(rawPath);
     if (entry.name && typeof entry.name === 'string') {
       const cleanEntryName = entry.name.trim();
-      const isArcadeStem = /^[a-z0-9_]{1,10}$/i.test(rawStem) && !rawStem.includes(' ');
+      // Nome curto de ROM de arcade (sfa3.zip): o titulo vem do `name`. Nao vale quando o `name` limpo e
+      // o proprio nome do arquivo (Burnout.chd + "Burnout (Europe) (En,Fr,De,Es,It)"): ali o `name` so
+      // traz regiao e idiomas, que separariam o card do mesmo jogo.
+      const isArcadeStem = /^[a-z0-9_]{1,10}$/i.test(rawStem) && !rawStem.includes(' ')
+        && getBaseTitle(cleanEntryName).toLowerCase() !== rawStem.toLowerCase();
       if (isArcadeStem && cleanEntryName.length > rawStem.length) {
         baseTitle = cleanEntryName;
       } else if (!baseTitle) {
