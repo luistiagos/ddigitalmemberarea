@@ -20,6 +20,8 @@ export function PlatformCatalog() {
   const location = useLocation();
   const navigate = useNavigate();
   const fromHub = Boolean(location?.state?.fromHub);
+  const locationRef = useRef(location);
+  locationRef.current = location;
   const { user } = useAuth();
 
   const [authLoading, setAuthLoading] = useState(true);
@@ -134,7 +136,7 @@ export function PlatformCatalog() {
       const status = classifyEntitlementResult({ error: err, platform });
       if (status === 'login') {
         clearAuth();
-        navigate(buildLoginRedirect(location), { replace: true });
+        navigate(buildLoginRedirect(locationRef.current), { replace: true });
         return;
       }
       setAuthStatus(status);
@@ -144,7 +146,7 @@ export function PlatformCatalog() {
     } finally {
       if (isMountedRef.current) setAuthLoading(false);
     }
-  }, [platform, location, navigate]);
+  }, [platform, navigate]);
 
   useEffect(() => {
     const isMountedRef = { current: true };
