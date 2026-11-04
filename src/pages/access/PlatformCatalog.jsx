@@ -124,7 +124,9 @@ export function PlatformCatalog() {
       if (status === 'authorized') {
         loadCatalog(false);
       } else if (status === 'error') {
-        setError('Não foi possível verificar suas permissões de acesso ao sistema.');
+        const userMsg = 'Não foi possível verificar suas permissões de acesso ao sistema.';
+        setError(userMsg);
+        logApiError('PlatformCatalog.jsx', 'checkAuthorization', new Error('Falha na consulta de direitos (success: false)'), userMsg);
       }
     } catch (err) {
       console.error('Erro ao verificar direitos:', err);
