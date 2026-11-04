@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { filterPlatformsByEntitlements, buildManifestPayload, classifyEntitlementResult, isPlatformEntitled, filterHubPlatforms } from '../services/accessService.js';
-import { getCachedCatalog, setCachedCatalog, CACHE_TTL_MS, DB_NAME } from '../services/accessCache.js';
+import { getCachedCatalog, setCachedCatalog, CACHE_TTL_MS, DB_NAME, LEGACY_DB_NAMES, CACHE_SCHEMA_VERSION, cleanupLegacyDatabases } from '../services/accessCache.js';
 import { ALL_PLATFORMS } from '../pages/access/data/platformsData.js';
 import { processAndGroupEntries, resolveVersionDownloadLink } from '../pages/access/utils/catalogProcessor.js';
 import { getEffectiveProductImage } from '../utils/productImages.js';
@@ -164,8 +164,12 @@ test('test_indexeddb_catalog_cache', async () => {
   const prevIndexedDB = globalThis.indexedDB;
   const realDateNow = Date.now;
   let fakeNow = 1_700_000_000_000;
+  const deletedDbs = [];
 
   globalThis.indexedDB = {
+    deleteDatabase: (name) => {
+      deletedDbs.push(name);
+    },
     open: () => {
       const req = { result: fakeDb };
       queueMicrotask(() => req.onsuccess && req.onsuccess({ target: { result: fakeDb } }));
@@ -178,11 +182,17 @@ test('test_indexeddb_catalog_cache', async () => {
   try {
     await setCachedCatalog(platformId, testData);
     assert.equal(idbStore.has(platformId), true, 'Deve persistir registro no IndexedDB');
+    assert.deepEqual(deletedDbs, LEGACY_DB_NAMES, 'Deve remover bancos IndexedDB legados na primeira abertura');
+    assert.equal(idbStore.get(platformId).schemaVersion, CACHE_SCHEMA_VERSION);
 
     // Dentro de 24h -> retorna os dados
     fakeNow += CACHE_TTL_MS - 1000;
     const cachedValid = await getCachedCatalog(platformId);
     assert.deepEqual(cachedValid, testData);
+
+    // Registro legado sem schemaVersion ou com schemaVersion antiga deve ser descartado
+    idbStore.set('legacy_plat', { id: 'legacy_plat', data: testData, timestamp: fakeNow, schemaVersion: 1 });
+    assert.equal(await getCachedCatalog('legacy_plat'), null);
 
     // Após 24h -> expira tanto na memória quanto no IndexedDB e retorna null
     fakeNow += 2000;

@@ -4,10 +4,29 @@
  */
 
 export const DB_NAME = 'DSG_Access_Catalog_v2';
+export const LEGACY_DB_NAMES = ['DSG_Access_Catalog_v1'];
+export const CACHE_SCHEMA_VERSION = 2;
 const DB_STORE = 'catalogs';
 export const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
 
 const memoryCache = new Map();
+let lastCleanedIndexedDB = null;
+
+export function cleanupLegacyDatabases(indexedDBRef) {
+  const deleted = [];
+  if (!indexedDBRef || typeof indexedDBRef.deleteDatabase !== 'function') {
+    return deleted;
+  }
+  for (const legacyName of LEGACY_DB_NAMES) {
+    try {
+      indexedDBRef.deleteDatabase(legacyName);
+      deleted.push(legacyName);
+    } catch {
+      // ignora falha de limpeza de banco legado
+    }
+  }
+  return deleted;
+}
 
 function openDatabase() {
   return new Promise((resolve) => {
@@ -15,6 +34,10 @@ function openDatabase() {
       return resolve(null);
     }
     try {
+      if (lastCleanedIndexedDB !== window.indexedDB) {
+        lastCleanedIndexedDB = window.indexedDB;
+        cleanupLegacyDatabases(window.indexedDB);
+      }
       const req = indexedDB.open(DB_NAME, 1);
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
@@ -36,7 +59,7 @@ export async function getCachedCatalog(platformId) {
   // 1. Fallback em memória primeiro
   const mem = memoryCache.get(platformId);
   if (mem) {
-    if (Date.now() - mem.timestamp < CACHE_TTL_MS) {
+    if (mem.schemaVersion === CACHE_SCHEMA_VERSION && Date.now() - mem.timestamp < CACHE_TTL_MS) {
       return mem.data;
     }
     memoryCache.delete(platformId);
@@ -54,8 +77,16 @@ export async function getCachedCatalog(platformId) {
         const req = store.get(platformId);
         req.onsuccess = () => {
           const res = req.result;
-          if (res && Date.now() - res.timestamp < CACHE_TTL_MS) {
-            memoryCache.set(platformId, { data: res.data, timestamp: res.timestamp });
+          if (
+            res &&
+            res.schemaVersion === CACHE_SCHEMA_VERSION &&
+            Date.now() - res.timestamp < CACHE_TTL_MS
+          ) {
+            memoryCache.set(platformId, {
+              data: res.data,
+              timestamp: res.timestamp,
+              schemaVersion: res.schemaVersion,
+            });
             resolve(res.data);
           } else {
             resolve(null);
@@ -75,7 +106,7 @@ export async function setCachedCatalog(platformId, data) {
   if (!platformId || !Array.isArray(data)) return;
 
   const now = Date.now();
-  memoryCache.set(platformId, { data, timestamp: now });
+  memoryCache.set(platformId, { data, timestamp: now, schemaVersion: CACHE_SCHEMA_VERSION });
 
   try {
     const db = await openDatabase();
@@ -85,7 +116,12 @@ export async function setCachedCatalog(platformId, data) {
       try {
         const tx = db.transaction(DB_STORE, 'readwrite');
         const store = tx.objectStore(DB_STORE);
-        const req = store.put({ id: platformId, data, timestamp: now });
+        const req = store.put({
+          id: platformId,
+          data,
+          timestamp: now,
+          schemaVersion: CACHE_SCHEMA_VERSION,
+        });
         req.onsuccess = () => resolve(true);
         req.onerror = () => resolve(false);
       } catch {
