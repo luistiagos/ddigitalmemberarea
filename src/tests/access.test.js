@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { filterPlatformsByEntitlements, buildManifestPayload, classifyEntitlementResult, isPlatformEntitled, filterHubPlatforms } from '../services/accessService.js';
 import { getCachedCatalog, setCachedCatalog, CACHE_TTL_MS, DB_NAME } from '../services/accessCache.js';
 import { ALL_PLATFORMS } from '../pages/access/data/platformsData.js';
-import { processAndGroupEntries } from '../pages/access/utils/catalogProcessor.js';
+import { processAndGroupEntries, resolveVersionDownloadLink } from '../pages/access/utils/catalogProcessor.js';
 import { getEffectiveProductImage } from '../utils/productImages.js';
 import { buildLoginRedirect } from '../utils/auth.js';
 
@@ -108,6 +108,13 @@ test('test_game_detail_modal_direct_download', () => {
       link: 'https://cdn.digitalstoregames.com/roms/ps2/re4_ptbr.iso',
       cover2d_url: 'https://cdn/re4.png',
       genre: 'Survival Horror'
+    },
+    {
+      path: 'ps2/Resident Evil 4 (USA).iso',
+      size: '4400000000',
+      link: 'https://cdn.digitalstoregames.com/roms/ps2/re4_usa.iso',
+      cover2d_url: 'https://cdn/re4.png',
+      genre: 'Survival Horror'
     }
   ];
   const platform = { id: 'ps2', mnemonic: 'ps2', name: 'PlayStation 2' };
@@ -116,7 +123,10 @@ test('test_game_detail_modal_direct_download', () => {
 
   assert.equal(game.displayTitle, 'Resident Evil 4');
   assert.equal(game.isPTBR, true);
-  assert.equal(game.versions[0].link, 'https://cdn.digitalstoregames.com/roms/ps2/re4_ptbr.iso');
+  assert.equal(resolveVersionDownloadLink(game.versions, 0), 'https://cdn.digitalstoregames.com/roms/ps2/re4_ptbr.iso');
+  assert.equal(resolveVersionDownloadLink(game.versions, 1), 'https://cdn.digitalstoregames.com/roms/ps2/re4_usa.iso');
+  assert.equal(resolveVersionDownloadLink([{ link: 'https://cdn/v1.iso' }, { link: '' }], 1), 'https://cdn/v1.iso');
+  assert.equal(resolveVersionDownloadLink([], 0), '#');
   assert.ok(game.bestSizeFormatted.includes('GB'));
 });
 

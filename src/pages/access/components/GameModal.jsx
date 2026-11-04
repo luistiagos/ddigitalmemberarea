@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Download, Copy, Disc, Check, HardDrive, Globe, Tag } from 'lucide-react';
+import { resolveVersionDownloadLink } from '../utils/catalogProcessor';
 
 export function GameModal({ game, platform, onClose, onShowToast }) {
   const [selectedVersionIdx, setSelectedVersionIdx] = useState(0);
@@ -23,7 +24,7 @@ export function GameModal({ game, platform, onClose, onShowToast }) {
 
   const versions = game.versions || [];
   const currentVersion = versions[selectedVersionIdx] || versions[0] || {};
-  const downloadLink = currentVersion.link || game.versions?.[0]?.link || '#';
+  const downloadLink = resolveVersionDownloadLink(versions, selectedVersionIdx);
   const consoleName = platform?.name || 'Sistema Oficial';
 
   const handleCopyLink = () => {

@@ -119,6 +119,12 @@ export function resolveCoverUrl(entry) {
   return null;
 }
 
+export function resolveVersionDownloadLink(versions, selectedVersionIdx = 0) {
+  if (!Array.isArray(versions) || versions.length === 0) return '#';
+  const currentVersion = versions[selectedVersionIdx] || versions[0] || {};
+  return currentVersion.link || versions[0]?.link || '#';
+}
+
 export function getCoverKey(url) {
   if (!url || typeof url !== 'string') return null;
   try {
