@@ -13,3 +13,4 @@ self.onmessage = (e) => {
     self.postMessage({ id, success: false, error: err?.message || String(err) });
   }
 };
+
