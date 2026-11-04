@@ -7,7 +7,7 @@ import { logApiError } from '@/utils/logError';
 import { getUserEntitledSystems, getPlatformManifest, classifyEntitlementResult } from '@/services/accessService';
 import { getCachedCatalog, setCachedCatalog } from '@/services/accessCache';
 import { ALL_PLATFORMS } from './data/platformsData';
-import { processAndGroupEntries, isGroupedCatalogCache, hydrateGroupedCatalog, sortCatalogGames } from './utils/catalogProcessor';
+import { processAndGroupEntries, processAndGroupEntriesAsync, isGroupedCatalogCache, hydrateGroupedCatalog, sortCatalogGames } from './utils/catalogProcessor';
 import { GameCard } from './components/GameCard';
 import { GameModal } from './components/GameModal';
 import { CatalogToolbar } from './components/CatalogToolbar';
@@ -83,7 +83,7 @@ export function PlatformCatalog() {
       } else {
         const entries = await getPlatformManifest(platform.mnemonic);
         setRawGames(entries || []);
-        grouped = processAndGroupEntries(entries || [], platform);
+        grouped = await processAndGroupEntriesAsync(entries || [], platform);
         if (grouped.length > 0) {
           setCachedCatalog(platform.id, grouped);
         }

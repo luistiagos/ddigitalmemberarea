@@ -436,3 +436,54 @@ export function hydrateGroupedCatalog(cachedData, platform) {
     regions: g.regions instanceof Set ? g.regions : new Set(Array.isArray(g.regions) ? g.regions : []),
   }));
 }
+
+/**
+ * Agrupa as entradas de forma assíncrona usando Web Worker no navegador,
+ * evitando tarefas longas (> 200 ms) na thread principal durante a primeira carga.
+ * Em ambientes sem Worker (Node, testes unitários) ou em caso de erro, executa síncrono.
+ */
+export async function processAndGroupEntriesAsync(entries, platform) {
+  if (!Array.isArray(entries) || entries.length === 0) return [];
+
+  if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
+    try {
+      return await new Promise((resolve) => {
+        let worker;
+        try {
+          worker = new Worker(new URL('./catalogWorker.js', import.meta.url), { type: 'module' });
+        } catch {
+          resolve(processAndGroupEntries(entries, platform));
+          return;
+        }
+
+        const timeout = setTimeout(() => {
+          try { worker.terminate(); } catch {}
+          resolve(processAndGroupEntries(entries, platform));
+        }, 20000);
+
+        worker.onmessage = (event) => {
+          clearTimeout(timeout);
+          try { worker.terminate(); } catch {}
+          if (event.data?.success && Array.isArray(event.data.grouped)) {
+            resolve(hydrateGroupedCatalog(event.data.grouped, platform));
+          } else {
+            resolve(processAndGroupEntries(entries, platform));
+          }
+        };
+
+        worker.onerror = () => {
+          clearTimeout(timeout);
+          try { worker.terminate(); } catch {}
+          resolve(processAndGroupEntries(entries, platform));
+        };
+
+        worker.postMessage({ id: Date.now(), entries, platform });
+      });
+    } catch {
+      return processAndGroupEntries(entries, platform);
+    }
+  }
+
+  return processAndGroupEntries(entries, platform);
+}
+
