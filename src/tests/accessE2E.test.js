@@ -67,6 +67,14 @@ test('E2E - Contrato de Payload e Ordenação com Capa Primeiro', () => {
   assert.equal(sortedAlpha[1].hasCover, true);
   assert.equal(sortedAlpha[2].hasCover, true);
   assert.equal(sortedAlpha[3].hasCover, false, 'Jogo sem capa deve ser o último mesmo em ordem alfabética');
+
+  // Trava que processAndGroupEntries não contorna sortCatalogGames com sort apenas por popularityScore
+  const groupedPopVsCover = processAndGroupEntries([
+    { path: 'ps2/gta.iso', name: 'Grand Theft Auto San Andreas', link: 'https://dl/gta' },
+    { path: 'ps2/obscure.iso', name: 'Obscure Indisputable Title', cover2d_url: 'https://img/obs.png', link: 'https://dl/obs' },
+  ], { id: 'ps2', mnemonic: 'ps2' });
+  assert.equal(groupedPopVsCover[0].displayTitle, 'Obscure Indisputable Title', 'Item com capa deve preceder item sem capa');
+  assert.equal(groupedPopVsCover[1].displayTitle, 'Grand Theft Auto San Andreas', 'Item sem capa fica por último mesmo sendo Master Hit de alta popularidade');
 });
 
 // ============================================================================

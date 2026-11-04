@@ -340,6 +340,15 @@ test('test_t5_contract_manifest_payload_and_cache_db_name', async () => {
   assert.equal(sortedPop[0].displayTitle, 'Com Capa Menos Famoso', 'Com capa deve vir antes no modo popular');
   const sortedAlpha = sortCatalogGames(testSort, 'alpha');
   assert.equal(sortedAlpha[0].displayTitle, 'Com Capa Menos Famoso', 'Com capa deve vir antes no modo alfabético');
+
+  // Trava que processAndGroupEntries não contorna sortCatalogGames com sort apenas por popularityScore:
+  // Um Master Hit sem capa (score > 700) deve rigorosamente vir DEPOIS de um jogo obscuro com capa (score ~60)
+  const popVsCover = processAndGroupEntries([
+    { path: 'ps2/gta.iso', name: 'Grand Theft Auto San Andreas', link: 'https://dl/gta' },
+    { path: 'ps2/obscure.iso', name: 'Obscure Indisputable Title', cover2d_url: 'https://img/obs.png', link: 'https://dl/obs' },
+  ], { id: 'ps2', mnemonic: 'ps2' });
+  assert.equal(popVsCover[0].displayTitle, 'Obscure Indisputable Title', 'Item com capa deve preceder item sem capa');
+  assert.equal(popVsCover[1].displayTitle, 'Grand Theft Auto San Andreas', 'Item sem capa fica por último mesmo sendo Master Hit de altíssima popularidade');
 });
 
 test('test_classify_entitlement_result_distinguishes_denied_error_and_login', () => {
