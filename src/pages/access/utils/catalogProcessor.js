@@ -402,17 +402,23 @@ export function processAndGroupEntries(rawEntries, platform) {
   });
 
   // Games with covers first, then by popularity descending, then alphabetical
-  groupedList.sort((a, b) => {
+  return sortCatalogGames(groupedList, 'popular');
+}
+
+export function sortCatalogGames(games, sortBy = 'popular') {
+  if (!Array.isArray(games)) return [];
+  return [...games].sort((a, b) => {
     const aHas = a.hasCover ? 1 : 0;
     const bHas = b.hasCover ? 1 : 0;
     if (bHas !== aHas) return bHas - aHas;
-    if (b.popularityScore !== a.popularityScore) {
-      return b.popularityScore - a.popularityScore;
-    }
-    return a.displayTitle.localeCompare(b.displayTitle, 'pt-BR');
-  });
 
-  return groupedList;
+    if (sortBy === 'popular') {
+      if (b.popularityScore !== a.popularityScore) {
+        return b.popularityScore - a.popularityScore;
+      }
+    }
+    return (a.displayTitle || '').localeCompare(b.displayTitle || '', 'pt-BR');
+  });
 }
 
 export function isGroupedCatalogCache(data) {

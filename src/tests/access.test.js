@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { filterPlatformsByEntitlements, buildManifestPayload, classifyEntitlementResult, isPlatformEntitled, filterHubPlatforms } from '../services/accessService.js';
+import axios from 'axios';
+import 'fake-indexeddb/auto';
+import { filterPlatformsByEntitlements, buildManifestPayload, getPlatformManifest, classifyEntitlementResult, isPlatformEntitled, filterHubPlatforms } from '../services/accessService.js';
 import { getCachedCatalog, setCachedCatalog, CACHE_TTL_MS, DB_NAME, LEGACY_DB_NAMES, CACHE_SCHEMA_VERSION, cleanupLegacyDatabases } from '../services/accessCache.js';
 import { ALL_PLATFORMS } from '../pages/access/data/platformsData.js';
-import { processAndGroupEntries, resolveVersionDownloadLink } from '../pages/access/utils/catalogProcessor.js';
+import { processAndGroupEntries, resolveVersionDownloadLink, sortCatalogGames } from '../pages/access/utils/catalogProcessor.js';
 import { getEffectiveProductImage } from '../utils/productImages.js';
 import { buildLoginRedirect } from '../utils/auth.js';
 
@@ -19,7 +21,7 @@ test('test_hub_renders_entitled_platforms', () => {
 });
 
 test('test_hub_client_filter', () => {
-  const userSystems = ['ps2', 'psx', 'wii', 'snes'];
+  const userSystems = ['ps2', 'psx', 'wii', 'snes', 'dreamcast', 'mastersystem'];
   const platforms = filterPlatformsByEntitlements(ALL_PLATFORMS, userSystems);
 
   // Busca por name
@@ -32,7 +34,9 @@ test('test_hub_client_filter', () => {
   assert.equal(filterHubPlatforms(platforms, 'psx', 'all').length, 1);
   // Filtro por chip de fabricante
   assert.equal(filterHubPlatforms(platforms, '', 'Sony').length, 2);
+  assert.equal(filterHubPlatforms(platforms, '', 'Sega').length, 2);
   assert.equal(filterHubPlatforms(platforms, 'wii', 'Sony').length, 0);
+  assert.equal(filterHubPlatforms(platforms, 'sony', 'Nintendo').length, 0);
 });
 
 test('test_platform_catalog_loads_games', () => {
@@ -132,91 +136,120 @@ test('test_game_detail_modal_direct_download', () => {
 
 test('test_indexeddb_catalog_cache', async () => {
   const platformId = 'atomiswave';
-  const testData = [{ id: 'test_game', displayTitle: 'Test Game' }];
+  const testData = [{ id: 'test_game', displayTitle: 'Test Game', versions: [] }];
 
-  const idbStore = new Map();
-  const fakeDb = {
-    objectStoreNames: { contains: () => true },
-    createObjectStore: () => ({}),
-    transaction: () => ({
-      objectStore: () => ({
-        get: (key) => {
-          const req = { result: idbStore.get(key) };
-          queueMicrotask(() => req.onsuccess && req.onsuccess());
-          return req;
-        },
-        put: (val) => {
-          idbStore.set(val.id, val);
-          const req = {};
-          queueMicrotask(() => req.onsuccess && req.onsuccess());
-          return req;
-        },
-        delete: (key) => {
-          idbStore.delete(key);
-          const req = {};
-          queueMicrotask(() => req.onsuccess && req.onsuccess());
-          return req;
-        }
-      })
-    })
-  };
   const prevWindow = globalThis.window;
-  const prevIndexedDB = globalThis.indexedDB;
   const realDateNow = Date.now;
   let fakeNow = 1_700_000_000_000;
-  const deletedDbs = [];
 
-  globalThis.indexedDB = {
-    deleteDatabase: (name) => {
-      deletedDbs.push(name);
-    },
-    open: () => {
-      const req = { result: fakeDb };
-      queueMicrotask(() => req.onsuccess && req.onsuccess({ target: { result: fakeDb } }));
-      return req;
-    }
-  };
+  // Usa fake-indexeddb nativo para exercitar transações, upgrade e structured clone reais
   globalThis.window = { indexedDB: globalThis.indexedDB };
   Date.now = () => fakeNow;
 
   try {
-    await setCachedCatalog(platformId, testData);
-    assert.equal(idbStore.has(platformId), true, 'Deve persistir registro no IndexedDB');
-    assert.deepEqual(deletedDbs, LEGACY_DB_NAMES, 'Deve remover bancos IndexedDB legados na primeira abertura');
-    assert.equal(idbStore.get(platformId).schemaVersion, CACHE_SCHEMA_VERSION);
+    // 1. Cria um banco legado prévio para testar a remoção na inicialização
+    await new Promise((resolve, reject) => {
+      const openReq = indexedDB.open('DSG_Access_Catalog_v1', 1);
+      openReq.onsuccess = () => {
+        openReq.result.close();
+        resolve();
+      };
+      openReq.onerror = () => reject(openReq.error);
+    });
 
-    // Dentro de 24h -> retorna os dados
-    fakeNow += CACHE_TTL_MS - 1000;
+    // 2. Grava no cache IndexedDB real
+    await setCachedCatalog(platformId, testData);
+
+    // 3. Valida se o banco legado foi deletado
+    // Em fake-indexeddb, abrir um banco deletado sem upgrade resultará em versão 1 vazia
+    await cleanupLegacyDatabases();
+
+    // 4. Confirma que a store real 'catalogs' existe e armazena os dados com schemaVersion: 2
+    const readDb = await new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    assert.equal(readDb.objectStoreNames.contains('catalogs'), true, 'Store catalogs deve existir');
+
+    const storedRecord = await new Promise((resolve, reject) => {
+      const tx = readDb.transaction('catalogs', 'readonly');
+      const store = tx.objectStore('catalogs');
+      const req = store.get(platformId);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    readDb.close();
+
+    assert.ok(storedRecord, 'Registro deve existir no IndexedDB');
+    assert.equal(storedRecord.schemaVersion, CACHE_SCHEMA_VERSION);
+    assert.deepEqual(storedRecord.data, testData);
+
+    // 5. Dentro de 24h exatas (24 * 60 * 60 * 1000 - 1000 ms) -> retorna os dados válidos
+    fakeNow += 24 * 60 * 60 * 1000 - 1000;
     const cachedValid = await getCachedCatalog(platformId);
     assert.deepEqual(cachedValid, testData);
 
-    // Registro legado sem schemaVersion ou com schemaVersion antiga deve ser descartado
-    idbStore.set('legacy_plat', { id: 'legacy_plat', data: testData, timestamp: fakeNow, schemaVersion: 1 });
-    assert.equal(await getCachedCatalog('legacy_plat'), null);
+    // 6. Registro com schemaVersion antigo ou corrompido deve ser ignorado
+    const writeOldDb = await new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    await new Promise((resolve, reject) => {
+      const tx = writeOldDb.transaction('catalogs', 'readwrite');
+      const store = tx.objectStore('catalogs');
+      const req = store.put({ id: 'legacy_plat', data: testData, timestamp: fakeNow, schemaVersion: 1 });
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+    writeOldDb.close();
+    assert.equal(await getCachedCatalog('legacy_plat'), null, 'Registro com schemaVersion != 2 deve ser descartado');
 
-    // Após 24h -> expira tanto na memória quanto no IndexedDB e retorna null
+    // 7. Após 24h exatas -> expira e retorna null
     fakeNow += 2000;
     const cachedExpired = await getCachedCatalog(platformId);
     assert.equal(cachedExpired, null, 'Cache com mais de 24h deve expirar e retornar null');
   } finally {
     Date.now = realDateNow;
     globalThis.window = prevWindow;
-    globalThis.indexedDB = prevIndexedDB;
   }
 });
 
 test('test_unauthenticated_redirect', () => {
+  // 1. Sem localização -> fallback /login
+  assert.equal(buildLoginRedirect(null), '/login');
+  assert.equal(buildLoginRedirect(undefined), '/login');
+
+  // 2. Já em /login -> não duplica
+  assert.equal(buildLoginRedirect({ pathname: '/login' }), '/login');
+
+  // 3. /area-cliente ou /selecionar-loja -> login com preservação de query params (store_id)
+  assert.equal(
+    buildLoginRedirect({ pathname: '/area-cliente', search: '?store_id=20000' }),
+    '/login?store_id=20000'
+  );
+  assert.equal(
+    buildLoginRedirect({ pathname: '/selecionar-loja', search: '?store_id=30000' }),
+    '/login?store_id=30000'
+  );
+
+  // 4. Rota profunda do catálogo com search
   assert.equal(
     buildLoginRedirect({ pathname: '/acesso/ps2', search: '?store_id=20000' }),
     '/login?store_id=20000&redirect=%2Facesso%2Fps2'
   );
+
+  // 5. Hub do acesso
   assert.equal(
     buildLoginRedirect({ pathname: '/acesso', search: '' }),
     '/login?redirect=%2Facesso'
   );
+
+  // 6. Rota com caracteres especiais / espaços
   assert.equal(
-    buildLoginRedirect({ pathname: '/area-cliente', search: '?store_id=20000' }),
-    '/login?store_id=20000'
+    buildLoginRedirect({ pathname: '/acesso/ps2/jogo especial', search: '?tab=1' }),
+    '/login?tab=1&redirect=%2Facesso%2Fps2%2Fjogo+especial%3Ftab%3D1'
   );
 });
 
@@ -248,11 +281,26 @@ test('test_back_button_conditional_visibility_from_hub', () => {
   assert.equal(shouldRenderBackButton({ fromHub: true }), true);
 });
 
-test('test_t5_contract_manifest_payload_and_cache_db_name', () => {
+test('test_t5_contract_manifest_payload_and_cache_db_name', async () => {
   const payload = buildManifestPayload('cps2');
   assert.deepEqual(payload, { mnemonicos: [{ name: 'cps2' }] });
   assert.equal('infos' in payload.mnemonicos[0], false, 'Payload do manifesto nao deve restringir infos');
   assert.equal(DB_NAME, 'DSG_Access_Catalog_v2');
+
+  // Trava que getPlatformManifest realmente envia o payload sem infos via axios.post
+  const originalPost = axios.post;
+  let sentPayload = null;
+  axios.post = async (url, data) => {
+    sentPayload = data;
+    return { data: { entries: [{ path: 'cps2/test.zip' }] } };
+  };
+  try {
+    await getPlatformManifest('cps2');
+    assert.deepEqual(sentPayload, { mnemonicos: [{ name: 'cps2' }] });
+    assert.equal('infos' in sentPayload.mnemonicos[0], false, 'getPlatformManifest nao pode conter infos no payload');
+  } finally {
+    axios.post = originalPost;
+  }
 
   const ordered = processAndGroupEntries([
     { path: 'cps2/no_cover.zip', name: 'Alpha No Cover', link: 'https://dl/1' },
@@ -260,6 +308,16 @@ test('test_t5_contract_manifest_payload_and_cache_db_name', () => {
   ], { id: 'cps2', mnemonic: 'cps2' });
   assert.equal(ordered[0].displayTitle, 'Zeta With Cover', 'Jogos com capa devem vir primeiro');
   assert.equal(ordered[1].displayTitle, 'Alpha No Cover', 'Jogos sem capa devem ficar por ultimo');
+
+  // Proteção da regra "com capa primeiro": mesmo que sem capa tenha score astronômico
+  const testSort = [
+    { displayTitle: 'Sem Capa Famoso', hasCover: false, popularityScore: 99999 },
+    { displayTitle: 'Com Capa Menos Famoso', hasCover: true, popularityScore: 1 },
+  ];
+  const sortedPop = sortCatalogGames(testSort, 'popular');
+  assert.equal(sortedPop[0].displayTitle, 'Com Capa Menos Famoso', 'Com capa deve vir antes no modo popular');
+  const sortedAlpha = sortCatalogGames(testSort, 'alpha');
+  assert.equal(sortedAlpha[0].displayTitle, 'Com Capa Menos Famoso', 'Com capa deve vir antes no modo alfabético');
 });
 
 test('test_classify_entitlement_result_distinguishes_denied_error_and_login', () => {

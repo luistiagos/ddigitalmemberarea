@@ -7,7 +7,7 @@ import { logApiError } from '@/utils/logError';
 import { getUserEntitledSystems, getPlatformManifest, classifyEntitlementResult } from '@/services/accessService';
 import { getCachedCatalog, setCachedCatalog } from '@/services/accessCache';
 import { ALL_PLATFORMS } from './data/platformsData';
-import { processAndGroupEntries, isGroupedCatalogCache, hydrateGroupedCatalog } from './utils/catalogProcessor';
+import { processAndGroupEntries, isGroupedCatalogCache, hydrateGroupedCatalog, sortCatalogGames } from './utils/catalogProcessor';
 import { GameCard } from './components/GameCard';
 import { GameModal } from './components/GameModal';
 import { CatalogToolbar } from './components/CatalogToolbar';
@@ -183,19 +183,7 @@ export function PlatformCatalog() {
     }
 
     // Ordenação: Jogos com capa SEMPRE primeiro; sem capa SEMPRE por último
-    return [...result].sort((a, b) => {
-      const aHas = a.hasCover ? 1 : 0;
-      const bHas = b.hasCover ? 1 : 0;
-      if (bHas !== aHas) return bHas - aHas;
-
-      if (sortBy === 'popular') {
-        if (b.popularityScore !== a.popularityScore) {
-          return b.popularityScore - a.popularityScore;
-        }
-      }
-
-      return a.displayTitle.localeCompare(b.displayTitle, 'pt-BR');
-    });
+    return sortCatalogGames(result, sortBy);
   }, [groupedGames, searchQuery, selectedRegion, sortBy]);
 
   // Observer de Scroll Infinito
