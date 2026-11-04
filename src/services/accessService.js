@@ -67,6 +67,26 @@ export async function getPlatformManifest(mnemonic) {
 }
 
 /**
+ * Verifica se o usuário possui direito a uma plataforma específica.
+ * Fonte única do guard de direito por plataforma (id ou mnemonic, case-insensitive, all/*).
+ * @param {{ id?: string, mnemonic?: string } | null | undefined} platform
+ * @param {Array<string>} userSystems
+ * @returns {boolean}
+ */
+export function isPlatformEntitled(platform, userSystems) {
+  if (!platform || !Array.isArray(userSystems)) {
+    return false;
+  }
+  const normalized = userSystems.map((s) => String(s).toLowerCase().trim());
+  if (normalized.includes('all') || normalized.includes('*')) {
+    return true;
+  }
+  const pId = String(platform.id || '').toLowerCase().trim();
+  const pMnemonic = String(platform.mnemonic || '').toLowerCase().trim();
+  return (pId !== '' && normalized.includes(pId)) || (pMnemonic !== '' && normalized.includes(pMnemonic));
+}
+
+/**
  * Filtra a lista completa de plataformas retornando apenas as que o usuário possui direito.
  * @param {Array<object>} allPlatforms Lista de todas as 169 plataformas
  * @param {Array<string>} userSystems Lista de mnemônicos liberados do usuário
@@ -76,21 +96,7 @@ export function filterPlatformsByEntitlements(allPlatforms, userSystems) {
   if (!Array.isArray(allPlatforms) || !Array.isArray(userSystems)) {
     return [];
   }
-
-  const normalized = userSystems.map((s) => String(s).toLowerCase().trim());
-  const hasAll = normalized.includes('all') || normalized.includes('*');
-
-  if (hasAll) {
-    return allPlatforms;
-  }
-
-  const systemSet = new Set(normalized);
-
-  return allPlatforms.filter((p) => {
-    const pId = (p.id || '').toLowerCase();
-    const pMnemonic = (p.mnemonic || '').toLowerCase();
-    return systemSet.has(pId) || systemSet.has(pMnemonic);
-  });
+  return allPlatforms.filter((p) => isPlatformEntitled(p, userSystems));
 }
 
 /**
@@ -111,6 +117,5 @@ export function classifyEntitlementResult({ data = null, error = null, platform 
   if (!platform) {
     return 'denied';
   }
-  const matched = filterPlatformsByEntitlements([platform], data.systems || []);
-  return matched.length > 0 ? 'authorized' : 'denied';
+  return isPlatformEntitled(platform, data.systems || []) ? 'authorized' : 'denied';
 }

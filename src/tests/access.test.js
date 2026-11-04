@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { filterPlatformsByEntitlements, buildManifestPayload, classifyEntitlementResult } from '../services/accessService.js';
+import { filterPlatformsByEntitlements, buildManifestPayload, classifyEntitlementResult, isPlatformEntitled } from '../services/accessService.js';
 import { getCachedCatalog, setCachedCatalog, CACHE_TTL_MS, DB_NAME } from '../services/accessCache.js';
 import { ALL_PLATFORMS } from '../pages/access/data/platformsData.js';
 import { processAndGroupEntries } from '../pages/access/utils/catalogProcessor.js';
@@ -86,16 +86,16 @@ test('test_arcade_game_title_and_cover_resolution', () => {
 });
 
 test('test_platform_catalog_unauthorized_guard', () => {
-  const userSystems = ['ps2', 'wii'];
-  const isAuthorized = (platformId, mnemonic) => {
-    const list = userSystems.map((s) => s.toLowerCase());
-    return list.includes('all') || list.includes(platformId.toLowerCase()) || list.includes(mnemonic.toLowerCase());
-  };
+  const userSystems = ['ps2', 'wii', 'psx', 'mame2003Plus'];
 
-  assert.equal(isAuthorized('ps2', 'ps2'), true);
-  assert.equal(isAuthorized('wii', 'wii'), true);
-  assert.equal(isAuthorized('atomiswave', 'atomiswave'), false);
-  assert.equal(isAuthorized('ps3', 'ps3'), false);
+  assert.equal(isPlatformEntitled({ id: 'ps2', mnemonic: 'ps2' }, userSystems), true);
+  assert.equal(isPlatformEntitled({ id: 'wii', mnemonic: 'wii' }, userSystems), true);
+  assert.equal(isPlatformEntitled({ id: 'ps1', mnemonic: 'psx' }, userSystems), true);
+  assert.equal(isPlatformEntitled({ id: 'mame2003plus', mnemonic: 'mame2003Plus' }, userSystems), true);
+  assert.equal(isPlatformEntitled({ id: 'atomiswave', mnemonic: 'atomiswave' }, userSystems), false);
+  assert.equal(isPlatformEntitled({ id: 'ps3', mnemonic: 'ps3' }, userSystems), false);
+  assert.equal(isPlatformEntitled({ id: 'ps3', mnemonic: 'ps3' }, ['all']), true);
+  assert.equal(isPlatformEntitled({ id: 'ps3', mnemonic: 'ps3' }, ['*']), true);
 });
 
 test('test_game_detail_modal_direct_download', () => {
