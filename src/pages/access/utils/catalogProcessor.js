@@ -79,6 +79,56 @@ export function getComparisonKey(baseTitle) {
   return key.replace(/[^a-z0-9]/g, '');
 }
 
+export function getCanonicalGameKey(baseTitle) {
+  let s = (baseTitle || '').toLowerCase();
+  s = s
+    .replace(/\b(dublado|legendado|traduzido|tradu[cç][aã]o|pt[\s_-]*br|portugues|português|espanhol|english|iso|rom|chd|wbfs|pkg|ps1|psx|ps2|ps3|psp|snes|nes|n64|wii|gamecube|ngc|switch|xbox|xbox360|gba|gbc|gb|nds|3ds|megadrive|genesis|dreamcast|saturn|arcade|mame|finalburn|neogeo|cps1|cps2|cps3|atomiswave|naomi)\b/gi, ' ')
+    .replace(/\b(remastered|remaster|definitive\s+edition|complete\s+edition|special\s+edition|collector'?s\s+edition|game\s+of\s+the\s+year\s+edition|goty\s+edition|greatest\s+hits|platinum|black\s+label|redump|no[\s_-]*intro)\b/gi, ' ')
+    .replace(/\b(e|em|de|do|da|para|com|by)\b/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return getComparisonKey(s);
+}
+
+export function isCompatibleForCoverMerge(titleA, titleB) {
+  const canA = getCanonicalGameKey(titleA);
+  const canB = getCanonicalGameKey(titleB);
+  if (!canA || !canB) return false;
+  if (canA === canB) return true;
+
+  const compA = getComparisonKey(titleA);
+  const compB = getComparisonKey(titleB);
+  if (!compA || !compB) return false;
+  if (compA === compB) return true;
+
+  const shorter = compA.length <= compB.length ? compA : compB;
+  const longer = compA.length <= compB.length ? compB : compA;
+  if (shorter.length < 6) return false;
+  if (!longer.startsWith(shorter)) return false;
+
+  const rest = longer.slice(shorter.length);
+  if (!rest) return true;
+  if (/^\d/.test(rest)) return false;
+  if (
+    shorter.includes('gta') ||
+    shorter.includes('grandtheftauto') ||
+    shorter.includes('bombapatch') ||
+    shorter.includes('pes20') ||
+    shorter.includes('winningeleven') ||
+    shorter.includes('fifa')
+  ) {
+    return false;
+  }
+  if (
+    /^(plus|turbo|alpha|zero|super|hyper|ultra|remix|arcade|collection|anthology|trilogy|chronicles|origins|legends|generations|evolution|unleashed|revelations|remake|rebirth|returns|revenge|forever|world|gaiden|special|dx|ex)/.test(
+      rest
+    )
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function extractRegion(str) {
   if (!str) return '';
   if (/\b(Brazil|Brasil|PT-BR|Dublado|Legendado|Traduzido|Bomba Patch)\b/i.test(str)) return 'Brasil';
@@ -242,7 +292,10 @@ export function processAndGroupEntries(rawEntries, platform) {
 
     let group = null;
     if (coverKey && coverMap.has(coverKey)) {
-      group = coverMap.get(coverKey);
+      const candidate = coverMap.get(coverKey);
+      if (candidate && isCompatibleForCoverMerge(candidate.displayTitle, baseTitle)) {
+        group = candidate;
+      }
     }
     if (!group && compKey && titleMap.has(compKey)) {
       group = titleMap.get(compKey);
@@ -306,7 +359,7 @@ export function processAndGroupEntries(rawEntries, platform) {
       }
     }
 
-    if (coverKey) coverMap.set(coverKey, group);
+    if (coverKey && !coverMap.has(coverKey)) coverMap.set(coverKey, group);
     if (compKey) titleMap.set(compKey, group);
   }
 
