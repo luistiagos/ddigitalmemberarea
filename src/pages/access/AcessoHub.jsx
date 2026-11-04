@@ -27,9 +27,10 @@ export function AcessoHub() {
       if (data && data.success) {
         setUserSystems(data.systems || []);
       } else {
+        const backendMsg = data?.message || data?.error || 'success: false';
         const userMsg = 'Não foi possível carregar seus direitos de acesso.';
         setError(userMsg);
-        logApiError('AcessoHub.jsx', 'fetchEntitlements', new Error('Falha na consulta de direitos (success: false)'), userMsg);
+        logApiError('AcessoHub.jsx', 'fetchEntitlements', new Error(`Falha na consulta de direitos (${backendMsg})`), userMsg);
       }
     } catch (err) {
       console.error('Erro ao consultar direitos:', err);

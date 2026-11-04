@@ -366,6 +366,14 @@ test('test_classify_entitlement_result_distinguishes_denied_error_and_login', ()
     'error'
   );
   assert.equal(
+    classifyEntitlementResult({ data: { success: false, message: 'Assinatura cancelada' }, platform: ps2 }),
+    'error'
+  );
+  assert.equal(
+    classifyEntitlementResult({ data: { success: false, error: 'Database locked' }, platform: ps2 }),
+    'error'
+  );
+  assert.equal(
     classifyEntitlementResult({ error: new Error('Network Error'), platform: ps2 }),
     'error'
   );
