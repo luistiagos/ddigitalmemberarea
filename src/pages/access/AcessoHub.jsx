@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Gamepad2, Search, X, ArrowLeft, LogOut, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { clearAuth, buildLoginRedirect } from '@/utils/auth';
 import { getUserEntitledSystems, filterPlatformsByEntitlements } from '@/services/accessService';
 import { ALL_PLATFORMS } from './data/platformsData';
 import './acesso.css';
@@ -9,6 +10,7 @@ import './acesso.css';
 export function AcessoHub() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,6 +30,11 @@ export function AcessoHub() {
       }
     } catch (err) {
       console.error('Erro ao consultar direitos:', err);
+      if (err?.response?.status === 401) {
+        clearAuth();
+        navigate(buildLoginRedirect(location), { replace: true });
+        return;
+      }
       setError('Falha de conexão ao carregar sistemas liberados.');
     } finally {
       setLoading(false);
@@ -282,4 +289,3 @@ export function AcessoHub() {
     </div>
   );
 }
-

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Gamepad2, ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { clearAuth, buildLoginRedirect } from '@/utils/auth';
 import { getUserEntitledSystems, getPlatformManifest, classifyEntitlementResult } from '@/services/accessService';
 import { getCachedCatalog, setCachedCatalog } from '@/services/accessCache';
 import { ALL_PLATFORMS } from './data/platformsData';
@@ -16,6 +17,7 @@ const BATCH_SIZE = 48;
 export function PlatformCatalog() {
   const { platformId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const fromHub = Boolean(location?.state?.fromHub);
   const { user } = useAuth();
 
@@ -119,12 +121,17 @@ export function PlatformCatalog() {
       console.error('Erro ao verificar direitos:', err);
       if (!isMountedRef.current) return;
       const status = classifyEntitlementResult({ error: err, platform });
+      if (status === 'login') {
+        clearAuth();
+        navigate(buildLoginRedirect(location), { replace: true });
+        return;
+      }
       setAuthStatus(status);
       setError('Falha ao autenticar permissões de acesso ao sistema.');
     } finally {
       if (isMountedRef.current) setAuthLoading(false);
     }
-  }, [platform]);
+  }, [platform, location, navigate]);
 
   useEffect(() => {
     const isMountedRef = { current: true };
