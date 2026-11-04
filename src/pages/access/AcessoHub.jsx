@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Gamepad2, Search, X, ArrowLeft, LogOut, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { clearAuth, buildLoginRedirect } from '@/utils/auth';
+import { logApiError } from '@/utils/logError';
 import { getUserEntitledSystems, filterPlatformsByEntitlements } from '@/services/accessService';
 import { ALL_PLATFORMS } from './data/platformsData';
 import './acesso.css';
@@ -35,7 +36,9 @@ export function AcessoHub() {
         navigate(buildLoginRedirect(location), { replace: true });
         return;
       }
-      setError('Falha de conexão ao carregar sistemas liberados.');
+      const userMsg = 'Falha de conexão ao carregar sistemas liberados.';
+      setError(userMsg);
+      logApiError('AcessoHub.jsx', 'fetchEntitlements', err, userMsg);
     } finally {
       setLoading(false);
     }

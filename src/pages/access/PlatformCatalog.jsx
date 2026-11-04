@@ -3,6 +3,7 @@ import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Gamepad2, ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { clearAuth, buildLoginRedirect } from '@/utils/auth';
+import { logApiError } from '@/utils/logError';
 import { getUserEntitledSystems, getPlatformManifest, classifyEntitlementResult } from '@/services/accessService';
 import { getCachedCatalog, setCachedCatalog } from '@/services/accessCache';
 import { ALL_PLATFORMS } from './data/platformsData';
@@ -86,7 +87,9 @@ export function PlatformCatalog() {
       setRenderedCount(BATCH_SIZE);
     } catch (err) {
       console.error('Erro ao carregar catálogo da plataforma:', err);
-      setError('Falha de conexão com a base de jogos.');
+      const userMsg = 'Falha de conexão com a base de jogos.';
+      setError(userMsg);
+      logApiError('PlatformCatalog.jsx', 'loadCatalog', err, userMsg);
     } finally {
       setCatalogLoading(false);
     }
@@ -127,7 +130,9 @@ export function PlatformCatalog() {
         return;
       }
       setAuthStatus(status);
-      setError('Falha ao autenticar permissões de acesso ao sistema.');
+      const userMsg = 'Falha ao autenticar permissões de acesso ao sistema.';
+      setError(userMsg);
+      logApiError('PlatformCatalog.jsx', 'checkAuthorization', err, userMsg);
     } finally {
       if (isMountedRef.current) setAuthLoading(false);
     }
