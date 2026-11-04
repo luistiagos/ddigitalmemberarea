@@ -156,3 +156,28 @@ export function getSafeRedirectUrl(urlStr, token = null) {
   return null;
 }
 
+/**
+ * Monta a URL de redirecionamento para /login preservando os parâmetros da URL
+ * (como store_id) e adicionando `redirect` com o caminho de retorno quando a rota
+ * protegida não é a home padrão (/area-cliente).
+ * @param {{ pathname?: string, search?: string } | null | undefined} location
+ * @returns {string}
+ */
+export function buildLoginRedirect(location) {
+  const rawSearch = location?.search || '';
+  const pathname = location?.pathname || '';
+  const loginParams = new URLSearchParams(rawSearch);
+
+  const skipRedirectPaths = new Set(['', '/', '/login', '/area-cliente', '/selecionar-loja']);
+  if (!skipRedirectPaths.has(pathname) && !loginParams.has('redirect') && !loginParams.has('return_to')) {
+    const targetParams = new URLSearchParams(rawSearch);
+    targetParams.delete('store_id');
+    targetParams.delete('storeid');
+    const targetQuery = targetParams.toString();
+    const redirectTarget = targetQuery ? `${pathname}?${targetQuery}` : pathname;
+    loginParams.set('redirect', redirectTarget);
+  }
+
+  const query = loginParams.toString();
+  return query ? `/login?${query}` : '/login';
+}

@@ -5,6 +5,7 @@ import { getCachedCatalog, setCachedCatalog, CACHE_TTL_MS, DB_NAME } from '../se
 import { ALL_PLATFORMS } from '../pages/access/data/platformsData.js';
 import { processAndGroupEntries } from '../pages/access/utils/catalogProcessor.js';
 import { getEffectiveProductImage } from '../utils/productImages.js';
+import { buildLoginRedirect } from '../utils/auth.js';
 
 test('test_hub_renders_entitled_platforms', () => {
   const userSystems = ['atomiswave', 'ps2'];
@@ -128,13 +129,18 @@ test('test_indexeddb_catalog_cache', async () => {
 });
 
 test('test_unauthenticated_redirect', () => {
-  const checkToken = (token) => {
-    if (!token) return { redirect: '/login' };
-    return { redirect: null };
-  };
-
-  assert.deepEqual(checkToken(null), { redirect: '/login' });
-  assert.deepEqual(checkToken('valid-jwt-token'), { redirect: null });
+  assert.equal(
+    buildLoginRedirect({ pathname: '/acesso/ps2', search: '?store_id=20000' }),
+    '/login?store_id=20000&redirect=%2Facesso%2Fps2'
+  );
+  assert.equal(
+    buildLoginRedirect({ pathname: '/acesso', search: '' }),
+    '/login?redirect=%2Facesso'
+  );
+  assert.equal(
+    buildLoginRedirect({ pathname: '/area-cliente', search: '?store_id=20000' }),
+    '/login?store_id=20000'
+  );
 });
 
 test('test_effective_product_image_fallbacks', () => {
