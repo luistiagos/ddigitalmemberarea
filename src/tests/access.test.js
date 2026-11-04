@@ -170,5 +170,11 @@ test('test_t5_contract_manifest_payload_and_cache_db_name', () => {
   assert.deepEqual(payload, { mnemonicos: [{ name: 'cps2' }] });
   assert.equal('infos' in payload.mnemonicos[0], false, 'Payload do manifesto nao deve restringir infos');
   assert.equal(DB_NAME, 'DSG_Access_Catalog_v2');
-});
 
+  const ordered = processAndGroupEntries([
+    { path: 'cps2/no_cover.zip', name: 'Alpha No Cover', link: 'https://dl/1' },
+    { path: 'cps2/with_cover.zip', name: 'Zeta With Cover', cover2d_url: 'https://img/zeta.png', link: 'https://dl/2' },
+  ], { id: 'cps2', mnemonic: 'cps2' });
+  assert.equal(ordered[0].displayTitle, 'Zeta With Cover', 'Jogos com capa devem vir primeiro');
+  assert.equal(ordered[1].displayTitle, 'Alpha No Cover', 'Jogos sem capa devem ficar por ultimo');
+});
