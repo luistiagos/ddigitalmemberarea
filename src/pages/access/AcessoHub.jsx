@@ -4,7 +4,7 @@ import { Gamepad2, Search, X, ArrowLeft, LogOut, Sparkles, AlertCircle, RefreshC
 import { useAuth } from '@/hooks/useAuth';
 import { clearAuth, buildLoginRedirect } from '@/utils/auth';
 import { logApiError } from '@/utils/logError';
-import { getUserEntitledSystems, filterPlatformsByEntitlements } from '@/services/accessService';
+import { getUserEntitledSystems, filterPlatformsByEntitlements, filterHubPlatforms } from '@/services/accessService';
 import { ALL_PLATFORMS } from './data/platformsData';
 import './acesso.css';
 
@@ -64,21 +64,7 @@ export function AcessoHub() {
 
   // Filtragem local por busca e empresa
   const filteredPlatforms = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return entitledPlatforms.filter((p) => {
-      const matchSearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        (p.shortName && p.shortName.toLowerCase().includes(q)) ||
-        (p.company && p.company.toLowerCase().includes(q)) ||
-        (p.mnemonic && p.mnemonic.toLowerCase().includes(q));
-
-      const matchCompany =
-        selectedCompany === 'all' ||
-        (p.company && p.company.toLowerCase() === selectedCompany.toLowerCase());
-
-      return matchSearch && matchCompany;
-    });
+    return filterHubPlatforms(entitledPlatforms, searchQuery, selectedCompany);
   }, [entitledPlatforms, searchQuery, selectedCompany]);
 
   return (

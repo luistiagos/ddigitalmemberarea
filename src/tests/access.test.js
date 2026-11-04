@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { filterPlatformsByEntitlements, buildManifestPayload, classifyEntitlementResult, isPlatformEntitled } from '../services/accessService.js';
+import { filterPlatformsByEntitlements, buildManifestPayload, classifyEntitlementResult, isPlatformEntitled, filterHubPlatforms } from '../services/accessService.js';
 import { getCachedCatalog, setCachedCatalog, CACHE_TTL_MS, DB_NAME } from '../services/accessCache.js';
 import { ALL_PLATFORMS } from '../pages/access/data/platformsData.js';
 import { processAndGroupEntries } from '../pages/access/utils/catalogProcessor.js';
@@ -19,18 +19,20 @@ test('test_hub_renders_entitled_platforms', () => {
 });
 
 test('test_hub_client_filter', () => {
-  const userSystems = ['ps2', 'ps1', 'wii', 'snes'];
+  const userSystems = ['ps2', 'psx', 'wii', 'snes'];
   const platforms = filterPlatformsByEntitlements(ALL_PLATFORMS, userSystems);
 
-  // Client search filter by text
-  const searchFilter = (query) =>
-    platforms.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
-
-  const sonyResults = searchFilter('playstation');
-  assert.equal(sonyResults.length, 2);
-
-  const nintendoResults = searchFilter('nintendo');
-  assert.equal(nintendoResults.length, 2);
+  // Busca por name
+  assert.equal(filterHubPlatforms(platforms, 'playstation', 'all').length, 2);
+  // Busca por shortName
+  assert.equal(filterHubPlatforms(platforms, 'snes', 'all').length, 1);
+  // Busca por company
+  assert.equal(filterHubPlatforms(platforms, 'nintendo', 'all').length, 2);
+  // Busca por mnemonic (psx -> ps1)
+  assert.equal(filterHubPlatforms(platforms, 'psx', 'all').length, 1);
+  // Filtro por chip de fabricante
+  assert.equal(filterHubPlatforms(platforms, '', 'Sony').length, 2);
+  assert.equal(filterHubPlatforms(platforms, 'wii', 'Sony').length, 0);
 });
 
 test('test_platform_catalog_loads_games', () => {

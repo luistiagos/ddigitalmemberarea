@@ -119,3 +119,32 @@ export function classifyEntitlementResult({ data = null, error = null, platform 
   }
   return isPlatformEntitled(platform, data.systems || []) ? 'authorized' : 'denied';
 }
+
+/**
+ * Filtra as plataformas liberadas do Hub por busca textual (nome, shortName, empresa, mnemônico)
+ * e pelo chip de fabricante selecionado.
+ * @param {Array<object>} platforms
+ * @param {string} [searchQuery='']
+ * @param {string} [selectedCompany='all']
+ * @returns {Array<object>}
+ */
+export function filterHubPlatforms(platforms, searchQuery = '', selectedCompany = 'all') {
+  if (!Array.isArray(platforms)) return [];
+  const q = String(searchQuery || '').trim().toLowerCase();
+  const companyFilter = String(selectedCompany || 'all').toLowerCase();
+
+  return platforms.filter((p) => {
+    const matchSearch =
+      !q ||
+      (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.shortName && p.shortName.toLowerCase().includes(q)) ||
+      (p.company && p.company.toLowerCase().includes(q)) ||
+      (p.mnemonic && p.mnemonic.toLowerCase().includes(q));
+
+    const matchCompany =
+      companyFilter === 'all' ||
+      (p.company && p.company.toLowerCase() === companyFilter);
+
+    return Boolean(matchSearch && matchCompany);
+  });
+}
