@@ -82,51 +82,48 @@ export function getComparisonKey(baseTitle) {
 export function getCanonicalGameKey(baseTitle) {
   let s = (baseTitle || '').toLowerCase();
   s = s
-    .replace(/\b(dublado|legendado|traduzido|tradu[cç][aã]o|pt[\s_-]*br|portugues|português|espanhol|english|iso|rom|chd|wbfs|pkg|ps1|psx|ps2|ps3|psp|snes|nes|n64|wii|gamecube|ngc|switch|xbox|xbox360|gba|gbc|gb|nds|3ds|megadrive|genesis|dreamcast|saturn|arcade|mame|finalburn|neogeo|cps1|cps2|cps3|atomiswave|naomi)\b/gi, ' ')
-    .replace(/\b(remastered|remaster|definitive\s+edition|complete\s+edition|special\s+edition|collector'?s\s+edition|game\s+of\s+the\s+year\s+edition|goty\s+edition|greatest\s+hits|platinum|black\s+label|redump|no[\s_-]*intro)\b/gi, ' ')
-    .replace(/\b(e|em|de|do|da|para|com|by)\b/gi, ' ')
+    .replace(/\b(dublado|legendado|traduzido|tradu[cç][aã]o|pt[\s_-]*br|portugues|português|espanhol|english|undub|iso|rom|chd|wbfs|pkg|ps1|psx|ps2|ps3|psp|snes|nes|n64|wii|gamecube|ngc|switch|xbox|xbox360|gba|gbc|gb|nds|3ds|megadrive|genesis|dreamcast|saturn|arcade|mame|finalburn|neogeo|cps1|cps2|cps3|atomiswave|naomi)\b/gi, ' ')
+    .replace(/\b(remastered|remaster|definitive\s+edition|complete\s+edition|special\s+edition|collector'?s\s+edition|game\s+of\s+the\s+year\s+edition|goty\s+edition|greatest\s+hits|platinum|black\s+label|director'?s\s+cut|final\s+mix|redump|no[\s_-]*intro)\b/gi, ' ')
+    .replace(/\b(e|em|de|do|da|para|com|by|the)\b/gi, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
   return getComparisonKey(s);
 }
 
-export function isCompatibleForCoverMerge(titleA, titleB) {
-  const canA = getCanonicalGameKey(titleA);
-  const canB = getCanonicalGameKey(titleB);
-  if (!canA || !canB) return false;
-  if (canA === canB) return true;
+const FORBIDDEN_VARIANTS = /^(alpha|turbo|super|plus|zero|collection|remix|hd|party|kart|racing|strikers|tennis|golf|baseball|soccer|fighter|tournament|championship|edition|ex|vs|cross|x|dash|prime|adventure|chronicles|gaiden|portable|advance|heroes|wars|origins|evolution)/;
+const MOD_FRANCHISES = /^(gta|grandtheftauto|bombapatch|pes\d+|winningeleven|fifa|ranma)/;
 
+export function isCompatibleForCoverMerge(titleA, titleB) {
   const compA = getComparisonKey(titleA);
   const compB = getComparisonKey(titleB);
   if (!compA || !compB) return false;
   if (compA === compB) return true;
 
+  const canA = getCanonicalGameKey(titleA);
+  const canB = getCanonicalGameKey(titleB);
+  if (canA && canB && canA === canB) return true;
+
+  // Subtitle of a numbered sequel: only allowed if shorter ends with a digit
   const shorter = compA.length <= compB.length ? compA : compB;
   const longer = compA.length <= compB.length ? compB : compA;
-  if (shorter.length < 6) return false;
-  if (!longer.startsWith(shorter)) return false;
 
-  const rest = longer.slice(shorter.length);
-  if (!rest) return true;
-  if (/^\d/.test(rest)) return false;
-  if (
-    shorter.includes('gta') ||
-    shorter.includes('grandtheftauto') ||
-    shorter.includes('bombapatch') ||
-    shorter.includes('pes20') ||
-    shorter.includes('winningeleven') ||
-    shorter.includes('fifa')
-  ) {
-    return false;
+  if (longer.startsWith(shorter) && shorter.length >= 6) {
+    if (MOD_FRANCHISES.test(shorter)) return false;
+    // MUST end with digit to ensure it is already a numbered sequel (e.g. crashbandicoot2)
+    // and NOT a generic franchise prefix (like dragonballzsparking, rushingbeat, tinytoonadventures)
+    if (!/\d$/.test(shorter)) return false;
+
+    const rest = longer.slice(shorter.length);
+    // Rest cannot start with a digit or variant
+    if (/^\d/.test(rest)) return false;
+    if (FORBIDDEN_VARIANTS.test(rest)) return false;
+    // Rest cannot have digits inside (which would indicate a sub-sequel like 2v4)
+    if (/\d/.test(rest)) return false;
+
+    return true;
   }
-  if (
-    /^(plus|turbo|alpha|zero|super|hyper|ultra|remix|arcade|collection|anthology|trilogy|chronicles|origins|legends|generations|evolution|unleashed|revelations|remake|rebirth|returns|revenge|forever|world|gaiden|special|dx|ex)/.test(
-      rest
-    )
-  ) {
-    return false;
-  }
-  return true;
+
+  return false;
 }
 
 export function extractRegion(str) {
@@ -433,4 +430,3 @@ export function hydrateGroupedCatalog(cachedData, platform) {
     regions: g.regions instanceof Set ? g.regions : new Set(Array.isArray(g.regions) ? g.regions : []),
   }));
 }
-
