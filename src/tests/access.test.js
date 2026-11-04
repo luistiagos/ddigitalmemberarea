@@ -30,6 +30,8 @@ test('test_hub_client_filter', () => {
   assert.equal(filterHubPlatforms(platforms, 'snes', 'all').length, 1);
   // Busca por company
   assert.equal(filterHubPlatforms(platforms, 'nintendo', 'all').length, 2);
+  // Busca por company especifica (Sony nao esta no name/shortName/mnemonic de PS1 nem PS2)
+  assert.equal(filterHubPlatforms(platforms, 'sony', 'all').length, 2);
   // Busca por mnemonic (psx -> ps1)
   assert.equal(filterHubPlatforms(platforms, 'psx', 'all').length, 1);
   // Filtro por chip de fabricante
@@ -157,12 +159,20 @@ test('test_indexeddb_catalog_cache', async () => {
       openReq.onerror = () => reject(openReq.error);
     });
 
-    // 2. Grava no cache IndexedDB real
+    const dbsBefore = await indexedDB.databases();
+    assert.equal(dbsBefore.some((db) => db.name === 'DSG_Access_Catalog_v1'), true, 'Banco legado deve existir antes da inicializacao');
+
+    // 2. Grava no cache IndexedDB real (openDatabase() deve invocar cleanupLegacyDatabases)
     await setCachedCatalog(platformId, testData);
 
     // 3. Valida se o banco legado foi deletado
-    // Em fake-indexeddb, abrir um banco deletado sem upgrade resultará em versão 1 vazia
-    await cleanupLegacyDatabases();
+    const dbsAfter = await indexedDB.databases();
+    assert.equal(dbsAfter.some((db) => db.name === 'DSG_Access_Catalog_v1'), false, 'Banco legado DSG_Access_Catalog_v1 deve ser removido');
+    assert.equal(dbsAfter.some((db) => db.name === DB_NAME), true, 'Novo banco DSG_Access_Catalog_v2 deve existir');
+
+    // Valida comportamento defensivo de cleanupLegacyDatabases
+    assert.deepEqual(cleanupLegacyDatabases(null), []);
+    assert.deepEqual(cleanupLegacyDatabases({}), []);
 
     // 4. Confirma que a store real 'catalogs' existe e armazena os dados com schemaVersion: 2
     const readDb = await new Promise((resolve, reject) => {
@@ -238,6 +248,18 @@ test('test_unauthenticated_redirect', () => {
   assert.equal(
     buildLoginRedirect({ pathname: '/acesso/ps2', search: '?store_id=20000' }),
     '/login?store_id=20000&redirect=%2Facesso%2Fps2'
+  );
+  assert.equal(
+    buildLoginRedirect({ pathname: '/acesso/ps2', search: '?storeid=20000' }),
+    '/login?storeid=20000&redirect=%2Facesso%2Fps2'
+  );
+  assert.equal(
+    buildLoginRedirect({ pathname: '/acesso/ps2', search: '?redirect=%2Fcustom_target' }),
+    '/login?redirect=%2Fcustom_target'
+  );
+  assert.equal(
+    buildLoginRedirect({ pathname: '/acesso/ps2', search: '?return_to=%2Fcustom_target' }),
+    '/login?return_to=%2Fcustom_target'
   );
 
   // 5. Hub do acesso

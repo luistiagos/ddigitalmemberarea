@@ -182,11 +182,16 @@ test('E2E - Ciclo de Vida do Cache IndexedDB (Upgrade, TTL 24h e Limpeza de Órf
       };
     });
 
+    const dbsBeforeE2E = await indexedDB.databases();
+    assert.equal(dbsBeforeE2E.some((db) => db.name === 'DSG_Access_Catalog_v1'), true, 'Banco legado deve existir antes da inicializacao');
+
     // B. Grava catálogo agrupado
     await setCachedCatalog(platformId, sampleGrouped);
 
-    // C. Verifica que banco legado foi limpo
-    await cleanupLegacyDatabases();
+    // C. Verifica que banco legado foi limpo na primeira abertura
+    const dbsAfterE2E = await indexedDB.databases();
+    assert.equal(dbsAfterE2E.some((db) => db.name === 'DSG_Access_Catalog_v1'), false, 'Banco legado DSG_Access_Catalog_v1 deve ser removido pelo cache');
+    assert.equal(dbsAfterE2E.some((db) => db.name === DB_NAME), true, 'Novo banco DSG_Access_Catalog_v2 deve existir');
 
     // D. Leitura imediata com reconstituição de Set via hydrateGroupedCatalog
     const cachedData = await getCachedCatalog(platformId);

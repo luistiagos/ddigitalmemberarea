@@ -179,3 +179,27 @@ test('processAndGroupEntries - capa compartilhada por varios grupos: a entrada p
   const r2 = grouped.find((g) => g.versions.some((v) => v.rawPath.includes('Clank 2 (USA)')));
   assert.equal(r2.versions.length, 2, 'o titulo japones do 2 entra no card do 2, nao no do 1');
 });
+
+test('processAndGroupEntries - chaves internas nao vazam e grupos absorvidos sao filtrados', () => {
+  const sharedCover = 'https://cdn/bof.png';
+  const rawEntries = [
+    { path: 'snes/Breath of Fire.sfc' }, // sem capa -> cria grupo inicial via compKey
+    { path: 'snes/Breath of Fire - Ryuu no Senshi (Japan).sfc', cover2d_url: sharedCover }, // cria grupo com capa e regiao JP
+    { path: 'snes/Breath of Fire (USA).sfc', cover2d_url: sharedCover }, // casa com grupo 2 por regiao e absorve grupo 1 por compKey
+  ];
+  const grouped = processAndGroupEntries(rawEntries, { id: 'snes', mnemonic: 'snes' });
+  assert.equal(grouped.length, 1, 'Grupo absorvido deve ser unificado em 1 card');
+  assert.equal('_titleKeys' in grouped[0], false, '_titleKeys nao deve vazar');
+  assert.equal('_coverKeys' in grouped[0], false, '_coverKeys nao deve vazar');
+  assert.equal('_merged' in grouped[0], false, '_merged nao deve vazar');
+  assert.equal('_mergedInto' in grouped[0], false, '_mergedInto nao deve vazar');
+});
+
+test('isCompatibleForCoverMerge - barreiras de seguranca', () => {
+  // MOD_FRANCHISES
+  assert.equal(isCompatibleForCoverMerge('Grand Theft Auto', 'Grand Theft Auto San Andreas'), false);
+  // FORBIDDEN_VARIANTS
+  assert.equal(isCompatibleForCoverMerge('Tekken', 'Tekken Tournament'), false);
+  // Prefixo mínimo 6 caracteres
+  assert.equal(isCompatibleForCoverMerge('Mario', 'Mario Party'), false);
+});
