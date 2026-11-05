@@ -1,6 +1,7 @@
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { filterPlatformsByEntitlements } from '../services/accessService.js';
+import { filterPlatformsByEntitlements, getUserEntitledSystems } from '../services/accessService.js';
+import api from '../services/api.js';
 import { ALL_PLATFORMS } from '../pages/access/data/platformsData.js';
 
 test('filterPlatformsByEntitlements - returns only entitled platforms', () => {
@@ -25,3 +26,35 @@ test('filterPlatformsByEntitlements - returns empty array if no systems or inval
   assert.deepEqual(filterPlatformsByEntitlements(null, ['ps2']), []);
 });
 
+
+// [T3] getUserEntitledSystems repassa message/error do backend no ramo de falha,
+// que as telas levam a telemetria (logApiError).
+
+test('getUserEntitledSystems - success:false repassa message do backend', async (t) => {
+  const m = mock.method(api, 'get', async () => ({ data: { success: false, message: 'X' } }));
+  t.after(() => m.mock.restore());
+  const r = await getUserEntitledSystems();
+  assert.equal(r.success, false);
+  assert.deepEqual(r.systems, []);
+  assert.equal(r.message, 'X');
+});
+
+test('getUserEntitledSystems - success:false repassa error do backend', async (t) => {
+  const m = mock.method(api, 'get', async () => ({ data: { success: false, error: 'Y' } }));
+  t.after(() => m.mock.restore());
+  const r = await getUserEntitledSystems();
+  assert.equal(r.success, false);
+  assert.equal(r.error, 'Y');
+});
+
+test('getUserEntitledSystems - corpo nulo ou nao-objeto nao quebra', async (t) => {
+  for (const data of [null, 'texto', undefined]) {
+    const m = mock.method(api, 'get', async () => ({ data }));
+    const r = await getUserEntitledSystems();
+    m.mock.restore();
+    assert.equal(r.success, false);
+    assert.deepEqual(r.systems, []);
+    assert.equal(r.message, undefined);
+    assert.equal(r.error, undefined);
+  }
+});

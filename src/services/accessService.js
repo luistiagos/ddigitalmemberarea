@@ -22,9 +22,13 @@ export async function getUserEntitledSystems() {
       user_id: response.data.user_id,
     };
   }
+  // Repassa message/error do backend: as telas os levam a telemetria (logApiError).
+  const body = response.data && typeof response.data === 'object' ? response.data : {};
   return {
     success: false,
     systems: [],
+    message: typeof body.message === 'string' ? body.message : undefined,
+    error: typeof body.error === 'string' ? body.error : undefined,
   };
 }
 
