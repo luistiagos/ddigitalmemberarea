@@ -195,11 +195,37 @@ test('processAndGroupEntries - chaves internas nao vazam e grupos absorvidos sao
   assert.equal('_mergedInto' in grouped[0], false, '_mergedInto nao deve vazar');
 });
 
-test('isCompatibleForCoverMerge - barreiras de seguranca', () => {
-  // MOD_FRANCHISES
+test('isCompatibleForCoverMerge - chave curta sem digito no fim nao junta pela regra de sequencia', () => {
+  // Nenhum destes chega as barreiras abaixo: a chave curta nao termina em digito e a regra devolve false antes.
   assert.equal(isCompatibleForCoverMerge('Grand Theft Auto', 'Grand Theft Auto San Andreas'), false);
-  // FORBIDDEN_VARIANTS
   assert.equal(isCompatibleForCoverMerge('Tekken', 'Tekken Tournament'), false);
-  // Prefixo mínimo 6 caracteres
   assert.equal(isCompatibleForCoverMerge('Mario', 'Mario Party'), false);
+});
+
+// Cada par abaixo tem o formato do controle e so a barreira nomeada o impede de juntar: sem ela, o par vira um card
+// so. Docs: docs/modules/area-membros/bugs/2026-11-03-testes-do-acesso-dinamico-nao-exercitam-o-codigo.md (T5).
+test('isCompatibleForCoverMerge - regra de sequencia: cada barreira bloqueia sozinha', () => {
+  assert.equal(isCompatibleForCoverMerge('Crash Bandicoot 2', 'Crash Bandicoot 2 Cortex Strikes Back'), true,
+    'controle: prefixo de 6+ terminando em digito e resto sem digito nem variante junta');
+
+  assert.equal(isCompatibleForCoverMerge('PES 2013', 'PES 2013 Brasileirao'), false, 'franquia de mod (MOD_FRANCHISES)');
+  assert.equal(isCompatibleForCoverMerge('Street Fighter 2', 'Street Fighter 2 Turbo'), false, 'variante (FORBIDDEN_VARIANTS)');
+  assert.equal(isCompatibleForCoverMerge('Ys 2', 'Ys 2 Special'), false, 'prefixo com menos de 6 caracteres');
+  assert.equal(isCompatibleForCoverMerge('Dragon Ball Z Budokai 2', 'Dragon Ball Z Budokai 2 Tenkaichi 3'), false,
+    'digito no meio do resto (outro jogo numerado)');
+});
+
+test('isCompatibleForCoverMerge - regra de regiao: franquia de mod e prefixo curto nao juntam com regioes disjuntas', () => {
+  const regions = (...pairs) => new Map(pairs.map(([title, rs]) => [getComparisonKey(title), new Set(rs)]));
+
+  assert.equal(isCompatibleForCoverMerge('Breath of Fire', 'Breath of Fire Ryuu no Senshi',
+    regions(['Breath of Fire', ['US']], ['Breath of Fire Ryuu no Senshi', ['JP']])), true,
+    'controle: regioes disjuntas e prefixo de 6+ juntam');
+
+  assert.equal(isCompatibleForCoverMerge('Winning Eleven 10', 'Winning Eleven 10 Bomba Patch',
+    regions(['Winning Eleven 10', ['JP']], ['Winning Eleven 10 Bomba Patch', ['BR']])), false,
+    'franquia de mod (MOD_FRANCHISES): o patch brasileiro nao e o jogo japones');
+  assert.equal(isCompatibleForCoverMerge('Ys 2', 'Ys 2 Special',
+    regions(['Ys 2', ['JP']], ['Ys 2 Special', ['KR']])), false,
+    'prefixo com menos de 6 caracteres');
 });
