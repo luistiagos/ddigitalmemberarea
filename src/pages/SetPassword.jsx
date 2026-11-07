@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { useLang } from '@/hooks/useLang';
 import api from '@/services/api';
-import { storeUser, persistStoreId, isAuthenticated } from '@/utils/auth';
+import { storeUser, persistStoreId, isAuthenticated, isSameStoredAccount, clearAuth } from '@/utils/auth';
 import { calcStrength, STRENGTH_COLORS } from '@/utils/password';
 import { logApiError } from '@/utils/logError';
 
@@ -31,6 +31,17 @@ export function SetPassword() {
   // o `ProtectedRoute` leva à /ativar; o timer vivo a arrancaria de lá 1,5 s depois.
   const sucessoTimer = useRef(null);
   useEffect(() => () => clearTimeout(sucessoTimer.current), []);
+
+  // O link desta tela é de UMA conta. Sessão de OUTRA conta no navegador (celular da família,
+  // compra anterior com outro e-mail) mandava o comprador para a área dela, com a compra no
+  // cadeado: tx 64509, "0 de 6 produtos adquiridos". O link manda: derruba a sessão e segue
+  // para criar a senha (ou para o login) DESTA conta. Mesma regra do `contaDivergente` do Login.
+  // docs/modules/area-membros/bugs/2026-11-06-link-pos-compra-de-quem-ja-tem-senha-abre-a-sessao-de-outra-conta.md
+  const contaDivergente = isAuthenticated() && Boolean(email) && !isSameStoredAccount(email);
+
+  useEffect(() => {
+    if (contaDivergente) clearAuth();
+  }, [contaDivergente]);
 
   useEffect(() => {
     if (storeId != null) persistStoreId(storeId);
@@ -57,8 +68,8 @@ export function SetPassword() {
     return () => { active = false; };
   }, [email, storeId, lang, navigate]);
 
-  if (isAuthenticated()) {
-    return <Navigate to="/area-cliente" replace />;
+  if (isAuthenticated() && !contaDivergente) {
+    return <Navigate to={storeId != null ? `/area-cliente?store_id=${storeId}` : '/area-cliente'} replace />;
   }
 
   if (checkingEntry) {
