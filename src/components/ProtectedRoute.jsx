@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { isAuthenticated, clearAuth, getStoredUser, getPersistedStoreId, buildLoginRedirect } from '@/utils/auth';
+import { isAuthenticated, clearAuth, getStoredUser, getPersistedStoreId, buildLoginRedirect, isSameStoredAccount } from '@/utils/auth';
 import { lerAtivacaoPendente } from '@/utils/ativacao';
 
 export { buildLoginRedirect };
@@ -11,6 +11,8 @@ export { buildLoginRedirect };
  * 1. Não autenticado → /login preservando query params (store_id segue junto) e caminho de retorno (redirect).
  * 2. Autenticado + URL tem store_id diferente do JWT → logout + /login?store_id=&redirect=
  *    (cada loja é independente — sem reuso de sessão entre lojas)
+ * 2b. Autenticado + URL tem `email` de OUTRA conta → logout + /login?email=&store_id=
+ *    (o link pós-compra diz de quem é a compra; a sessão salva pode ser de outra pessoa)
  * 3. Autenticado + código de ativação do app pendente → /ativar?code=
  *    (todo login termina aqui: senha, "Primeiro acesso" e reset; ver utils/ativacao.js)
  * 4. Autenticado + rota /area-cliente sem store_id em lugar algum → /selecionar-loja
@@ -24,6 +26,17 @@ export function ProtectedRoute({ children }) {
 
   if (!isAuthenticated()) {
     if (getStoredUser()) clearAuth();
+    return <Navigate to={buildLoginRedirect(location)} replace />;
+  }
+
+  // O link pós-compra traz o e-mail da compra. Sessão de OUTRA conta no navegador (celular da
+  // família, compra anterior com outro e-mail) mostrava a compra com cadeado: tx 64509 caiu na
+  // conta de teste "ha..." e viu "0 de 6 produtos adquiridos". O link manda: sai e pede a senha
+  // desta conta, com o e-mail já preenchido. Mesma regra do `contaDivergente` do Login.jsx.
+  // docs/modules/area-membros/bugs/2026-11-06-link-pos-compra-de-quem-ja-tem-senha-abre-a-sessao-de-outra-conta.md
+  const urlEmail = searchParams.get('email');
+  if (urlEmail && !isSameStoredAccount(urlEmail)) {
+    clearAuth();
     return <Navigate to={buildLoginRedirect(location)} replace />;
   }
 
