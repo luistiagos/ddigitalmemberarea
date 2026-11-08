@@ -158,6 +158,7 @@ test('criar-senha com sessão da MESMA conta: entra na área, levando a loja do 
 // ---- ResetPassword: link de redefinição com sessão de outra conta no navegador.
 // docs/modules/area-membros/bugs/2026-11-08-redefinir-senha-com-outra-conta-logada-abre-a-area-dela.md
 import { ResetPassword } from '../pages/ResetPassword.jsx';
+import { ForgotPassword } from '../pages/ForgotPassword.jsx';
 
 function renderReset(path) {
   loginLocation = null;
@@ -166,6 +167,7 @@ function renderReset(path) {
     h(MemoryRouter, { initialEntries: [path] },
       h(Routes, null,
         h(Route, { path: '/redefinir-senha', element: h(ResetPassword) }),
+        h(Route, { path: '/esqueci-senha', element: h(ForgotPassword) }),
         h(Route, { path: '/area-cliente', element: h(AreaProbe) }),
         h(Route, { path: '/login', element: h(LoginProbe) }),
       ),
@@ -178,19 +180,7 @@ function mockStoreInfo(t) {
   t.after(() => get.mock.restore());
 }
 
-test('redefinir-senha com sessão de outra conta e email na URL: derruba a sessão na montagem e exibe o formulário', async (t) => {
-  limpar(t);
-  mockStoreInfo(t);
-  sessao('ha.teste@gmail.com', 600005);
-  const { container } = renderReset('/redefinir-senha?token=tok123&email=novo%40gmail.com&store_id=600004');
-
-  await waitFor(() => assert.ok(container.querySelector('#password')));
-  assert.equal(screen.queryByText('AREA DO CLIENTE'), null);
-  assert.equal(localStorage.getItem('authToken'), null);
-  assert.equal(localStorage.getItem('userEmail'), null);
-});
-
-test('redefinir-senha com sessão de outra conta e link sem email: exibe o formulário e derruba a sessão no submit', async (t) => {
+test('redefinir-senha com sessão de outra conta (link real só com token): derruba a sessão na montagem, exibe o formulário e leva ao login da conta do token', async (t) => {
   limpar(t);
   mockStoreInfo(t);
   const post = mock.method(api, 'post', async () => ({ data: { success: true, email: 'novo@gmail.com' } }));
@@ -201,8 +191,10 @@ test('redefinir-senha com sessão de outra conta e link sem email: exibe o formu
 
   await waitFor(() => assert.ok(container.querySelector('#password')));
   assert.equal(screen.queryByText('AREA DO CLIENTE'), null);
-  // Antes do submit a sessão ainda existe, mas o usuário NÃO foi mandado para a área da outra conta
-  assert.equal(localStorage.getItem('authToken'), TOKEN);
+  // A sessão da outra conta já caiu na montagem, mesmo sem `email` na URL
+  assert.equal(localStorage.getItem('authToken'), null);
+  assert.equal(localStorage.getItem('userEmail'), null);
+  assert.equal(localStorage.getItem('storeId'), '600004');
 
   const passInput = container.querySelector('#password');
   const confirmInput = container.querySelector('#confirm');
@@ -213,22 +205,28 @@ test('redefinir-senha com sessão de outra conta e link sem email: exibe o formu
   fireEvent.submit(form);
 
   await waitFor(() => assert.ok(screen.getByText(/Senha redefinida/i)));
-  // No submit bem-sucedido, a sessão da outra conta foi derrubada
   assert.equal(localStorage.getItem('authToken'), null);
   assert.equal(localStorage.getItem('userEmail'), null);
+
+  await waitFor(() => assert.ok(screen.getByText('TELA DE LOGIN')), { timeout: 3000 });
+  const q = new URLSearchParams(loginLocation.split('?')[1]);
+  assert.equal(q.get('email'), 'novo@gmail.com');
+  assert.equal(q.get('store_id'), '600004');
 });
 
-test('redefinir-senha com sessão da MESMA conta: exibe o formulário e derruba a sessão antiga no submit', async (t) => {
+test('redefinir-senha com sessão da MESMA conta: derruba a sessão antiga e exibe o formulário', async (t) => {
   limpar(t);
   mockStoreInfo(t);
   const post = mock.method(api, 'post', async () => ({ data: { success: true, email: 'luis@gmail.com' } }));
   t.after(() => post.mock.restore());
 
   sessao('luis@gmail.com', 600004);
-  const { container } = renderReset('/redefinir-senha?token=tok123&email=Luis%40gmail.com&store_id=600004');
+  const { container } = renderReset('/redefinir-senha?token=tok123&store_id=600004');
 
   await waitFor(() => assert.ok(container.querySelector('#password')));
   assert.equal(screen.queryByText('AREA DO CLIENTE'), null);
+  assert.equal(localStorage.getItem('authToken'), null);
+  assert.equal(localStorage.getItem('userEmail'), null);
 
   const passInput = container.querySelector('#password');
   const confirmInput = container.querySelector('#confirm');
@@ -239,16 +237,20 @@ test('redefinir-senha com sessão da MESMA conta: exibe o formulário e derruba 
   fireEvent.submit(form);
 
   await waitFor(() => assert.ok(screen.getByText(/Senha redefinida/i)));
-  // A sessão antiga foi invalidada para forçar o login com a nova senha
   assert.equal(localStorage.getItem('authToken'), null);
-  assert.equal(localStorage.getItem('userEmail'), null);
 });
 
-test('redefinir-senha sem token: exibe link inválido', async (t) => {
+test('redefinir-senha sem token e com sessão de outra conta: derruba a sessão e "Solicitar novo link" abre /esqueci-senha sem cair na área da outra conta', async (t) => {
   limpar(t);
   mockStoreInfo(t);
+  sessao('ha.teste@gmail.com', 600005);
   renderReset('/redefinir-senha');
 
   await waitFor(() => assert.ok(screen.getByText('Link inválido')));
+  assert.equal(screen.queryByText('AREA DO CLIENTE'), null);
+  assert.equal(localStorage.getItem('authToken'), null);
+
+  fireEvent.click(screen.getByText('Solicitar novo link'));
+  await waitFor(() => assert.ok(screen.getByText('Enviar link de recuperação')));
   assert.equal(screen.queryByText('AREA DO CLIENTE'), null);
 });

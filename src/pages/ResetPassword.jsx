@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { AuthLayout } from '@/components/layout/AuthLayout';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { useLang } from '@/hooks/useLang';
 import api from '@/services/api';
-import { persistStoreId, isAuthenticated, isSameStoredAccount, clearAuth } from '@/utils/auth';
+import { persistStoreId, isAuthenticated, clearAuth } from '@/utils/auth';
 import { calcStrength, STRENGTH_COLORS } from '@/utils/password';
 import { logApiError } from '@/utils/logError';
 
@@ -18,21 +18,24 @@ export function ResetPassword() {
   const token = searchParams.get('token') || '';
   const emailParam = searchParams.get('email') || '';
   const storeIdParam = searchParams.get('store_id') || searchParams.get('storeid');
+  const redirectTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(redirectTimer.current), []);
 
   useEffect(() => {
     if (storeIdParam) persistStoreId(Number(storeIdParam));
   }, [storeIdParam]);
 
-  // O link desta tela é de UMA conta. Sessão de OUTRA conta salva no navegador
-  // mandava o usuário para a área dela (/area-cliente), impedindo de redefinir
-  // a senha da própria conta (celular da família, etc.). Se o link trouxer o e-mail,
-  // derruba a sessão da outra conta na hora (mesma regra do Login e SetPassword).
+  // O link de redefinição enviado por e-mail traz só `?token=` (sem e-mail). Qualquer
+  // sessão salva no navegador — de outra conta no celular da família, ou a antiga da
+  // própria conta — precisa cair ao abrir a tela: antes, `if (isAuthenticated())`
+  // jogava direto em `/area-cliente` da conta logada; e manter a sessão viva até o
+  // submit enviava o JWT da outra conta no POST e fazia "Solicitar novo link"
+  // (`/esqueci-senha`) cair na `/area-cliente` dessa outra conta.
   // docs/modules/area-membros/bugs/2026-11-08-redefinir-senha-com-outra-conta-logada-abre-a-area-dela.md
-  const contaDivergente = isAuthenticated() && Boolean(emailParam) && !isSameStoredAccount(emailParam);
-
   useEffect(() => {
-    if (contaDivergente) clearAuth();
-  }, [contaDivergente]);
+    if (isAuthenticated()) clearAuth();
+  }, []);
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -84,7 +87,10 @@ export function ResetPassword() {
         clearAuth();
         const storeParam = storeIdParam ? `&store_id=${storeIdParam}` : '';
         const langParam = lang !== 'ptbr' ? `&lang=${lang}` : '';
-        setTimeout(() => navigate(`/login${email ? `?email=${encodeURIComponent(email)}${storeParam}${langParam}` : ''}`), 2000);
+        redirectTimer.current = setTimeout(
+          () => navigate(`/login${email ? `?email=${encodeURIComponent(email)}${storeParam}${langParam}` : ''}`),
+          2000,
+        );
       }
     } catch (err) {
       // Sem `err.response` a requisição nem chegou ao servidor (rede/offline) —
