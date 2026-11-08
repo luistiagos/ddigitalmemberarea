@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate, Link, Navigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { InputField } from '@/components/ui/InputField';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { useLang } from '@/hooks/useLang';
 import api from '@/services/api';
-import { persistStoreId, isAuthenticated } from '@/utils/auth';
+import { persistStoreId, isAuthenticated, isSameStoredAccount, clearAuth } from '@/utils/auth';
 import { calcStrength, STRENGTH_COLORS } from '@/utils/password';
 import { logApiError } from '@/utils/logError';
 
@@ -16,21 +16,29 @@ export function ResetPassword() {
   const navigate = useNavigate();
   const { lang, t } = useLang();
   const token = searchParams.get('token') || '';
+  const emailParam = searchParams.get('email') || '';
   const storeIdParam = searchParams.get('store_id') || searchParams.get('storeid');
 
   useEffect(() => {
     if (storeIdParam) persistStoreId(Number(storeIdParam));
   }, [storeIdParam]);
 
+  // O link desta tela é de UMA conta. Sessão de OUTRA conta salva no navegador
+  // mandava o usuário para a área dela (/area-cliente), impedindo de redefinir
+  // a senha da própria conta (celular da família, etc.). Se o link trouxer o e-mail,
+  // derruba a sessão da outra conta na hora (mesma regra do Login e SetPassword).
+  // docs/modules/area-membros/bugs/2026-11-08-redefinir-senha-com-outra-conta-logada-abre-a-area-dela.md
+  const contaDivergente = isAuthenticated() && Boolean(emailParam) && !isSameStoredAccount(emailParam);
+
+  useEffect(() => {
+    if (contaDivergente) clearAuth();
+  }, [contaDivergente]);
+
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-
-  if (isAuthenticated()) {
-    return <Navigate to="/area-cliente" replace />;
-  }
 
   const strength = calcStrength(password);
   const strengthWidth = `${(strength / 4) * 100}%`;
@@ -70,7 +78,10 @@ export function ResetPassword() {
       const response = await api.post('/auth/reset-password', { token, password });
       if (response.data.success) {
         setSuccess(true);
-        const email = response.data.email || '';
+        const email = response.data.email || emailParam || '';
+        // Derruba qualquer sessão prévia salva no navegador (seja de outra conta,
+        // seja da mesma conta cuja senha acabou de ser redefinida)
+        clearAuth();
         const storeParam = storeIdParam ? `&store_id=${storeIdParam}` : '';
         const langParam = lang !== 'ptbr' ? `&lang=${lang}` : '';
         setTimeout(() => navigate(`/login${email ? `?email=${encodeURIComponent(email)}${storeParam}${langParam}` : ''}`), 2000);
