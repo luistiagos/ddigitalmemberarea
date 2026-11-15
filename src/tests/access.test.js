@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import axios from 'axios';
 import 'fake-indexeddb/auto';
 import { filterPlatformsByEntitlements, buildManifestPayload, getPlatformManifest, classifyEntitlementResult, isPlatformEntitled, filterHubPlatforms } from '../services/accessService.js';
@@ -381,4 +384,82 @@ test('test_classify_entitlement_result_distinguishes_denied_error_and_login', ()
     classifyEntitlementResult({ error: { response: { status: 401 } }, platform: ps2 }),
     'login'
   );
+});
+
+function toPx(token) {
+  const num = Number.parseFloat(token);
+  if (token.endsWith('rem')) return num * 16;
+  return num;
+}
+
+function stripMediaBlocks(css) {
+  let out = '';
+  let i = 0;
+  while (i < css.length) {
+    if (css.startsWith('@media', i)) {
+      const braceStart = css.indexOf('{', i);
+      if (braceStart === -1) break;
+      let depth = 1;
+      let j = braceStart + 1;
+      while (j < css.length && depth > 0) {
+        if (css[j] === '{') depth += 1;
+        else if (css[j] === '}') depth -= 1;
+        j += 1;
+      }
+      i = j;
+    } else {
+      out += css[i];
+      i += 1;
+    }
+  }
+  return out;
+}
+
+test('test_acesso_css_mobile_games_grid_fits_multiple_cards_per_row', () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const cssPath = path.resolve(here, '../pages/access/acesso.css');
+  const css = fs.readFileSync(cssPath, 'utf8');
+  const baseCss = stripMediaBlocks(css);
+
+  const containerMatch = baseCss.match(/\.access-container\s*\{([^}]*)\}/);
+  assert.ok(containerMatch, '.access-container deve existir no CSS base');
+  const paddingMatch = containerMatch[1].match(/padding:\s*0\s+([0-9.]+(?:rem|px))/);
+  assert.ok(paddingMatch, '.access-container deve definir padding horizontal no mobile');
+  const sidePaddingPx = toPx(paddingMatch[1]);
+
+  const gridMatch = baseCss.match(/\.games-grid\s*\{([^}]*)\}/);
+  assert.ok(gridMatch, '.games-grid deve existir no CSS base');
+  const colsMatch = gridMatch[1].match(/grid-template-columns:\s*repeat\(auto-fill,\s*minmax\((\d+)px,\s*1fr\)\)/);
+  assert.ok(colsMatch, '.games-grid base deve usar repeat(auto-fill, minmax(<px>, 1fr))');
+  const minTrackPx = Number(colsMatch[1]);
+
+  const gapMatch = gridMatch[1].match(/gap:\s*([0-9.]+(?:rem|px))(?:\s+([0-9.]+(?:rem|px)))?/);
+  assert.ok(gapMatch, '.games-grid base deve definir gap');
+  const colGapPx = toPx(gapMatch[2] || gapMatch[1]);
+
+  // Em celulares estreitos (320px), precisam caber >= 2 cards lado a lado sem esticar para 100% da tela
+  const minWidthForTwoCols = 2 * minTrackPx + colGapPx + 2 * sidePaddingPx;
+  assert.ok(
+    minWidthForTwoCols <= 320,
+    `2 colunas no celular exigem ${minWidthForTwoCols}px (deve ser <= 320px)`
+  );
+
+  // Cards precisam de min-width: 0 para conteudo longo nao estourar a coluna do grid
+  const gameCardMatch = baseCss.match(/\.game-card\s*\{([^}]*)\}/);
+  assert.ok(gameCardMatch && /min-width:\s*0/.test(gameCardMatch[1]), '.game-card deve ter min-width: 0');
+
+  const hubCardMatch = baseCss.match(/\.hub-card\s*\{([^}]*)\}/);
+  assert.ok(hubCardMatch && /min-width:\s*0/.test(hubCardMatch[1]), '.hub-card deve ter min-width: 0');
+
+  // Hub grid nao pode exigir mais que 100% do container em telas estreitas
+  const hubGridMatch = baseCss.match(/\.hub-grid\s*\{([^}]*)\}/);
+  assert.ok(
+    hubGridMatch && /minmax\(min\([^)]+,\s*100%\),\s*1fr\)/.test(hubGridMatch[1]),
+    '.hub-grid deve limitar minmax a 100% para evitar overflow horizontal no mobile'
+  );
+
+  // Breakpoints desktop preservados
+  assert.match(css, /@media\s*\(min-width:\s*640px\)/);
+  assert.match(css, /@media\s*\(min-width:\s*1024px\)/);
+  assert.match(css, /@media\s*\(min-width:\s*1400px\)/);
 });

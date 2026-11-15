@@ -13,20 +13,27 @@
 .access-container {
   max-width: 1720px;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 0.875rem;
   width: 100%;
+}
+
+@media (min-width: 640px) {
+  .access-container {
+    padding: 0 1.5rem;
+  }
 }
 
 /* Hub Grid de Plataformas */
 .hub-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 1.25rem;
   margin-top: 1.5rem;
 }
 
 .hub-card {
   position: relative;
+  min-width: 0;
   background: #0f172a;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1rem;
@@ -131,9 +138,29 @@
 /* Grid de Jogos */
 .games-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
-  gap: 1.25rem;
-  padding: 1.5rem 0;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 1rem 0.75rem;
+  padding: 1rem 0;
+}
+
+@media (min-width: 640px) {
+  .games-grid {
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: 1.25rem;
+    padding: 1.5rem 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .games-grid {
+    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  }
+}
+
+@media (min-width: 1400px) {
+  .games-grid {
+    grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  }
 }
 
 /* Card de Jogo 3D */
@@ -141,6 +168,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  min-width: 0;
   cursor: pointer;
   outline: none;
   transition: transform 0.25s ease;
@@ -560,8 +588,17 @@
 }
 
 @media (max-width: 640px) {
+  .modal-dialog {
+    padding: 1.25rem;
+  }
+
   .modal-content-grid {
     grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .modal-box-preview {
+    max-width: 220px;
   }
 }
 
