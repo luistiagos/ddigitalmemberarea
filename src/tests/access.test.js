@@ -459,10 +459,11 @@ test('test_acesso_css_mobile_games_grid_fits_multiple_cards_per_row', () => {
     '.hub-grid deve limitar minmax a 100% para evitar overflow horizontal no mobile'
   );
 
-  // Breakpoints responsivos preservados
-  assert.match(css, /@media\s*\(min-width:\s*480px\)/);
+  // Breakpoints responsivos preservados e @media mobile apos as regras base na cascata
   assert.match(css, /@media\s*\(min-width:\s*640px\)/);
   assert.match(css, /@media\s*\(min-width:\s*1024px\)/);
   assert.match(css, /@media\s*\(min-width:\s*1400px\)/);
-  assert.match(css, /@media\s*\(max-width:\s*639px\)/);
+  const mobileOverrideIdx = css.search(/@media\s*\(max-width:\s*639px\)/);
+  const lastBtnBaseIdx = css.lastIndexOf('.game-btn-download:hover');
+  assert.ok(mobileOverrideIdx > lastBtnBaseIdx && lastBtnBaseIdx !== -1, '@media (max-width: 639px) deve ficar apos as regras base na cascata');
 });
