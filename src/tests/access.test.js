@@ -429,19 +429,20 @@ test('test_acesso_css_mobile_games_grid_fits_multiple_cards_per_row', () => {
 
   const gridMatch = baseCss.match(/\.games-grid\s*\{([^}]*)\}/);
   assert.ok(gridMatch, '.games-grid deve existir no CSS base');
-  const colsMatch = gridMatch[1].match(/grid-template-columns:\s*repeat\(auto-fill,\s*minmax\((\d+)px,\s*1fr\)\)/);
-  assert.ok(colsMatch, '.games-grid base deve usar repeat(auto-fill, minmax(<px>, 1fr))');
-  const minTrackPx = Number(colsMatch[1]);
+  const fixedColsMatch = gridMatch[1].match(/grid-template-columns:\s*repeat\((\d+),\s*minmax\(0,\s*1fr\)\)/);
+  assert.ok(fixedColsMatch, '.games-grid base no celular deve fixar colunas compactas (repeat(3, minmax(0, 1fr)))');
+  const mobileCols = Number(fixedColsMatch[1]);
+  assert.ok(mobileCols >= 3, `celular deve exibir >= 3 covers por linha (atual: ${mobileCols})`);
 
   const gapMatch = gridMatch[1].match(/gap:\s*([0-9.]+(?:rem|px))(?:\s+([0-9.]+(?:rem|px)))?/);
   assert.ok(gapMatch, '.games-grid base deve definir gap');
   const colGapPx = toPx(gapMatch[2] || gapMatch[1]);
 
-  // Em celulares estreitos (320px), precisam caber >= 2 cards lado a lado sem esticar para 100% da tela
-  const minWidthForTwoCols = 2 * minTrackPx + colGapPx + 2 * sidePaddingPx;
+  // Em um celular tipico de 390px, cada cover deve ficar compacto (<= 130px de largura)
+  const cardWidthAt390 = (390 - 2 * sidePaddingPx - (mobileCols - 1) * colGapPx) / mobileCols;
   assert.ok(
-    minWidthForTwoCols <= 320,
-    `2 colunas no celular exigem ${minWidthForTwoCols}px (deve ser <= 320px)`
+    cardWidthAt390 <= 130,
+    `largura do cover em 390px deve ser <= 130px (atual: ${cardWidthAt390.toFixed(1)}px)`
   );
 
   // Cards precisam de min-width: 0 para conteudo longo nao estourar a coluna do grid
@@ -458,8 +459,10 @@ test('test_acesso_css_mobile_games_grid_fits_multiple_cards_per_row', () => {
     '.hub-grid deve limitar minmax a 100% para evitar overflow horizontal no mobile'
   );
 
-  // Breakpoints desktop preservados
+  // Breakpoints responsivos preservados
+  assert.match(css, /@media\s*\(min-width:\s*480px\)/);
   assert.match(css, /@media\s*\(min-width:\s*640px\)/);
   assert.match(css, /@media\s*\(min-width:\s*1024px\)/);
   assert.match(css, /@media\s*\(min-width:\s*1400px\)/);
+  assert.match(css, /@media\s*\(max-width:\s*639px\)/);
 });
