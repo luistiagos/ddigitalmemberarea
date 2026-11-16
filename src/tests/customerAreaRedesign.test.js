@@ -113,7 +113,8 @@ test('card_nao_adquirido_exibe_moeda_e_cta_sem_cadeado_central', (t) => {
   assert.equal(container.querySelector('.h-12.w-12'), null);
   assert.equal(screen.queryByRole('button', { name: /\b(Pagar|Pay)\b/i }), null);
 
-  const unlockBtn = screen.getByRole('button', { name: /Unlock — \$19\.90/i });
+  assert.ok(screen.getByText(/\$19\.90/));
+  const unlockBtn = screen.getByRole('button', { name: /^Unlock$/i });
   assert.ok(unlockBtn);
 });
 

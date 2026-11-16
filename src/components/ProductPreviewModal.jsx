@@ -143,10 +143,7 @@ export default function ProductPreviewModal({
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm py-3 px-5 transition-all shadow-lg shadow-amber-950/30"
             >
               <Unlock className="h-4 w-4" />
-              <span>
-                {t.unlockBtn}
-                {displayPrice != null ? ` — ${formatCurrency(displayPrice, currency, lang)}` : ''}
-              </span>
+              <span>{t.unlockBtn}</span>
             </button>
           </div>
 
