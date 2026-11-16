@@ -3,11 +3,12 @@ import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { render, screen, within, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, within, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import api from '../services/api.js';
 import { storeUser, clearAuth } from '../utils/auth.js';
 import { Navbar } from '../components/Navbar.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
+import UnifiedPaymentModal from '../components/UnifiedPaymentModal.jsx';
 import {
   formatCurrency,
   roundDiscountedItemPrice,
@@ -146,4 +147,186 @@ test('clique_no_card_abre_modal_preview_com_descricao_e_idioma', (t) => {
     assert.equal(screen.queryByRole('dialog'), null);
     unmount();
   }
+});
+
+// --- T3: UnifiedPaymentModal (BRL dark vs USD Stripe + erro com retry) ---
+
+test('modal_unificado_brl_exibe_pix_dark_cartao_e_mp_link', async (t) => {
+  t.after(() => {
+    cleanup();
+    mock.restoreAll();
+  });
+
+  const postCalls = [];
+  mock.method(api, 'post', async (url, body) => {
+    postCalls.push({ url, body });
+    if (url === '/area-cliente/promo-checkout-pix') {
+      return {
+        data: {
+          qr_code: '000201010212PIXCODE',
+          qr_code_base64: 'AAA=',
+          amount: 42.41,
+        },
+      };
+    }
+    return { data: {} };
+  });
+
+  const items = [
+    { productid: 2, title: 'PS2 Pack', price: 29.90 },
+    { productid: 3, title: 'Switch Pack', price: 19.99 },
+  ];
+
+  render(
+    h(UnifiedPaymentModal, {
+      isOpen: true,
+      onClose: () => {},
+      items,
+      discountPct: 15,
+      currency: 'BRL',
+      userEmail: 'br@test.com',
+      storeId: 600004,
+      lang: 'ptbr',
+    }),
+  );
+
+  const dialog = screen.getByRole('dialog', { name: 'Resumo do pedido' });
+  assert.ok(dialog);
+  // Nao usa dialog branco antigo (bg-white como painel inteiro do modal)
+  assert.equal(dialog.querySelector('.bg-white.rounded-2xl'), null);
+
+  assert.ok(screen.getByRole('button', { name: /PIX Instantâneo/i }));
+  assert.ok(screen.getByRole('button', { name: /Cartão de Crédito/i }));
+  assert.ok(screen.getByRole('button', { name: /Saldo ou Boleto no Mercado Pago/i }));
+
+  await waitFor(() => {
+    assert.ok(screen.getByText('000201010212PIXCODE'));
+  });
+  assert.equal(postCalls[0].url, '/area-cliente/promo-checkout-pix');
+  assert.deepEqual(postCalls[0].body, {
+    product_ids: [2, 3],
+    discount_pct: 15,
+    store_id: 600004,
+  });
+});
+
+test('modal_unificado_usd_chama_stripe_e_oculta_pix_e_cartao_mp', async (t) => {
+  t.after(() => {
+    sessionStorage.removeItem('customerAreaNeedsRefresh');
+    cleanup();
+    mock.restoreAll();
+  });
+
+  const apiCalls = [];
+  const redirects = [];
+  mock.method(api, 'get', async (url, cfg) => {
+    apiCalls.push({ method: 'GET', url, params: cfg?.params });
+    return { data: { checkout_url: 'https://checkout.stripe.com/pay/single' } };
+  });
+  mock.method(api, 'post', async (url, body) => {
+    apiCalls.push({ method: 'POST', url, body });
+    return { data: { checkout_url: 'https://checkout.stripe.com/pay/combo' } };
+  });
+
+  // 1) Compra avulsa em loja USD -> GET /createStripeLink com from_member_area=1 e base_currency=usd
+  const { rerender } = render(
+    h(UnifiedPaymentModal, {
+      isOpen: true,
+      onClose: () => {},
+      items: [{ productid: 10, title: 'World Cup Pack', price: 19.90 }],
+      discountPct: 0,
+      currency: 'USD',
+      userEmail: 'us@test.com',
+      storeId: 600010,
+      lang: 'en',
+      onRedirect: (u) => redirects.push(u),
+    }),
+  );
+
+  assert.equal(screen.queryByRole('button', { name: /PIX/i }), null);
+  assert.equal(screen.queryByRole('button', { name: /Mercado Pago/i }), null);
+
+  fireEvent.click(screen.getByRole('button', { name: /Pay with Stripe/i }));
+  await waitFor(() => {
+    assert.equal(redirects.length, 1);
+  });
+  assert.equal(apiCalls[0].url, '/createStripeLink');
+  assert.equal(apiCalls[0].params.from_member_area, '1');
+  assert.equal(apiCalls[0].params.base_currency, 'usd');
+  assert.equal(redirects[0], 'https://checkout.stripe.com/pay/single');
+
+  // 2) Compra combo 25% em loja USD -> POST /area-cliente/promo-checkout
+  rerender(
+    h(UnifiedPaymentModal, {
+      isOpen: true,
+      onClose: () => {},
+      items: [
+        { productid: 10, title: 'Pack 1', price: 20 },
+        { productid: 11, title: 'Pack 2', price: 10 },
+      ],
+      discountPct: 25,
+      currency: 'USD',
+      userEmail: 'us@test.com',
+      storeId: 600010,
+      lang: 'en',
+      onRedirect: (u) => redirects.push(u),
+    }),
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: /Pay with Stripe/i }));
+  await waitFor(() => {
+    assert.equal(redirects.length, 2);
+  });
+  assert.equal(apiCalls[1].method, 'POST');
+  assert.equal(apiCalls[1].url, '/area-cliente/promo-checkout');
+  assert.deepEqual(apiCalls[1].body, {
+    product_ids: [10, 11],
+    discount_pct: 25,
+    store_id: 600010,
+  });
+});
+
+test('modal_unificado_exibe_erro_e_libera_nova_tentativa', async (t) => {
+  t.after(() => {
+    cleanup();
+    mock.restoreAll();
+  });
+
+  let attempt = 0;
+  const redirects = [];
+  mock.method(api, 'get', async () => {
+    attempt += 1;
+    if (attempt === 1) {
+      throw new Error('Network error');
+    }
+    return { data: { checkout_url: 'https://checkout.stripe.com/pay/retry-ok' } };
+  });
+
+  render(
+    h(UnifiedPaymentModal, {
+      isOpen: true,
+      onClose: () => {},
+      items: [{ productid: 10, title: 'Pack USD', price: 19.90 }],
+      discountPct: 0,
+      currency: 'USD',
+      userEmail: 'us@test.com',
+      storeId: 600010,
+      lang: 'en',
+      onRedirect: (u) => redirects.push(u),
+    }),
+  );
+
+  const btn = screen.getByRole('button', { name: /Pay with Stripe/i });
+  fireEvent.click(btn);
+
+  await waitFor(() => {
+    assert.ok(screen.getByText(/Could not start Stripe checkout/i));
+  });
+  // Botao volta habilitado e modal continua aberto para retry
+  assert.equal(btn.disabled, false);
+
+  fireEvent.click(btn);
+  await waitFor(() => {
+    assert.equal(redirects[0], 'https://checkout.stripe.com/pay/retry-ok');
+  });
 });

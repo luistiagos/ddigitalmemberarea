@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ExternalLink, Lock, Unlock, Plus, Check, CheckCircle2, Eye } from 'lucide-react';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
+import UnifiedPaymentModal from '@/components/UnifiedPaymentModal';
 import { TRANSLATIONS } from '@/pages/translations';
 import { formatCurrency, normalizeCurrency } from '@/utils/memberAreaPricing';
 import { getEffectiveProductImage, MULTIGAMES_FALLBACK } from '@/utils/productImages';
@@ -34,6 +35,8 @@ function AmbientArtwork({ imgSrc, title, onImageError, dim = false, children }) 
  */
 export function ProductCard({
   product,
+  userEmail = '',
+  storeId = null,
   lang = 'ptbr',
   storeCurrency = 'BRL',
   featuredHorizontal = false,
@@ -41,6 +44,7 @@ export function ProductCard({
   onToggleCombo,
   onPreview,
   onUnlock,
+  onPaymentFlowClosed,
 }) {
   const t = TRANSLATIONS[lang] || TRANSLATIONS.ptbr;
   const { productid, title, image, owned, price, relprice, description, deliverlink } = product;
@@ -48,6 +52,7 @@ export function ProductCard({
   const effectiveImage = getEffectiveProductImage(title, image);
   const [imgSrc, setImgSrc] = useState(effectiveImage);
   const [localPreviewOpen, setLocalPreviewOpen] = useState(false);
+  const [localPayOpen, setLocalPayOpen] = useState(false);
 
   useEffect(() => {
     setImgSrc(effectiveImage);
@@ -235,7 +240,13 @@ export function ProductCard({
 
           <button
             type="button"
-            onClick={() => onUnlock?.(product)}
+            onClick={() => {
+              if (onUnlock) {
+                onUnlock(product);
+              } else {
+                setLocalPayOpen(true);
+              }
+            }}
             className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-bold text-sm py-2.5 px-4 transition-colors shadow-md shadow-amber-500/10"
           >
             <Unlock className="h-4 w-4" />
@@ -258,7 +269,28 @@ export function ProductCard({
           onToggleCombo={onToggleCombo}
           onUnlock={(p) => {
             setLocalPreviewOpen(false);
-            onUnlock?.(p);
+            if (onUnlock) {
+              onUnlock(p);
+            } else {
+              setLocalPayOpen(true);
+            }
+          }}
+        />
+      )}
+
+      {!onUnlock && (
+        <UnifiedPaymentModal
+          isOpen={localPayOpen}
+          onClose={() => setLocalPayOpen(false)}
+          items={[product]}
+          discountPct={0}
+          currency={currency}
+          userEmail={userEmail}
+          storeId={storeId}
+          lang={lang}
+          onPaymentComplete={() => {
+            setLocalPayOpen(false);
+            onPaymentFlowClosed?.();
           }}
         />
       )}
