@@ -371,7 +371,7 @@ test('renderiza_barra_de_progresso_navbar_e_ambient_backdrop', async (t) => {
   });
 
   const catalog = [
-    { productid: 1, title: 'Sistema Multigames', image: 'https://img/multi.png', owned: true, deliverlink: 'https://deliv/1', currency: 'BRL', store_id: 600004 },
+    { productid: 1, title: 'Sistema Multigames', image: 'https://img/multigames.png', owned: true, deliverlink: 'https://deliv/1', currency: 'BRL', store_id: 600004 },
     { productid: 2, title: 'PS2 Pack', image: 'https://img/ps2.png', owned: false, price: 30, relprice: 60, currency: 'BRL', store_id: 600004 },
     { productid: 3, title: 'Switch Pack', image: 'https://img/sw.png', owned: false, price: 20, relprice: 40, currency: 'BRL', store_id: 600004 },
   ];

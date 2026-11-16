@@ -9,6 +9,7 @@ import api from '../services/api.js';
 import { storeUser, clearAuth } from '../utils/auth.js';
 import PromoModal from '../components/PromoModal.jsx';
 import { CustomerArea } from '../pages/CustomerArea.jsx';
+import { classifyCornerSamples, inferInitialStageStyle } from '../utils/artworkStage.js';
 
 const PROMO_ITEMS = [
   { productid: 101, title: 'Sistema PlayStation 2 Edicao Completa Definitiva', image: 'https://img/ps2.png', price: 40, price_25: 30, price_50: 20, currency: 'BRL' },
@@ -71,7 +72,7 @@ function installAreaMocks({ promoResponse, postOverride } = {}) {
     if (url.includes('/list_store_catalog')) {
       return {
         data: [
-          { productid: 1, title: 'Sistema Multigames', image: 'https://img/multi.png', owned: true, deliverlink: 'https://acesso/1', currency: 'BRL', store_id: 600004 },
+          { productid: 1, title: 'Sistema Multigames', image: 'https://img/multigames.png', owned: true, deliverlink: 'https://acesso/1', currency: 'BRL', store_id: 600004 },
           { productid: 101, title: PROMO_ITEMS[0].title, image: PROMO_ITEMS[0].image, owned: false, price: 40, relprice: 80, currency: 'BRL', store_id: 600004 },
           { productid: 102, title: PROMO_ITEMS[1].title, image: PROMO_ITEMS[1].image, owned: false, price: 60, relprice: 120, currency: 'BRL', store_id: 600004 },
         ],
@@ -600,13 +601,35 @@ test('contraste_rodape_legivel_botoes_verdes_texto_branco_e_fundo_branco_nos_pro
   const accessBtn = screen.getByRole('link', { name: /Acessar/i });
   assert.match(accessBtn.className, /\btext-white\b/);
 
-  // 3) Showcase das imagens dos produtos deve ter fundo branco limpo sem efeito marmore borrado
+  // 3) Showcase das imagens adapta fundo ao estilo da capa: claro para multigames e escuro para artes escuras
   const stages = container.querySelectorAll('div[data-artwork-stage="true"]');
   assert.ok(stages.length >= 3);
-  for (const stage of stages) {
-    assert.match(stage.className, /\bbg-white\b/);
-  }
+  assert.equal(stages[0].getAttribute('data-stage-tone'), 'light');
+  assert.match(stages[0].className, /\bbg-white\b/);
+  assert.equal(stages[1].getAttribute('data-stage-tone'), 'dark');
+  assert.equal(stages[1].className.includes('bg-white'), false);
   assert.equal(container.querySelector('img[data-ambient-backdrop="true"]'), null);
+
+  // Classificacao real de bordas (clara vs escura para caixas bloqueadas)
+  assert.equal(inferInitialStageStyle('https://cdn/images/multigames.png').tone, 'light');
+  assert.equal(inferInitialStageStyle('https://cdn/images/switchbox.webp').tone, 'dark');
+  const lightSample = classifyCornerSamples([
+    { r: 245, g: 245, b: 248, a: 255 },
+    { r: 245, g: 245, b: 248, a: 255 },
+    { r: 252, g: 252, b: 255, a: 255 },
+    { r: 252, g: 252, b: 255, a: 255 },
+  ]);
+  assert.equal(lightSample.tone, 'light');
+  assert.equal(lightSample.background, '#ffffff');
+  const darkSample = classifyCornerSamples([
+    { r: 37, g: 37, b: 37, a: 255 },
+    { r: 38, g: 38, b: 38, a: 255 },
+    { r: 66, g: 66, b: 66, a: 255 },
+    { r: 56, g: 56, b: 56, a: 255 },
+  ]);
+  assert.equal(darkSample.tone, 'dark');
+  assert.match(darkSample.background, /^linear-gradient\(180deg, rgb\(38, 38, 38\)/);
+  assert.ok(darkSample.maskImage);
 
   // 4) Rodape deve usar cores claras de alto contraste em fundo escuro
   const footer = container.querySelector('footer');

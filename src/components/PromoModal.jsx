@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Sparkles, Tag, Unlock, X } from 'lucide-react';
 import UnifiedPaymentModal from '@/components/UnifiedPaymentModal';
+import ProductArtworkStage from '@/components/ProductArtworkStage';
 import { TRANSLATIONS } from '@/pages/translations';
 import {
   formatCurrency,
@@ -82,12 +83,13 @@ function PromoProductRow({
         )}
       </div>
 
-      <div className="relative w-20 h-14 rounded-lg overflow-hidden bg-white border border-slate-300/70 p-1 shrink-0">
-        <img
-          src={imgSrc}
-          alt={product.title}
-          onError={() => setImgSrc(MULTIGAMES_FALLBACK)}
-          className="w-full h-full object-contain"
+      <div className="w-20 h-14 rounded-lg overflow-hidden shrink-0">
+        <ProductArtworkStage
+          imgSrc={imgSrc}
+          title={product.title}
+          onImageError={() => setImgSrc(MULTIGAMES_FALLBACK)}
+          aspectClass="h-14 w-20 rounded-lg border border-white/15"
+          imagePaddingClass="p-1"
         />
       </div>
 

@@ -2,29 +2,13 @@ import { useEffect, useState } from 'react';
 import { ExternalLink, Lock, Unlock, Plus, Check, CheckCircle2, Eye } from 'lucide-react';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
 import UnifiedPaymentModal from '@/components/UnifiedPaymentModal';
+import ProductArtworkStage from '@/components/ProductArtworkStage';
 import { TRANSLATIONS } from '@/pages/translations';
 import { formatCurrency, normalizeCurrency } from '@/utils/memberAreaPricing';
 import { getEffectiveProductImage, MULTIGAMES_FALLBACK } from '@/utils/productImages';
 
-function ProductArtworkStage({ imgSrc, title, onImageError, children }) {
-  return (
-    <div
-      data-artwork-stage="true"
-      className="relative w-full aspect-[16/10] bg-white border-b border-slate-200/80 overflow-hidden shrink-0"
-    >
-      <img
-        src={imgSrc}
-        alt={title}
-        onError={onImageError}
-        className="w-full h-full object-contain p-3 transition-transform duration-300 group-hover:scale-[1.03]"
-      />
-      {children}
-    </div>
-  );
-}
-
 /**
- * Card de produto para a área do cliente (Dark Gaming Premium).
+ * Card de produto para a área do cliente.
  */
 export function ProductCard({
   product,
