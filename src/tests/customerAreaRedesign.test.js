@@ -62,7 +62,7 @@ test('navbar_exibe_atalhos_para_acesso_e_ativar', (t) => {
 
   const links = screen.getAllByRole('link');
   const hrefs = links.map((a) => a.getAttribute('href'));
-  assert.ok(hrefs.includes('/acesso'), 'Navbar deve expor link para /acesso');
+  assert.equal(hrefs.includes('/acesso'), false, 'Navbar nao deve exibir atalho Downloads (/acesso)');
   assert.ok(hrefs.includes('/ativar'), 'Navbar deve expor link para /ativar');
 });
 
@@ -393,7 +393,7 @@ test('renderiza_barra_de_progresso_navbar_e_ambient_backdrop', async (t) => {
   assert.ok(screen.getByText(/1 de 3 sistemas desbloqueados/i));
 
   const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'));
-  assert.ok(hrefs.includes('/acesso'));
+  assert.equal(hrefs.includes('/acesso'), false);
   assert.ok(hrefs.includes('/ativar'));
   assert.ok(container.querySelector('div[data-artwork-stage="true"][data-stage-tone="transparent"]'));
 });
