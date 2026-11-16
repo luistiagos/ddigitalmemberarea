@@ -1,509 +1,450 @@
-import { useState, useEffect, useRef } from 'react';
-import { CreditCard, Loader2, QrCode, Wallet } from 'lucide-react';
-import CardModal from '@/components/ui/CardModal';
-import api from '@/services/api';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Check, Sparkles, Tag, Unlock, X } from 'lucide-react';
+import UnifiedPaymentModal from '@/components/UnifiedPaymentModal';
 import { TRANSLATIONS } from '@/pages/translations';
+import {
+  formatCurrency,
+  resolveCatalogCurrency,
+  round2,
+  roundDiscountedItemPrice,
+} from '@/utils/memberAreaPricing';
+import { getEffectiveProductImage, MULTIGAMES_FALLBACK } from '@/utils/productImages';
+import {
+  MEMBER_AREA_TELEMETRY_EVENTS,
+  trackMemberAreaEvent,
+} from '@/utils/memberAreaTelemetry';
 
-const MP_PUBLIC_KEY = 'APP_USR-747cf787-a851-4ed5-971c-62041281ed91';
+function getItemOriginalPrice(item) {
+  return Number(item?.price || 0);
+}
 
-/**
- * Promotional upsell modal shown in the customer area.
- *
- * Step 1 — 25% off offer.
- * Step 2 — 50% off offer (shown only if step 1 is rejected).
- *
- * Props:
- *   products   — array from /area-cliente/promo  { productid, title, image, price, price_25, price_50 }
- *   onClose    — called when the user rejects both offers
- *   onAccepted — called with the checkout URL after a successful promo checkout
- */
-export default function PromoModal({ products, storeId = null, lang, onClose, onPaymentComplete, onAccepted, onShown }) {
-  const t = TRANSLATIONS[lang] || TRANSLATIONS['ptbr'];
-  const [step, setStep]             = useState('25');
-  const [loading, setLoading]       = useState(false);
-  const [loadingLabel, setLoadingLabel] = useState('');
-  const [error, setError]           = useState('');
-  const [choosingMethod, setChoosingMethod] = useState(false); // false = botão único | true = 3 métodos
-  const [paymentStep, setPaymentStep] = useState('options'); // 'options' | 'pix'
-  const [pixData, setPixData]       = useState(null);
-  const [pixCopyMsg, setPixCopyMsg] = useState('');
-  const [cardStatus, setCardStatus] = useState(''); // '' | 'success' | 'pending' | 'error'
-  const [cardStatusMsg, setCardStatusMsg] = useState('');
-  const mpBricksCtrl = useRef(null);
+function getItemDiscountPrice(item, discountPct) {
+  if (discountPct === 25 && item?.price_25 != null) return round2(item.price_25);
+  if (discountPct === 50 && item?.price_50 != null) return round2(item.price_50);
+  return roundDiscountedItemPrice(getItemOriginalPrice(item), discountPct);
+}
 
-  // Computed values — need to be declared BEFORE the useEffect that uses them
-  const productIds  = products.map((p) => p.productid);
-  const total25     = products.reduce((s, p) => s + p.price_25, 0);
-  const total50     = products.reduce((s, p) => s + p.price_50, 0);
-  const totalFull   = products.reduce((s, p) => s + p.price,    0);
-  const is25        = step === '25';
-  const discountLabel = is25 ? '25%' : '50%';
-  const discountPct   = is25 ? 25 : 50;
-  const totalShown    = is25 ? total25 : total50;
+function PromoProductRow({
+  product,
+  discountPct,
+  currency,
+  lang,
+  mode,
+  selected,
+  onSelect,
+}) {
+  const initialSrc = getEffectiveProductImage(product.title, product.image);
+  const [imgSrc, setImgSrc] = useState(initialSrc);
 
-  const pixPollingRef = useRef(null);
-
-  const clearPixPolling = () => {
-    if (pixPollingRef.current) {
-      clearInterval(pixPollingRef.current);
-      pixPollingRef.current = null;
-    }
-  };
-
-  // Notifica o pai que o modal está de fato na tela.
-  // onShown é chamado apenas uma vez na montagem — é aqui que o pai
-  // deve chamar /area-cliente/promo-seen, garantindo que o registro
-  // só é gravado quando o usuário viu o modal.
   useEffect(() => {
-    if (onShown) onShown();
-    return () => clearPixPolling();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setImgSrc(initialSrc);
+  }, [initialSrc]);
 
-  // Mount / unmount the MP CardPayment Brick
-  useEffect(() => {
-    if (paymentStep !== 'card') {
-      if (mpBricksCtrl.current) {
-        try { mpBricksCtrl.current.unmount(); } catch (_) {}
-        mpBricksCtrl.current = null;
-      }
-      return;
-    }
-
-    setCardStatus('');
-    setCardStatusMsg('');
-
-    // Guard: never initialise the Brick with amount = 0 — MP returns
-    // 'no_payment_method_for_provided_bin' for every BIN when amount is 0.
-    if (!totalShown || totalShown <= 0) {
-      const el = document.getElementById('promo-card-brick-container');
-      if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.promoInvalidValueCard}</p>`;
-      return;
-    }
-
-    function initBrick() {
-      const container = document.getElementById('promo-card-brick-container');
-      if (!container) return;
-      container.innerHTML = '';
-      try {
-        const mp = new window.MercadoPago(MP_PUBLIC_KEY, { locale: lang === 'es' ? 'es' : lang === 'en' ? 'en' : 'pt-BR' });
-        console.log('[PromoCardBrick] Initializing with amount:', totalShown, 'step:', step);
-        mp.bricks().create('cardPayment', 'promo-card-brick-container', {
-          initialization: { amount: totalShown },
-          customization: {
-            paymentMethods: {
-              creditCard: 'all',
-              debitCard: 'all',
-            },
-          },
-          callbacks: {
-            onReady: () => { console.log('[PromoCardBrick] Ready'); },
-            onSubmit: async (cardData) => {
-              setLoading(true);
-              setLoadingLabel(t.cardProcessing);
-              setCardStatus('');
-              setCardStatusMsg('');
-              try {
-                const body = {
-                  product_ids: productIds,
-                  discount_pct: discountPct,
-                  token: cardData.token,
-                  installments: cardData.installments,
-                  payment_method_id: cardData.payment_method_id,
-                };
-                if (cardData.payer?.identification?.number) {
-                  body.identification_type = cardData.payer.identification.type || 'CPF';
-                  body.identification_number = cardData.payer.identification.number;
-                }
-                if (storeId != null) body.store_id = storeId;
-                const { data } = await api.post('/area-cliente/promo-checkout-card', body);
-                if (data.error) {
-                  setCardStatus('error');
-                  setCardStatusMsg(data.error);
-                } else if (data.status === 'approved') {
-                  setCardStatus('success');
-                  setCardStatusMsg(t.promoSuccessCard);
-                  if (mpBricksCtrl.current) {
-                    try { mpBricksCtrl.current.unmount(); } catch (_) {}
-                    mpBricksCtrl.current = null;
-                  }
-                  setTimeout(() => (onPaymentComplete ?? onClose)(), 2500);
-                } else if (data.status === 'in_process' || data.status === 'pending') {
-                  setCardStatus('pending');
-                  setCardStatusMsg(t.paymentPendingMsg);
-                  setTimeout(() => (onPaymentComplete ?? onClose)(), 3000);
-                } else {
-                  setCardStatus('error');
-                  setCardStatusMsg(`${t.paymentDeclinedMsg} (${data.status_detail || data.status})`);
-                }
-              } catch {
-                setCardStatus('error');
-                setCardStatusMsg(t.paymentErrMsg);
-              } finally {
-                setLoading(false);
-                setLoadingLabel('');
-              }
-            },
-            onError: (err) => {
-              // Log full error object for diagnosis
-              console.error('[PromoCardBrick] onError:', JSON.stringify(err, null, 2), err);
-              // Only surface critical errors — non_critical fires during BIN typing and is expected
-              if (err?.type !== 'non_critical') {
-                setCardStatus('error');
-                setCardStatusMsg(t.cardFormErrMsg);
-              }
-            },
-          },
-        }).then(ctrl => { mpBricksCtrl.current = ctrl; });
-      } catch (e) {
-        console.error('PromoModal initBrick error:', e);
-        const el = document.getElementById('promo-card-brick-container');
-        if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.cardFormLoadError}</p>`;
-      }
-    }
-
-    if (window.MercadoPago) {
-      initBrick();
-    } else {
-      const script = document.createElement('script');
-      script.src = 'https://sdk.mercadopago.com/js/v2';
-      script.onload = initBrick;
-      script.onerror = () => {
-        const el = document.getElementById('promo-card-brick-container');
-        if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.cardFormLoadError}</p>`;
-      };
-      document.head.appendChild(script);
-    }
-
-    return () => {
-      if (mpBricksCtrl.current) {
-        try { mpBricksCtrl.current.unmount(); } catch (_) {}
-        mpBricksCtrl.current = null;
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentStep, totalShown]);
-
-  const fmt = (v) => {
-    const locale = lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'pt-BR';
-    return v.toLocaleString(locale, { style: 'currency', currency: 'BRL' });
-  };
-
-  async function handleMercadoPago(discountPct, label = t.redirectingToMP) {
-    setLoading(true);
-    setLoadingLabel(label);
-    setError('');
-    try {
-      const body = { product_ids: productIds, discount_pct: discountPct };
-      if (storeId != null) body.store_id = storeId;
-      const { data } = await api.post('/area-cliente/promo-checkout', body);
-      if (data.checkout_url) {
-        onAccepted(data.checkout_url);
-      } else {
-        setError(t.noLinkError);
-      }
-    } catch {
-      setError(t.promoErrorCheckout);
-    } finally {
-      setLoading(false);
-      setLoadingLabel('');
-    }
-  }
-
-  async function handlePix(discountPct) {
-    setLoading(true);
-    setLoadingLabel(t.generatingQRCode);
-    setError('');
-    setPixCopyMsg('');
-    try {
-      const body = { product_ids: productIds, discount_pct: discountPct };
-      if (storeId != null) body.store_id = storeId;
-      const { data } = await api.post('/area-cliente/promo-checkout-pix', body);
-      if (data.error) {
-        setError(data.error);
-      } else if (data.qr_code) {
-        setPixData(data);
-        setPaymentStep('pix');
-
-        if (data.payment_id) {
-          clearPixPolling();
-          pixPollingRef.current = setInterval(async () => {
-            try {
-              const statusRes = await api.get(`/payment_status?payment_id=${data.payment_id}`);
-              const d = statusRes.data;
-              if (d.status === 'approved') {
-                clearPixPolling();
-                setPixCopyMsg(t.paymentApprovedMsg);
-                setTimeout(() => {
-                  if (onPaymentComplete) {
-                    onPaymentComplete();
-                  } else {
-                    onClose();
-                  }
-                }, 2500);
-              } else if (['rejected', 'cancelled', 'expired'].includes(d.status)) {
-                clearPixPolling();
-                setPixCopyMsg(t.pixExpiredMsg);
-              }
-            } catch (err) { /* silent */ }
-          }, 5000);
-        }
-      } else {
-        setError(t.pixUnavailable);
-      }
-    } catch {
-      setError(t.pixGenError);
-    } finally {
-      setLoading(false);
-      setLoadingLabel('');
-    }
-  }
-
-  async function copyPixCode() {
-    if (!pixData?.qr_code) return;
-    try {
-      await navigator.clipboard.writeText(pixData.qr_code);
-      setPixCopyMsg(t.pixCopiedMsg);
-    } catch {
-      setPixCopyMsg(t.pixCopiedFallback);
-    }
-  }
-
-  // Compact payment screen (choosing method, PIX QR, or card form)
-  const isCompact = choosingMethod || paymentStep === 'pix';
+  const origPrice = getItemOriginalPrice(product);
+  const promoPrice = getItemDiscountPrice(product, discountPct);
 
   return (
-    <>
-    {/* Backdrop */}
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm">
-      <div className="flex min-h-full items-center justify-center p-4">
-      <div className="relative w-full max-w-sm rounded-2xl bg-gray-900 border border-gray-700 shadow-2xl">
-
-        {/* Header gradient bar */}
-        <div className={`h-1.5 w-full ${is25 ? 'bg-linear-to-r from-amber-400 to-orange-500' : 'bg-linear-to-r from-red-500 to-pink-600'}`} />
-
-        {isCompact ? (
-          /* ── COMPACT PAYMENT VIEW ── */
-          <div className="p-5 space-y-4">
-
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-8 gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
-                <p className="text-sm font-medium text-white">{loadingLabel || t.waitBtn}</p>
-              </div>
-            ) : paymentStep === 'pix' && pixData ? (
-              /* PIX QR Code */
-              <div className="flex flex-col items-center gap-3">
-                <p className="text-sm font-semibold text-white">{t.payWithPixTitle}</p>
-                {pixData.qr_code_base64 && (
-                  <img
-                    src={pixData.qr_code_base64.startsWith('data:') ? pixData.qr_code_base64 : `data:image/png;base64,${pixData.qr_code_base64}`}
-                    alt="QR Code PIX"
-                    className="mx-auto w-44 h-44 border-2 border-emerald-500 rounded-xl"
-                  />
-                )}
-                {pixData.amount != null && (
-                  <p className="text-white font-bold text-lg">{fmt(pixData.amount)}</p>
-                )}
-                <p className="text-[11px] text-gray-400 break-all bg-gray-800 rounded-lg p-2.5 w-full">
-                  {pixData.qr_code}
-                </p>
-                <button
-                  onClick={copyPixCode}
-                  className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-semibold text-sm transition-colors"
-                >
-                  {t.copyPixBtn}
-                </button>
-                {pixCopyMsg && (
-                  <p className="text-xs text-center text-gray-400">{pixCopyMsg}</p>
-                )}
-                <button
-                  onClick={() => { clearPixPolling(); (onPaymentComplete ?? onClose)(); }}
-                  className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-sm transition-colors"
-                >
-                  {t.promoAlreadyPaidBtn}
-                </button>
-                <button
-                  onClick={() => { clearPixPolling(); setPaymentStep('options'); setPixData(null); setChoosingMethod(true); }}
-                  className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                >
-                  {t.promoBackBtn}
-                </button>
-              </div>
-            ) : paymentStep === 'card' ? null : (
-              /* 3 payment method buttons */
-              <>
-                {/* Compact total */}
-                <div className="flex items-center justify-between bg-gray-800 rounded-xl px-4 py-3">
-                  <span className="text-gray-400 text-sm">{t.promoTotalWithDiscount}</span>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500 line-through">{fmt(totalFull)}</p>
-                    <p className={`font-bold text-base ${is25 ? 'text-amber-400' : 'text-red-400'}`}>
-                      {fmt(totalShown)}
-                    </p>
-                  </div>
-                </div>
-
-                {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-
-                <p className="text-center text-xs text-gray-400">{t.choosePayment}</p>
-
-                <div className="space-y-2">
-                  <button
-                    onClick={() => handleMercadoPago(discountPct)}
-                    disabled={loading}
-                    className="w-full py-3 rounded-xl font-bold bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-gray-900 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <Wallet className="h-4 w-4" />
-                    {t.mpLinkBtn}
-                  </button>
-
-                  <button
-                    onClick={() => handlePix(discountPct)}
-                    disabled={loading}
-                    className="w-full py-3 rounded-xl font-bold bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-gray-900 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <QrCode className="h-4 w-4" />
-                    {t.pixBtn}
-                  </button>
-
-                  <button
-                    onClick={() => { setPaymentStep('card'); }}
-                    disabled={loading}
-                    className="w-full py-3 rounded-xl font-bold bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    {t.cardBtn}
-                  </button>
-
-                  <button
-                    onClick={() => setChoosingMethod(false)}
-                    className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                  >
-                    {t.promoBackBtn}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+    <button
+      type="button"
+      role={mode === 'radio' ? 'radio' : mode === 'checkbox' ? 'checkbox' : undefined}
+      aria-checked={mode === 'fixed' ? undefined : selected}
+      data-promo-product-id={product.productid}
+      onClick={() => onSelect?.(product.productid)}
+      disabled={mode === 'fixed'}
+      className={`group w-full text-left flex items-start gap-3 rounded-xl border p-3 transition-all ${
+        selected
+          ? 'border-amber-400/70 bg-amber-500/10 shadow-sm shadow-amber-500/10'
+          : 'border-white/10 bg-gray-900/70 hover:border-white/25'
+      } ${mode === 'fixed' ? 'cursor-default' : 'cursor-pointer'}`}
+    >
+      <div className="mt-1 shrink-0">
+        {mode === 'radio' ? (
+          <span
+            className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
+              selected
+                ? 'border-amber-400 bg-amber-400/20'
+                : 'border-gray-500 bg-gray-950'
+            }`}
+          >
+            {selected && <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />}
+          </span>
         ) : (
-          /* ── FULL OFFER VIEW ── */
-          <div className="p-6 space-y-5">
+          <span
+            className={`flex h-5 w-5 items-center justify-center rounded-md border transition-colors ${
+              selected
+                ? 'border-emerald-400 bg-emerald-500 text-gray-950'
+                : 'border-gray-600 bg-gray-950 text-transparent'
+            }`}
+          >
+            <Check className="h-3.5 w-3.5 stroke-[3]" />
+          </span>
+        )}
+      </div>
 
-            {/* Title */}
-            <div className="text-center space-y-1">
-              <p className="text-2xl font-bold text-white">
-                {is25 ? t.promoTitle25 : t.promoTitle50}
-              </p>
-              <p className="text-sm text-gray-400">
-                {is25 ? t.promoSubtitle25 : t.promoSubtitle50}
+      <div className="relative w-20 h-14 rounded-lg overflow-hidden bg-gray-950 border border-white/10 shrink-0">
+        <img
+          src={imgSrc}
+          alt={product.title}
+          onError={() => setImgSrc(MULTIGAMES_FALLBACK)}
+          className="w-full h-full object-contain"
+        />
+      </div>
+
+      <div className="flex-1 min-w-0 space-y-1">
+        <p className="text-sm font-semibold text-white leading-snug break-words">
+          {product.title}
+        </p>
+        <div className="flex items-baseline flex-wrap gap-2 text-xs">
+          <span className="text-gray-500 line-through">
+            {formatCurrency(origPrice, currency, lang)}
+          </span>
+          <span className="text-sm font-bold text-amber-300">
+            {formatCurrency(promoPrice, currency, lang)}
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/**
+ * Modal promocional VIP redesenhado para a Área de Membros.
+ * - Etapa 1 (25% OFF): itens não adquiridos pré-marcados com opção de desmarcar (mínimo 1).
+ * - Etapa 2 (50% OFF): respeita downsellVariant ('full_50' pacote completo vs 'single_50' escolha de 1 item).
+ * - Pagamento unificado via UnifiedPaymentModal (BRL dark / USD Stripe).
+ */
+export default function PromoModal({
+  isOpen = true,
+  products = [],
+  storeId = null,
+  userEmail = '',
+  currency,
+  downsellVariant = 'single_50',
+  lang = 'ptbr',
+  openSource = 'auto_timer',
+  onClose,
+  onShown,
+  onPaymentComplete,
+  onAccepted,
+  onRedirect,
+}) {
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.ptbr;
+  const activeCurrency = resolveCatalogCurrency(products, currency);
+  const normalizedVariant = downsellVariant === 'full_50' ? 'full_50' : 'single_50';
+
+  const [step, setStep] = useState('25');
+  const [selected25Ids, setSelected25Ids] = useState(() => products.map((p) => p.productid));
+  const [selectedSingle50Id, setSelectedSingle50Id] = useState(() => products[0]?.productid ?? null);
+  const [minWarningVisible, setMinWarningVisible] = useState(false);
+  const [checkoutConfig, setCheckoutConfig] = useState(null);
+
+  const wasOpenRef = useRef(false);
+
+  useEffect(() => {
+    const openedNow = Boolean(isOpen && products.length > 0);
+    if (openedNow && !wasOpenRef.current) {
+      setStep('25');
+      setSelected25Ids(products.map((p) => p.productid));
+      setSelectedSingle50Id(products[0]?.productid ?? null);
+      setMinWarningVisible(false);
+      setCheckoutConfig(null);
+
+      onShown?.();
+      trackMemberAreaEvent(MEMBER_AREA_TELEMETRY_EVENTS.PROMO_MODAL_OPEN, {
+        store_id: storeId,
+        downsell_variant: normalizedVariant,
+        currency: activeCurrency,
+        item_count: products.length,
+        source: openSource,
+      });
+    }
+    wasOpenRef.current = openedNow;
+  }, [isOpen, products, storeId, normalizedVariant, activeCurrency, openSource, onShown]);
+
+  const dismissOffer = useCallback((action = 'dismiss') => {
+    trackMemberAreaEvent(MEMBER_AREA_TELEMETRY_EVENTS.PROMO_STEP_ACTION, {
+      store_id: storeId,
+      step,
+      action,
+      discount_pct: step === '25' ? 25 : 50,
+      downsell_variant: step === '50' ? normalizedVariant : undefined,
+      currency: activeCurrency,
+    });
+    onClose?.();
+  }, [storeId, step, normalizedVariant, activeCurrency, onClose]);
+
+  useEffect(() => {
+    if (!isOpen || checkoutConfig || typeof window === 'undefined') return undefined;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        dismissOffer('dismiss');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, checkoutConfig, dismissOffer]);
+
+  const selected25Items = useMemo(() => {
+    const idSet = new Set(selected25Ids);
+    const filtered = products.filter((p) => idSet.has(p.productid));
+    return filtered.length > 0 ? filtered : products.slice(0, 1);
+  }, [products, selected25Ids]);
+
+  const selected50Items = useMemo(() => {
+    if (normalizedVariant === 'full_50') return products;
+    const match = products.find((p) => p.productid === selectedSingle50Id);
+    return match ? [match] : products.slice(0, 1);
+  }, [products, normalizedVariant, selectedSingle50Id]);
+
+  if (!isOpen || products.length === 0) return null;
+
+  if (checkoutConfig) {
+    return (
+      <UnifiedPaymentModal
+        isOpen
+        onClose={() => {
+          setCheckoutConfig(null);
+          onClose?.();
+        }}
+        items={checkoutConfig.items}
+        discountPct={checkoutConfig.discountPct}
+        currency={activeCurrency}
+        userEmail={userEmail}
+        storeId={storeId}
+        lang={lang}
+        origin="promo_modal"
+        downsellVariant={checkoutConfig.downsellVariant}
+        onRedirect={onRedirect || onAccepted}
+        onPaymentComplete={() => {
+          setCheckoutConfig(null);
+          onPaymentComplete?.();
+        }}
+      />
+    );
+  }
+
+  const is25 = step === '25';
+  const discountPct = is25 ? 25 : 50;
+  const activeItems = is25 ? selected25Items : selected50Items;
+  const subtotalShown = round2(activeItems.reduce((sum, p) => sum + getItemOriginalPrice(p), 0));
+  const totalShown = round2(activeItems.reduce((sum, p) => sum + getItemDiscountPrice(p, discountPct), 0));
+  const savingsShown = round2(Math.max(0, subtotalShown - totalShown));
+
+  const titleText = is25
+    ? t.promoTitle25
+    : normalizedVariant === 'full_50'
+      ? (t.promoTitle50Full || t.promoTitle50)
+      : (t.promoTitle50Single || t.promoTitle50);
+
+  const subtitleText = is25
+    ? t.promoSubtitle25
+    : normalizedVariant === 'full_50'
+      ? (t.promoSubtitle50Full || t.promoSubtitle50)
+      : (t.promoSubtitle50Single || t.promoSubtitle50);
+
+  const hintText = is25
+    ? t.promoSelectHint25
+    : normalizedVariant === 'full_50'
+      ? t.promoSelectHint50Full
+      : t.promoSelectHint50Single;
+
+  const ctaText = is25
+    ? t.promoCta25.replace('{discount}', '25%')
+    : normalizedVariant === 'full_50'
+      ? (t.promoCta50Full || t.promoCta50).replace('{discount}', '50%')
+      : (t.promoCta50Single || t.promoCta50).replace('{discount}', '50%');
+
+  const toggle25Item = (productId) => {
+    setSelected25Ids((prev) => {
+      if (prev.includes(productId)) {
+        if (prev.length <= 1) {
+          setMinWarningVisible(true);
+          return prev;
+        }
+        setMinWarningVisible(false);
+        return prev.filter((id) => id !== productId);
+      }
+      setMinWarningVisible(false);
+      return [...prev, productId];
+    });
+  };
+
+  const handleDecline25 = () => {
+    trackMemberAreaEvent(MEMBER_AREA_TELEMETRY_EVENTS.PROMO_STEP_ACTION, {
+      store_id: storeId,
+      step: '25',
+      action: 'decline',
+      discount_pct: 25,
+      item_count: selected25Items.length,
+      currency: activeCurrency,
+    });
+    setMinWarningVisible(false);
+    setStep('50');
+  };
+
+  const handleAccept = () => {
+    trackMemberAreaEvent(MEMBER_AREA_TELEMETRY_EVENTS.PROMO_STEP_ACTION, {
+      store_id: storeId,
+      step,
+      action: 'accept',
+      discount_pct: discountPct,
+      downsell_variant: is25 ? undefined : normalizedVariant,
+      item_count: activeItems.length,
+      currency: activeCurrency,
+    });
+    setCheckoutConfig({
+      items: activeItems,
+      discountPct,
+      downsellVariant: is25 ? undefined : normalizedVariant,
+    });
+  };
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) dismissOffer('dismiss');
+      }}
+    >
+      <div className="flex min-h-full items-center justify-center">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="promo-modal-title"
+          data-testid="promo-modal-dialog"
+          className="relative w-full max-w-2xl rounded-2xl border border-white/15 bg-[#111827] text-white shadow-2xl overflow-hidden animate-fade-in"
+        >
+          {/* Barra de destaque superior */}
+          <div
+            className={`h-1.5 w-full ${
+              is25
+                ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500'
+                : 'bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400'
+            }`}
+          />
+
+          {/* Botao explicito de fechar (X) */}
+          <button
+            type="button"
+            aria-label={t.promoCloseLabel || t.close}
+            onClick={() => dismissOffer('dismiss')}
+            className="absolute top-4 right-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-gray-900/80 text-gray-400 hover:text-white hover:border-white/25 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+
+          <div className="p-6 sm:p-7 space-y-5">
+            {/* Cabecalho */}
+            <div className="pr-10 space-y-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/35 bg-amber-500/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{t.promoBannerBadge} · {discountPct}% OFF</span>
+              </div>
+              <h2 id="promo-modal-title" className="text-xl sm:text-2xl font-extrabold text-white leading-tight">
+                {titleText}
+              </h2>
+              <p className="text-sm text-gray-300 leading-relaxed">
+                {subtitleText}
               </p>
             </div>
 
-            {/* FOMO body */}
-            <p className="text-gray-300 text-sm leading-relaxed text-center">
-              {is25 ? (
-                <>
-                  {t.promoText25_1}
-                  <span className="font-bold text-amber-400">{fmt(totalShown)}</span>
-                  {` (${discountLabel}${t.promoText25_2})`}
-                </>
-              ) : (
-                <>
-                  {t.promoText50_1}
-                  <span className="font-bold text-red-400">{fmt(totalShown)}</span>
-                  {t.promoText50_2}
-                  <span className="font-bold text-red-400">{discountLabel}</span>
-                  {t.promoText50_3}
-                </>
+            {/* Instrucao + contador de selecao */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className="text-xs font-medium text-gray-300">{hintText}</p>
+              {t.promoSelectedCount && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 border border-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-300">
+                  <Tag className="h-3 w-3" />
+                  <span>{t.promoSelectedCount.replace('{count}', String(activeItems.length))}</span>
+                </span>
               )}
-            </p>
+            </div>
 
-            {/* Product list */}
-            <ul className="space-y-2 max-h-52 overflow-y-auto pr-1">
-              {products.map((p) => {
-                const discounted = is25 ? p.price_25 : p.price_50;
+            {minWarningVisible && (
+              <p role="status" className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2">
+                {t.promoMinOneWarning}
+              </p>
+            )}
+
+            {/* Lista em grade ampla sem truncamento nos titulos */}
+            <div
+              role={is25 ? 'group' : normalizedVariant === 'single_50' ? 'radiogroup' : 'list'}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[42vh] overflow-y-auto pr-1"
+            >
+              {products.map((product) => {
+                const mode = is25
+                  ? 'checkbox'
+                  : normalizedVariant === 'single_50'
+                    ? 'radio'
+                    : 'fixed';
+                const isSelected = is25
+                  ? selected25Items.some((p) => p.productid === product.productid)
+                  : normalizedVariant === 'single_50'
+                    ? selected50Items[0]?.productid === product.productid
+                    : true;
+
                 return (
-                  <li
-                    key={p.productid}
-                    className="flex items-center gap-3 bg-gray-800 rounded-xl px-3 py-2"
-                  >
-                    {p.image && (
-                      <img
-                        src={p.image}
-                        alt={p.title}
-                        className="w-10 h-10 rounded-lg object-cover shrink-0"
-                      />
-                    )}
-                    <span className="flex-1 text-sm text-white line-clamp-1">{p.title}</span>
-                    <span className="text-xs text-gray-500 line-through mr-1">{fmt(p.price)}</span>
-                    <span className={`text-sm font-bold ${is25 ? 'text-amber-400' : 'text-red-400'}`}>
-                      {fmt(discounted)}
-                    </span>
-                  </li>
+                  <PromoProductRow
+                    key={product.productid}
+                    product={product}
+                    discountPct={discountPct}
+                    currency={activeCurrency}
+                    lang={lang}
+                    mode={mode}
+                    selected={isSelected}
+                    onSelect={
+                      is25
+                        ? toggle25Item
+                        : normalizedVariant === 'single_50'
+                          ? (id) => setSelectedSingle50Id(id)
+                          : undefined
+                    }
+                  />
                 );
               })}
-            </ul>
+            </div>
 
-            {/* Total */}
-            <div className="flex justify-between items-center bg-gray-800 rounded-xl px-4 py-3">
-              <span className="text-gray-400 text-sm">{t.promoTotalWithDiscount}</span>
-              <div className="text-right">
-                <p className="text-xs text-gray-500 line-through">{fmt(totalFull)}</p>
-                <p className={`font-bold text-lg ${is25 ? 'text-amber-400' : 'text-red-400'}`}>
-                  {fmt(totalShown)}
-                </p>
+            {/* Resumo financeiro e acoes */}
+            <div className="rounded-xl border border-white/10 bg-gray-950/85 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <p className="text-xs text-gray-400">{t.promoTotalWithDiscount}</p>
+                <div className="flex items-baseline gap-2.5 flex-wrap mt-0.5">
+                  <span className="text-sm text-gray-500 line-through">
+                    {formatCurrency(subtotalShown, activeCurrency, lang)}
+                  </span>
+                  <span className="text-2xl font-extrabold text-amber-300">
+                    {formatCurrency(totalShown, activeCurrency, lang)}
+                  </span>
+                  {savingsShown > 0 && (
+                    <span className="text-xs font-semibold text-emerald-400">
+                      ({t.economyLabel} {formatCurrency(savingsShown, activeCurrency, lang)})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:items-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleAccept}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-extrabold text-sm px-6 py-3 transition-colors shadow-lg shadow-amber-500/20"
+                >
+                  <Unlock className="h-4 w-4" />
+                  <span>{ctaText}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={is25 ? handleDecline25 : () => dismissOffer('dismiss')}
+                  className="text-xs font-medium text-gray-400 hover:text-gray-200 transition-colors py-1"
+                >
+                  {is25 ? t.promoDecline25 : t.promoDecline50}
+                </button>
               </div>
             </div>
-
-            {/* CTA */}
-            <div className="space-y-2">
-              <button
-                onClick={() => setChoosingMethod(true)}
-                className={`w-full py-3 rounded-xl font-bold text-white transition-all
-                  ${is25
-                    ? 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600'
-                    : 'bg-red-500 hover:bg-red-400 active:bg-red-600'}`}
-              >
-                {is25
-                  ? `🚀 ${t.promoCta25.replace('{discount}', discountLabel)}`
-                  : `✅ ${t.promoCta50.replace('{discount}', discountLabel)}`}
-              </button>
-
-              <button
-                onClick={() => (is25 ? setStep('50') : onClose())}
-                className="w-full py-2 rounded-xl text-sm text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                {is25 ? t.promoDecline25 : t.promoDecline50}
-              </button>
-            </div>
-
           </div>
-        )}
-
+        </div>
       </div>
-      </div>
-    </div>
-
-    {/* Modal de cartão — sobrepõe o PromoModal via portal com z-index 60 */}
-    <CardModal
-      isOpen={paymentStep === 'card'}
-      onClose={() => { setPaymentStep('options'); setChoosingMethod(true); }}
-      containerId="promo-card-brick-container"
-      status={cardStatus}
-      statusMsg={cardStatusMsg}
-      zIndex={60}
-      footer={
-        !loading && cardStatus === '' ? (
-          <button
-            onClick={() => { setPaymentStep('options'); setChoosingMethod(true); }}
-            className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            {t.promoBackBtn}
-          </button>
-        ) : null
-      }
-    />
-    </>
+    </div>,
+    document.body,
   );
 }
