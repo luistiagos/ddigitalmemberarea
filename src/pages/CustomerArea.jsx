@@ -1,14 +1,21 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Package, Gamepad2, Sparkles } from 'lucide-react';
+import { Package, Gamepad2, Sparkles, Unlock, Trophy } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProductCard } from '@/components/ProductCard';
+import ProductPreviewModal from '@/components/ProductPreviewModal';
+import UnifiedPaymentModal from '@/components/UnifiedPaymentModal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { useProducts } from '@/hooks/useProducts';
 import { useLang } from '@/hooks/useLang';
 import { getStoredUser, storeUser, persistStoreId } from '@/utils/auth';
+import {
+  calculateComboSummary,
+  formatCurrency,
+  resolveCatalogCurrency,
+} from '@/utils/memberAreaPricing';
 import api from '@/services/api';
 import PromoModal from '@/components/PromoModal';
 
@@ -27,7 +34,7 @@ function EmptyState({ t }) {
   );
 }
 
-export function CustomerArea() {
+export function CustomerArea({ onRedirect } = {}) {
   const [searchParams] = useSearchParams();
   const { lang, t } = useLang();
   const rawStoreId = searchParams.get('store_id') || searchParams.get('storeid');
@@ -45,6 +52,9 @@ export function CustomerArea() {
   const [promoData, setPromoData] = useState(null);
   const [promoSeen, setPromoSeen] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+  const [selectedComboIds, setSelectedComboIds] = useState([]);
+  const [previewProduct, setPreviewProduct] = useState(null);
+  const [checkoutTarget, setCheckoutTarget] = useState(null);
 
   useEffect(() => {
     if (user?.storeId) return;
@@ -81,12 +91,12 @@ export function CustomerArea() {
     const params = effectiveStoreId ? { store_id: effectiveStoreId } : {};
     api.get('/area-cliente/promo', { params })
       .then(({ data }) => {
-        if (data.show && data.products?.length > 0) {
+        if (data?.show && data.products?.length > 0) {
           setPromoData(data);
         }
       })
       .catch(() => {});
-  }, [user?.storeId]);
+  }, [effectiveStoreId]);
 
   useEffect(() => {
     if (sessionStorage.getItem(CUSTOMER_AREA_REFRESH_KEY) === '1') {
@@ -121,96 +131,243 @@ export function CustomerArea() {
     }
   }, [loading, isAutoRefreshing]);
 
-  const ownedProducts = products.filter((p) => p.owned);
-  const availableProducts = products.filter((p) => !p.owned);
+  const ownedProducts = useMemo(() => products.filter((p) => p.owned), [products]);
+  const availableProducts = useMemo(() => products.filter((p) => !p.owned), [products]);
+  const purchasableCount = useMemo(
+    () => availableProducts.filter((p) => p.price != null && Number(p.price) > 0).length,
+    [availableProducts],
+  );
+  const storeCurrency = useMemo(
+    () => resolveCatalogCurrency(products, promoData?.currency),
+    [products, promoData],
+  );
 
-  const productCountLabel = (() => {
-    const total = products.length;
-    const owned = ownedProducts.length;
-    const totalLabel = total === 1 ? t.productsItem : t.productsItemPlural;
-    const ownedLabel = owned === 1 ? t.productsAcquired : t.productsAcquiredPlural;
-    return `${owned} ${t.productsOf} ${total} ${totalLabel} ${ownedLabel}`;
-  })();
+  // Filtra selectedComboIds para garantir que apenas itens atualmente nao adquiridos permanecem
+  const availableMap = useMemo(() => {
+    const map = new Map();
+    for (const item of availableProducts) {
+      map.set(item.productid, item);
+    }
+    return map;
+  }, [availableProducts]);
+
+  const selectedComboProducts = useMemo(
+    () => selectedComboIds.map((id) => availableMap.get(id)).filter(Boolean),
+    [selectedComboIds, availableMap],
+  );
+  const selectedComboSet = useMemo(
+    () => new Set(selectedComboProducts.map((p) => p.productid)),
+    [selectedComboProducts],
+  );
+  const comboSummary = useMemo(
+    () => calculateComboSummary(selectedComboProducts, purchasableCount),
+    [selectedComboProducts, purchasableCount],
+  );
+
+  const toggleComboItem = useCallback((product) => {
+    if (!product || product.owned) return;
+    setSelectedComboIds((prev) =>
+      prev.includes(product.productid)
+        ? prev.filter((id) => id !== product.productid)
+        : [...prev, product.productid],
+    );
+  }, []);
+
+  const totalCount = products.length;
+  const ownedCount = ownedProducts.length;
+  const progressPct = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-8 gap-4 flex-wrap animate-fade-in">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
-            <Gamepad2 className="h-6 w-6 text-amber-500" />
-            {t.myProductsTitle}
-          </h1>
-          <p className="mt-1 text-sm text-gray-400">
-            {!loading && !error && products.length > 0
-              ? productCountLabel
-              : t.productsTagline}
-          </p>
+      <div className={comboSummary.count >= 2 ? 'pb-28' : 'pb-6'}>
+        <div className="flex items-center justify-between mb-6 gap-4 flex-wrap animate-fade-in">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
+              <Gamepad2 className="h-7 w-7 text-amber-400" />
+              {t.myProductsTitle}
+            </h1>
+            <p className="mt-1 text-sm text-gray-400">{t.productsTagline}</p>
+          </div>
+          {isAutoRefreshing && (
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/35 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300 animate-pulse">
+              {t.updatingProducts}
+            </div>
+          )}
         </div>
-        {isAutoRefreshing && (
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/35 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300 animate-pulse">
-            {t.updatingProducts}
+
+        {/* Barra de progresso da biblioteca */}
+        {!loading && !error && totalCount > 0 && (
+          <div className="mb-8 rounded-2xl border border-white/10 bg-[#111827]/90 p-4 sm:p-5 shadow-lg">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-2.5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                <Trophy className="h-4 w-4 text-amber-400" />
+                <span>{t.libraryProgressTitle}:</span>
+                <span className="text-emerald-300">
+                  {ownedCount} {t.productsOf} {totalCount} {t.libraryProgressSystems}
+                </span>
+              </div>
+              <span className="text-xs font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded-full px-2.5 py-0.5">
+                {progressPct}%
+              </span>
+            </div>
+            <div
+              role="progressbar"
+              aria-valuenow={progressPct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              className="h-2.5 w-full rounded-full bg-gray-800 overflow-hidden"
+            >
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-500 transition-all duration-500"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {loading && <LoadingSpinner message={t.loadingProducts} />}
+
+        {error && !loading && (
+          <div className="max-w-lg space-y-3">
+            <Alert variant="error" message={error} />
+            <Button variant="ghost" onClick={refetch} className="text-sm">
+              {t.tryAgain}
+            </Button>
+          </div>
+        )}
+
+        {!loading && !error && products.length === 0 && <EmptyState t={t} />}
+
+        {!loading && !error && products.length > 0 && (
+          <div className="space-y-12">
+            {ownedProducts.length > 0 && (
+              <section>
+                <h2 className="text-xs sm:text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  {t.purchasedSection}
+                </h2>
+                <div className={ownedProducts.length === 1 ? 'grid gap-4 grid-cols-1' : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3'}>
+                  {ownedProducts.map((product) => (
+                    <ProductCard
+                      key={product.productid ?? product.title}
+                      product={product}
+                      userEmail={user?.email}
+                      storeId={effectiveStoreId ?? 1}
+                      lang={lang}
+                      storeCurrency={storeCurrency}
+                      featuredHorizontal={ownedProducts.length === 1}
+                      onPaymentFlowClosed={triggerPageReload}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {availableProducts.length > 0 && (
+              <section>
+                <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                  <h2 className="text-xs sm:text-sm font-semibold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-amber-400" />
+                    {t.unlockSpecial}
+                  </h2>
+                  {purchasableCount >= 2 && (
+                    <p className="text-xs text-cyan-300/90 font-medium">{t.comboSubtitleHint}</p>
+                  )}
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {availableProducts.map((product) => (
+                    <ProductCard
+                      key={product.productid ?? product.title}
+                      product={product}
+                      userEmail={user?.email}
+                      storeId={effectiveStoreId ?? 1}
+                      lang={lang}
+                      storeCurrency={storeCurrency}
+                      isInCombo={selectedComboSet.has(product.productid)}
+                      onToggleCombo={purchasableCount >= 2 ? toggleComboItem : undefined}
+                      onPreview={setPreviewProduct}
+                      onUnlock={(p) => setCheckoutTarget({ items: [p], discountPct: 0 })}
+                      onPaymentFlowClosed={triggerPageReload}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>
 
-      {loading && <LoadingSpinner message={t.loadingProducts} />}
+      {/* Barra Flutuante de Combo Permanente (15% para 2+ itens / 25% para todos) */}
+      {comboSummary.count >= 2 && (
+        <div
+          data-testid="combo-bar"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-4xl rounded-2xl border border-cyan-400/40 bg-[#111827]/95 backdrop-blur-md px-4 py-3.5 sm:px-6 shadow-2xl shadow-black/70"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="rounded-full bg-cyan-500/20 border border-cyan-400/40 px-2.5 py-0.5 text-xs font-bold text-cyan-200">
+                {comboSummary.discountPct === 25 ? t.comboBarFullBadge : t.comboBarPartialBadge}
+              </span>
+              <span className="text-sm font-semibold text-white">
+                {comboSummary.count} {t.comboBarSelected}
+              </span>
+              <span className="text-xs text-gray-400">
+                {t.comboBarOf}{' '}
+                <span className="line-through">
+                  {formatCurrency(comboSummary.subtotal, storeCurrency, lang)}
+                </span>{' '}
+                {t.comboBarFor}{' '}
+                <strong className="text-base font-extrabold text-amber-400">
+                  {formatCurrency(comboSummary.total, storeCurrency, lang)}
+                </strong>
+              </span>
+            </div>
 
-      {error && !loading && (
-        <div className="max-w-lg space-y-3">
-          <Alert variant="error" message={error} />
-          <Button variant="ghost" onClick={refetch} className="text-sm">
-            {t.tryAgain}
-          </Button>
+            <button
+              type="button"
+              onClick={() => setCheckoutTarget({
+                items: comboSummary.items,
+                discountPct: comboSummary.discountPct,
+              })}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-bold text-sm px-5 py-2.5 transition-colors shrink-0 shadow-lg shadow-amber-500/20"
+            >
+              <Unlock className="h-4 w-4" />
+              <span>{t.comboBarUnlockBtn}</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {!loading && !error && products.length === 0 && <EmptyState t={t} />}
+      <ProductPreviewModal
+        isOpen={Boolean(previewProduct)}
+        onClose={() => setPreviewProduct(null)}
+        product={previewProduct}
+        currency={storeCurrency}
+        lang={lang}
+        isInCombo={Boolean(previewProduct && selectedComboSet.has(previewProduct.productid))}
+        onToggleCombo={purchasableCount >= 2 ? toggleComboItem : undefined}
+        onUnlock={(p) => {
+          setPreviewProduct(null);
+          setCheckoutTarget({ items: [p], discountPct: 0 });
+        }}
+      />
 
-      {!loading && !error && products.length > 0 && (
-        <div className="space-y-10">
-          {ownedProducts.length > 0 && (
-            <section>
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-                {t.purchasedSection}
-              </h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {ownedProducts.map((product) => (
-                  <ProductCard
-                    key={product.productid ?? product.title}
-                    product={product}
-                    userEmail={user?.email}
-                    storeId={effectiveStoreId ?? 1}
-                    lang={lang}
-                    onPaymentFlowClosed={triggerPageReload}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {availableProducts.length > 0 && (
-            <section>
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 text-lime-400" />
-                {t.unlockSpecial}
-              </h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {availableProducts.map((product) => (
-                  <ProductCard
-                    key={product.productid ?? product.title}
-                    product={product}
-                    userEmail={user?.email}
-                    storeId={effectiveStoreId ?? 1}
-                    lang={lang}
-                    onPaymentFlowClosed={triggerPageReload}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
+      <UnifiedPaymentModal
+        isOpen={Boolean(checkoutTarget)}
+        onClose={() => setCheckoutTarget(null)}
+        items={checkoutTarget?.items || []}
+        discountPct={checkoutTarget?.discountPct || 0}
+        currency={storeCurrency}
+        userEmail={user?.email || ''}
+        storeId={effectiveStoreId ?? 1}
+        lang={lang}
+        onRedirect={onRedirect}
+        onPaymentComplete={() => {
+          setCheckoutTarget(null);
+          setSelectedComboIds([]);
+          triggerPageReload();
+        }}
+      />
 
       {promoData && (
         <PromoModal

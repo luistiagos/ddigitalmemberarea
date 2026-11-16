@@ -9,6 +9,7 @@ import { storeUser, clearAuth } from '../utils/auth.js';
 import { Navbar } from '../components/Navbar.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 import UnifiedPaymentModal from '../components/UnifiedPaymentModal.jsx';
+import { CustomerArea } from '../pages/CustomerArea.jsx';
 import {
   formatCurrency,
   roundDiscountedItemPrice,
@@ -328,5 +329,120 @@ test('modal_unificado_exibe_erro_e_libera_nova_tentativa', async (t) => {
   fireEvent.click(btn);
   await waitFor(() => {
     assert.equal(redirects[0], 'https://checkout.stripe.com/pay/retry-ok');
+  });
+});
+
+// --- T4: CustomerArea (barra de progresso + combo permanente 15% / 25%) ---
+
+function installCustomerAreaMocks(catalog) {
+  localStorage.setItem('storeLogoLabel_600004', 'Loja Teste');
+  storeUser({ id: 100, email: 'gamer@test.com', storeId: 600004 }, 'tok-area');
+
+  mock.method(api, 'get', async (url) => {
+    if (url.includes('/list_store_catalog')) {
+      return { data: catalog };
+    }
+    if (url.includes('/area-cliente/promo')) {
+      return { data: { show: false } };
+    }
+    return { data: {} };
+  });
+
+  const postCalls = [];
+  mock.method(api, 'post', async (url, body) => {
+    postCalls.push({ url, body });
+    if (url === '/area-cliente/promo-checkout-pix') {
+      return { data: { qr_code: 'PIXCOMBO123', qr_code_base64: 'AAA=', amount: 48.71 } };
+    }
+    return { data: { ok: true } };
+  });
+  return postCalls;
+}
+
+test('renderiza_barra_de_progresso_navbar_e_ambient_backdrop', async (t) => {
+  t.after(() => {
+    localStorage.removeItem('storeLogoLabel_600004');
+    clearAuth();
+    cleanup();
+    mock.restoreAll();
+  });
+
+  const catalog = [
+    { productid: 1, title: 'Sistema Multigames', image: 'https://img/multi.png', owned: true, deliverlink: 'https://deliv/1', currency: 'BRL', store_id: 600004 },
+    { productid: 2, title: 'PS2 Pack', image: 'https://img/ps2.png', owned: false, price: 30, relprice: 60, currency: 'BRL', store_id: 600004 },
+    { productid: 3, title: 'Switch Pack', image: 'https://img/sw.png', owned: false, price: 20, relprice: 40, currency: 'BRL', store_id: 600004 },
+  ];
+  installCustomerAreaMocks(catalog);
+
+  const { container } = render(
+    h(MemoryRouter, { initialEntries: ['/area-cliente?store_id=600004'] }, h(CustomerArea)),
+  );
+
+  await waitFor(() => {
+    assert.ok(screen.getByRole('progressbar'));
+  });
+
+  const bar = screen.getByRole('progressbar');
+  assert.equal(bar.getAttribute('aria-valuenow'), '33');
+  assert.ok(screen.getByText(/1 de 3 sistemas desbloqueados/i));
+
+  const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'));
+  assert.ok(hrefs.includes('/acesso'));
+  assert.ok(hrefs.includes('/ativar'));
+  assert.ok(container.querySelector('img[data-ambient-backdrop="true"]'));
+});
+
+test('combo_vitrine_aplica_15_para_parcial_e_25_para_todos_arredondado', async (t) => {
+  t.after(() => {
+    localStorage.removeItem('storeLogoLabel_600004');
+    clearAuth();
+    cleanup();
+    mock.restoreAll();
+  });
+
+  const catalog = [
+    { productid: 1, title: 'Owned', image: 'https://img/o.png', owned: true, deliverlink: 'https://deliv/1', currency: 'BRL', store_id: 600004 },
+    { productid: 2, title: 'Pack A', image: 'https://img/a.png', owned: false, price: 29.90, relprice: 60, currency: 'BRL', store_id: 600004 },
+    { productid: 3, title: 'Pack B', image: 'https://img/b.png', owned: false, price: 19.99, relprice: 40, currency: 'BRL', store_id: 600004 },
+    { productid: 4, title: 'Pack C', image: 'https://img/c.png', owned: false, price: 15.05, relprice: 30, currency: 'BRL', store_id: 600004 },
+  ];
+  const postCalls = installCustomerAreaMocks(catalog);
+
+  render(
+    h(MemoryRouter, { initialEntries: ['/area-cliente?store_id=600004'] }, h(CustomerArea)),
+  );
+
+  await waitFor(() => {
+    assert.equal(screen.getAllByRole('button', { name: /\+ Combo/i }).length, 3);
+  });
+
+  // 1 item: barra nao aparece
+  const comboBtns = screen.getAllByRole('button', { name: /\+ Combo/i });
+  fireEvent.click(comboBtns[0]);
+  assert.equal(screen.queryByTestId('combo-bar'), null);
+
+  // 2 itens de 3: 15% OFF -> 25.42 + 16.99 = 42.41
+  fireEvent.click(comboBtns[1]);
+  const barPartial = screen.getByTestId('combo-bar');
+  assert.ok(within(barPartial).getByText(/15% OFF/i));
+  assert.ok(within(barPartial).getByText(/42,41/));
+
+  // 3 de 3 itens: 25% OFF -> 22.43 + 14.99 + 11.29 = 48.71
+  fireEvent.click(comboBtns[2]);
+  const barFull = screen.getByTestId('combo-bar');
+  assert.ok(within(barFull).getByText(/25% OFF/i));
+  assert.ok(within(barFull).getByText(/48,71/));
+
+  // Abre modal unificado direto pelo ComboBar e gera PIX com discount_pct=25
+  fireEvent.click(within(barFull).getByRole('button', { name: /Desbloquear Combo/i }));
+  await waitFor(() => {
+    assert.ok(screen.getByText('PIXCOMBO123'));
+  });
+  const pixCall = postCalls.find((c) => c.url === '/area-cliente/promo-checkout-pix');
+  assert.ok(pixCall);
+  assert.deepEqual(pixCall.body, {
+    product_ids: [2, 3, 4],
+    discount_pct: 25,
+    store_id: 600004,
   });
 });
