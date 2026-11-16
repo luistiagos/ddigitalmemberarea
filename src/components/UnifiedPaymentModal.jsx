@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, QrCode, CreditCard, ExternalLink, Loader2, ShieldCheck, Copy, Check } from 'lucide-react';
+import { X, QrCode, CreditCard, ExternalLink, Loader2, ShieldCheck, Copy, Check, Wallet } from 'lucide-react';
 import { Alert } from '@/components/ui/Alert';
 import api from '@/services/api';
 import { TRANSLATIONS } from '@/pages/translations';
@@ -392,14 +392,14 @@ export default function UnifiedPaymentModal({
       aria-label={t.payModalSummaryTitle}
     >
       <div
-        className="w-full max-w-md bg-[#111827] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh]"
+        className="w-full max-w-md bg-[#1e293b] border border-indigo-400/25 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-gray-900/80">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-slate-900/85">
           <div>
             <h3 className="text-base font-bold text-white">{t.payModalSummaryTitle}</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-300">
               {items.length} {t.payModalItemsLabel}
               {isCombo ? ` • -${discountPct}% OFF` : ''}
             </p>
@@ -409,7 +409,7 @@ export default function UnifiedPaymentModal({
             onClick={onClose}
             disabled={submitting}
             aria-label="Fechar"
-            className="text-gray-400 hover:text-white p-1 disabled:opacity-40"
+            className="text-slate-300 hover:text-white p-1 disabled:opacity-40"
           >
             <X className="h-5 w-5" />
           </button>
@@ -417,26 +417,26 @@ export default function UnifiedPaymentModal({
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Compact order summary */}
-          <div className="rounded-xl border border-white/10 bg-gray-950/70 p-3.5 space-y-2">
+          <div className="rounded-xl border border-slate-600/80 bg-slate-900/75 p-3.5 space-y-2">
             <ul className="space-y-1 max-h-28 overflow-y-auto pr-1">
               {items.map((item) => (
-                <li key={item.productid} className="flex items-center justify-between gap-2 text-xs text-gray-300">
+                <li key={item.productid} className="flex items-center justify-between gap-2 text-xs text-slate-200">
                   <span className="truncate">{item.title}</span>
-                  <span className="shrink-0 font-medium text-gray-200">
+                  <span className="shrink-0 font-medium text-white">
                     {formatCurrency(roundDiscountedItemPrice(item.price, discountPct), activeCurrency, lang)}
                   </span>
                 </li>
               ))}
             </ul>
             <div className="pt-2 border-t border-white/10 flex items-baseline justify-between">
-              <span className="text-xs text-gray-400">{t.total}</span>
+              <span className="text-xs text-slate-300">{t.total}</span>
               <div className="flex items-baseline gap-2">
                 {summary.savings > 0 && (
-                  <span className="text-xs text-gray-500 line-through">
+                  <span className="text-xs text-slate-400 line-through">
                     {formatCurrency(summary.subtotal, activeCurrency, lang)}
                   </span>
                 )}
-                <span className="text-lg font-extrabold text-amber-400">
+                <span className="text-lg font-extrabold text-amber-300">
                   {formatCurrency(summary.total, activeCurrency, lang)}
                 </span>
               </div>
@@ -465,50 +465,65 @@ export default function UnifiedPaymentModal({
                 type="button"
                 onClick={handlePayStripe}
                 disabled={submitting}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-bold text-sm py-3.5 px-5 transition-colors disabled:opacity-60"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm py-3.5 px-5 transition-all disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
                 <span>{submitting ? t.waitBtn : t.payWithStripeBtn}</span>
               </button>
-              <p className="flex items-center justify-center gap-1.5 text-[11px] text-gray-500">
+              <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-300">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
                 <span>{t.immediateAccess}</span>
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {/* BRL payment tabs */}
-              <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-950 p-1 border border-white/10">
+              {/* BRL payment tabs: 3 opções lado a lado (100% largura) */}
+              <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-900 p-1.5 border border-white/15 w-full">
                 <button
                   type="button"
+                  aria-label={t.payModalTabPix}
                   onClick={() => { emitPaymentMethod('pix'); setErrorMsg(null); setActiveTab('pix'); }}
-                  className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors ${
+                  className={`w-full inline-flex items-center justify-center gap-1.5 rounded-lg py-2.5 px-2 text-xs font-bold whitespace-nowrap transition-colors ${
                     activeTab === 'pix'
-                      ? 'bg-emerald-500 text-gray-950'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-emerald-700 text-white shadow'
+                      : 'text-slate-200 hover:text-white hover:bg-slate-800/80'
                   }`}
                 >
-                  <QrCode className="h-3.5 w-3.5" />
-                  <span>{t.payModalTabPix}</span>
+                  <QrCode className="h-3.5 w-3.5 shrink-0" />
+                  <span>{t.pixBtn}</span>
                 </button>
                 <button
                   type="button"
+                  aria-label={t.payModalTabCard}
                   onClick={() => { emitPaymentMethod('card'); setErrorMsg(null); setActiveTab('card'); }}
-                  className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors ${
+                  className={`w-full inline-flex items-center justify-center gap-1.5 rounded-lg py-2.5 px-2 text-xs font-bold whitespace-nowrap transition-colors ${
                     activeTab === 'card'
-                      ? 'bg-amber-500 text-gray-950'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-amber-500 text-slate-950 shadow'
+                      : 'text-slate-200 hover:text-white hover:bg-slate-800/80'
                   }`}
                 >
-                  <CreditCard className="h-3.5 w-3.5" />
-                  <span>{t.payModalTabCard}</span>
+                  <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                  <span>{t.cardBtn}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={t.payModalOtherMethods}
+                  onClick={() => { setErrorMsg(null); setActiveTab('mp'); }}
+                  className={`w-full inline-flex items-center justify-center gap-1.5 rounded-lg py-2.5 px-2 text-xs font-bold whitespace-nowrap transition-colors ${
+                    activeTab === 'mp'
+                      ? 'bg-[#009ee3] text-white shadow'
+                      : 'text-slate-200 hover:text-white hover:bg-slate-800/80'
+                  }`}
+                >
+                  <Wallet className="h-3.5 w-3.5 shrink-0" />
+                  <span>Mercado Pago</span>
                 </button>
               </div>
 
               {activeTab === 'pix' ? (
-                <div className="rounded-xl border border-white/10 bg-gray-900/90 p-4 space-y-3 text-center">
+                <div className="rounded-xl border border-slate-600/80 bg-slate-900/90 p-4 space-y-3 text-center">
                   {submitting && !pixData ? (
-                    <div className="py-8 flex flex-col items-center gap-2 text-gray-300">
+                    <div className="py-8 flex flex-col items-center gap-2 text-slate-200">
                       <Loader2 className="h-7 w-7 animate-spin text-emerald-400" />
                       <p className="text-xs">{t.generatingQRCode}</p>
                     </div>
@@ -530,50 +545,57 @@ export default function UnifiedPaymentModal({
                           {formatCurrency(pixData.amount, 'BRL', lang)}
                         </p>
                       )}
-                      <p className="text-[11px] text-gray-200 break-all bg-gray-950 border border-white/10 rounded-lg p-2.5 text-left">
+                      <p className="text-[11px] text-slate-200 break-all bg-slate-950 border border-white/15 rounded-lg p-2.5 text-left">
                         {pixData.qr_code}
                       </p>
                       <button
                         type="button"
                         onClick={handleCopyPix}
-                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold text-sm py-2.5 transition-colors"
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-sm py-2.5 transition-colors"
                       >
                         {pixCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                         <span>{t.copyPixBtn}</span>
                       </button>
                       {pixStatusMsg && (
-                        <p className="text-xs font-medium text-emerald-400">{pixStatusMsg}</p>
+                        <p className="text-xs font-medium text-emerald-300">{pixStatusMsg}</p>
                       )}
                     </>
                   ) : null}
                 </div>
-              ) : (
-                <div className="rounded-xl border border-white/10 bg-gray-900/90 p-3 space-y-2">
+              ) : activeTab === 'card' ? (
+                <div className="rounded-xl border border-slate-600/80 bg-slate-900/90 p-3 space-y-2">
                   {cardStatus === 'success' && (
-                    <p className="text-emerald-400 text-sm text-center font-semibold">{cardStatusMsg}</p>
+                    <p className="text-emerald-300 text-sm text-center font-semibold">{cardStatusMsg}</p>
                   )}
                   {cardStatus === 'pending' && (
-                    <p className="text-amber-400 text-sm text-center font-semibold">{cardStatusMsg}</p>
+                    <p className="text-amber-300 text-sm text-center font-semibold">{cardStatusMsg}</p>
                   )}
                   {cardStatus === 'error' && (
                     <p className="text-red-400 text-sm text-center">{cardStatusMsg}</p>
                   )}
                   <div id="unified-card-brick-container" />
                 </div>
+              ) : (
+                <div className="rounded-xl border border-sky-400/35 bg-slate-900/90 p-5 space-y-3 text-center">
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#009ee3]/20 text-sky-300 border border-sky-400/40">
+                    <Wallet className="h-5 w-5" />
+                  </div>
+                  <p className="text-sm font-semibold text-white">{t.payModalOtherMethods}</p>
+                  <button
+                    type="button"
+                    onClick={handlePayMercadoPagoLink}
+                    disabled={submitting}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#009ee3] hover:bg-[#0089c7] text-white font-bold text-sm py-3 px-5 transition-colors disabled:opacity-60 shadow-lg shadow-sky-950/40"
+                  >
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                    <span>{submitting ? t.redirectingToMP : t.mpLinkBtn}</span>
+                  </button>
+                  <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-300">
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                    <span>{t.immediateAccess}</span>
+                  </p>
+                </div>
               )}
-
-              {/* Discrete MP link fallback */}
-              <div className="pt-1 text-center">
-                <button
-                  type="button"
-                  onClick={handlePayMercadoPagoLink}
-                  disabled={submitting}
-                  className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-cyan-300 transition-colors disabled:opacity-50"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  <span>{t.payModalOtherMethods}</span>
-                </button>
-              </div>
             </div>
           )}
         </div>

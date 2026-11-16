@@ -1,4 +1,5 @@
 import './setup/dom.js';
+import fs from 'node:fs';
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
@@ -128,9 +129,9 @@ test('exibe_banner_persistente_e_abre_promo_modal_apos_5s', async (t) => {
 
   await waitFor(() => {
     assert.ok(screen.getByTestId('vip-promo-banner'));
+    assert.ok(timerSpy.scheduled.some((s) => s.delay === 5000 && !s.cancelled));
   });
   assert.equal(screen.queryByTestId('promo-modal-dialog'), null);
-  assert.ok(timerSpy.scheduled.some((s) => s.delay === 5000 && !s.cancelled));
 
   act(() => {
     timerSpy.flushAll();
@@ -196,8 +197,8 @@ test('cancela_timer_5s_ao_clicar_acessar_ou_abrir_outro_modal', async (t) => {
 
   await waitFor(() => {
     assert.ok(screen.getByTestId('vip-promo-banner'));
+    assert.equal(timerSpy.scheduled.length, 1);
   });
-  assert.equal(timerSpy.scheduled.length, 1);
 
   // Clicar em Acessar no item adquirido cancela o timer de 5s e nao interrompe o consumo
   const accessLink = screen.getByRole('link', { name: /Acessar/i });
@@ -469,6 +470,8 @@ test('promo_modal_pagamento_respeita_moeda_brl_e_usd', async (t) => {
     assert.ok(screen.getByRole('button', { name: /Cartão de Crédito/i }));
     assert.ok(screen.getByRole('button', { name: /Saldo ou Boleto no Mercado Pago/i }));
   });
+  fireEvent.click(screen.getByRole('button', { name: /Saldo ou Boleto no Mercado Pago/i }));
+  assert.ok(screen.getByRole('button', { name: /Link Mercado Pago/i }));
   unmount();
 
   // 2) Loja USD: exibe apenas Stripe e oculta PIX/Cartao/MP
@@ -571,4 +574,46 @@ test('telemetria_dispara_eventos_de_funil_sem_bloquear_fluxo', async (t) => {
   ]) {
     assert.ok(eventNames.has(requiredEvent), `Evento ausente: ${requiredEvent}`);
   }
+});
+
+test('contraste_rodape_legivel_botoes_verdes_texto_branco_e_fundo_branco_nos_produtos', async (t) => {
+  const timerSpy = setup5sTimerSpy();
+  t.after(() => resetAreaTestState(timerSpy));
+
+  // 1) CheckoutPage.css nao pode vazar regras globais `a {` ou `.grid {` para o restante da SPA
+  const checkoutCss = fs.readFileSync(new URL('../pages/CheckoutPage.css', import.meta.url), 'utf8');
+  assert.equal(/(?:^|\n)a\s*\{/m.test(checkoutCss), false, 'Regra `a {` deve ficar escopada em `.wrap a`');
+  assert.equal(/(?:^|\n)\.grid\s*\{/m.test(checkoutCss), false, 'Regra `.grid {` deve ficar escopada em `.modal .grid`');
+  assert.match(checkoutCss, /\.wrap a\s*\{/);
+  assert.match(checkoutCss, /\.modal \.grid\s*\{/);
+
+  installAreaMocks({ promoResponse: { show: false } });
+  const { container } = render(
+    h(MemoryRouter, { initialEntries: ['/area-cliente?store_id=600004'] }, h(CustomerArea)),
+  );
+
+  await waitFor(() => {
+    assert.ok(screen.getByRole('link', { name: /Acessar/i }));
+  });
+
+  // 2) Botao verde `Acessar` deve ter texto branco (`text-white`)
+  const accessBtn = screen.getByRole('link', { name: /Acessar/i });
+  assert.match(accessBtn.className, /\btext-white\b/);
+
+  // 3) Showcase das imagens dos produtos deve ter fundo branco limpo sem efeito marmore borrado
+  const stages = container.querySelectorAll('div[data-artwork-stage="true"]');
+  assert.ok(stages.length >= 3);
+  for (const stage of stages) {
+    assert.match(stage.className, /\bbg-white\b/);
+  }
+  assert.equal(container.querySelector('img[data-ambient-backdrop="true"]'), null);
+
+  // 4) Rodape deve usar cores claras de alto contraste em fundo escuro
+  const footer = container.querySelector('footer');
+  assert.ok(footer);
+  assert.match(footer.textContent, /Precisa de ajuda/i);
+  const waLink = within(footer).getByRole('link', { name: /\+55 41 9626-0115/i });
+  const mailLink = within(footer).getByRole('link', { name: /contato@digitalstoregames\.com/i });
+  assert.match(waLink.className, /text-emerald-300/);
+  assert.match(mailLink.className, /text-sky-300/);
 });

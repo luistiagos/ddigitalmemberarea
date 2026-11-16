@@ -84,7 +84,7 @@ test('card_unico_adquirido_usa_layout_horizontal_focado_no_deliverlink', (t) => 
 
   const article = container.querySelector('article[data-featured-owned="true"]');
   assert.ok(article, 'Deve renderizar card destaque horizontal');
-  assert.ok(container.querySelector('img[data-ambient-backdrop="true"]'), 'Deve aplicar ambient backdrop na capa');
+  assert.ok(container.querySelector('div[data-artwork-stage="true"].bg-white'), 'Deve renderizar fundo branco limpo na capa');
 
   const links = screen.getAllByRole('link');
   assert.equal(links.length, 1);
@@ -391,7 +391,7 @@ test('renderiza_barra_de_progresso_navbar_e_ambient_backdrop', async (t) => {
   const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'));
   assert.ok(hrefs.includes('/acesso'));
   assert.ok(hrefs.includes('/ativar'));
-  assert.ok(container.querySelector('img[data-ambient-backdrop="true"]'));
+  assert.ok(container.querySelector('div[data-artwork-stage="true"].bg-white'));
 });
 
 test('combo_vitrine_aplica_15_para_parcial_e_25_para_todos_arredondado', async (t) => {

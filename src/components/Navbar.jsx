@@ -77,7 +77,7 @@ export function Navbar() {
   }, [user]);
 
   return (
-    <nav className="sticky top-0 z-10 border-b border-gray-800 bg-gray-900/80 backdrop-blur-md">
+    <nav className="sticky top-0 z-10 border-b border-indigo-400/20 bg-[#0f172a]/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3">
           <LogoIcon />
@@ -123,28 +123,28 @@ export function Navbar() {
               <nav aria-label="Navegação rápida" className="flex items-center gap-1.5 mr-1">
                 <Link
                   to="/acesso"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-gray-800/70 px-2.5 py-1.5 text-xs font-medium text-gray-300 hover:border-amber-500/40 hover:text-white transition-colors"
+                  className="navbar-quick-link inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-gray-800/85 px-2.5 py-1.5 text-xs font-medium text-gray-100 hover:border-amber-500/50 hover:text-white transition-colors"
                 >
                   <Download className="h-3.5 w-3.5 text-amber-400" />
                   <span className="hidden md:inline">{t.navDownloads}</span>
                 </Link>
                 <Link
                   to="/ativar"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-gray-800/70 px-2.5 py-1.5 text-xs font-medium text-gray-300 hover:border-cyan-500/40 hover:text-white transition-colors"
+                  className="navbar-quick-link inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-gray-800/85 px-2.5 py-1.5 text-xs font-medium text-gray-100 hover:border-cyan-500/50 hover:text-white transition-colors"
                 >
                   <Tv className="h-3.5 w-3.5 text-cyan-400" />
                   <span className="hidden md:inline">{t.navActivateApp}</span>
                 </Link>
               </nav>
               <UserAvatar email={user.email} />
-              <span className="hidden lg:block text-sm text-gray-400 max-w-45 truncate">
+              <span className="hidden lg:block text-sm text-gray-300 max-w-45 truncate">
                 {user.email}
               </span>
             </>
           )}
           <button
             onClick={logout}
-            className="ml-1 rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-400 hover:border-red-500/50 hover:text-red-400 transition-colors"
+            className="ml-1 rounded-lg border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-200 hover:border-red-400 hover:text-red-300 transition-colors"
           >
             {t.logoutBtn}
           </button>

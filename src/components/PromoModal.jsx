@@ -54,8 +54,8 @@ function PromoProductRow({
       disabled={mode === 'fixed'}
       className={`group w-full text-left flex items-start gap-3 rounded-xl border p-3 transition-all ${
         selected
-          ? 'border-amber-400/70 bg-amber-500/10 shadow-sm shadow-amber-500/10'
-          : 'border-white/10 bg-gray-900/70 hover:border-white/25'
+          ? 'border-amber-400/80 bg-amber-500/15 shadow-sm shadow-amber-500/10'
+          : 'border-slate-600/80 bg-slate-900/75 hover:border-slate-400'
       } ${mode === 'fixed' ? 'cursor-default' : 'cursor-pointer'}`}
     >
       <div className="mt-1 shrink-0">
@@ -64,7 +64,7 @@ function PromoProductRow({
             className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
               selected
                 ? 'border-amber-400 bg-amber-400/20'
-                : 'border-gray-500 bg-gray-950'
+                : 'border-slate-400 bg-slate-950'
             }`}
           >
             {selected && <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />}
@@ -73,8 +73,8 @@ function PromoProductRow({
           <span
             className={`flex h-5 w-5 items-center justify-center rounded-md border transition-colors ${
               selected
-                ? 'border-emerald-400 bg-emerald-500 text-gray-950'
-                : 'border-gray-600 bg-gray-950 text-transparent'
+                ? 'border-emerald-400 bg-emerald-600 text-white'
+                : 'border-slate-500 bg-slate-950 text-transparent'
             }`}
           >
             <Check className="h-3.5 w-3.5 stroke-[3]" />
@@ -82,7 +82,7 @@ function PromoProductRow({
         )}
       </div>
 
-      <div className="relative w-20 h-14 rounded-lg overflow-hidden bg-gray-950 border border-white/10 shrink-0">
+      <div className="relative w-20 h-14 rounded-lg overflow-hidden bg-white border border-slate-300/70 p-1 shrink-0">
         <img
           src={imgSrc}
           alt={product.title}
@@ -96,7 +96,7 @@ function PromoProductRow({
           {product.title}
         </p>
         <div className="flex items-baseline flex-wrap gap-2 text-xs">
-          <span className="text-gray-500 line-through">
+          <span className="text-slate-400 line-through">
             {formatCurrency(origPrice, currency, lang)}
           </span>
           <span className="text-sm font-bold text-amber-300">
@@ -313,7 +313,7 @@ export default function PromoModal({
           aria-modal="true"
           aria-labelledby="promo-modal-title"
           data-testid="promo-modal-dialog"
-          className="relative w-full max-w-2xl rounded-2xl border border-white/15 bg-[#111827] text-white shadow-2xl overflow-hidden animate-fade-in"
+          className="relative w-full max-w-2xl rounded-2xl border border-indigo-400/25 bg-[#1e293b] text-white shadow-2xl overflow-hidden animate-fade-in"
         >
           {/* Barra de destaque superior */}
           <div
@@ -405,18 +405,18 @@ export default function PromoModal({
             </div>
 
             {/* Resumo financeiro e acoes */}
-            <div className="rounded-xl border border-white/10 bg-gray-950/85 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="rounded-xl border border-slate-600/80 bg-slate-900/90 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <p className="text-xs text-gray-400">{t.promoTotalWithDiscount}</p>
+                <p className="text-xs text-slate-300">{t.promoTotalWithDiscount}</p>
                 <div className="flex items-baseline gap-2.5 flex-wrap mt-0.5">
-                  <span className="text-sm text-gray-500 line-through">
+                  <span className="text-sm text-slate-400 line-through">
                     {formatCurrency(subtotalShown, activeCurrency, lang)}
                   </span>
                   <span className="text-2xl font-extrabold text-amber-300">
                     {formatCurrency(totalShown, activeCurrency, lang)}
                   </span>
                   {savingsShown > 0 && (
-                    <span className="text-xs font-semibold text-emerald-400">
+                    <span className="text-xs font-semibold text-emerald-300">
                       ({t.economyLabel} {formatCurrency(savingsShown, activeCurrency, lang)})
                     </span>
                   )}
@@ -427,7 +427,7 @@ export default function PromoModal({
                 <button
                   type="button"
                   onClick={handleAccept}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-extrabold text-sm px-6 py-3 transition-colors shadow-lg shadow-amber-500/20"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm px-6 py-3 transition-all shadow-lg shadow-amber-950/30"
                 >
                   <Unlock className="h-4 w-4" />
                   <span>{ctaText}</span>
@@ -435,7 +435,7 @@ export default function PromoModal({
                 <button
                   type="button"
                   onClick={is25 ? handleDecline25 : () => dismissOffer('dismiss')}
-                  className="text-xs font-medium text-gray-400 hover:text-gray-200 transition-colors py-1"
+                  className="text-xs font-medium text-slate-300 hover:text-white transition-colors py-1"
                 >
                   {is25 ? t.promoDecline25 : t.promoDecline50}
                 </button>

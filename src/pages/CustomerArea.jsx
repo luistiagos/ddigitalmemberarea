@@ -285,7 +285,7 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
 
         {/* Barra de progresso da biblioteca */}
         {!loading && !error && totalCount > 0 && (
-          <div className="mb-6 rounded-2xl border border-white/10 bg-[#111827]/90 p-4 sm:p-5 shadow-lg">
+          <div className="mb-6 rounded-2xl border border-indigo-400/25 bg-[#1e293b]/95 p-4 sm:p-5 shadow-lg shadow-slate-950/40">
             <div className="flex items-center justify-between gap-3 flex-wrap mb-2.5">
               <div className="flex items-center gap-2 text-sm font-semibold text-white">
                 <Trophy className="h-4 w-4 text-amber-400" />
@@ -294,7 +294,7 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
                   {ownedCount} {t.productsOf} {totalCount} {t.libraryProgressSystems}
                 </span>
               </div>
-              <span className="text-xs font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded-full px-2.5 py-0.5">
+              <span className="text-xs font-bold text-amber-200 bg-amber-500/20 border border-amber-400/40 rounded-full px-2.5 py-0.5">
                 {progressPct}%
               </span>
             </div>
@@ -303,10 +303,10 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
               aria-valuenow={progressPct}
               aria-valuemin={0}
               aria-valuemax={100}
-              className="h-2.5 w-full rounded-full bg-gray-800 overflow-hidden"
+              className="h-2.5 w-full rounded-full bg-slate-900 overflow-hidden"
             >
               <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-500 transition-all duration-500"
+                className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 transition-all duration-500"
                 style={{ width: `${progressPct}%` }}
               />
             </div>
@@ -317,25 +317,25 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
         {promoData?.show && promoData.products?.length > 0 && (
           <div
             data-testid="vip-promo-banner"
-            className="mb-8 rounded-2xl border border-amber-500/35 bg-gradient-to-r from-amber-500/15 via-[#111827] to-cyan-500/15 p-4 sm:p-5 shadow-lg animate-fade-in"
+            className="mb-8 rounded-2xl border border-amber-400/45 bg-gradient-to-r from-indigo-900/75 via-[#1e293b] to-amber-500/20 p-4 sm:p-5 shadow-lg shadow-slate-950/40 animate-fade-in"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-400/40 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-400/45 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-200">
                   <Tag className="h-3 w-3" />
                   <span>{t.promoBannerBadge}</span>
                 </span>
                 <h2 className="text-base sm:text-lg font-extrabold text-white">
                   {t.promoBannerTitle}
                 </h2>
-                <p className="text-xs sm:text-sm text-gray-300">
+                <p className="text-xs sm:text-sm text-slate-200">
                   {t.promoBannerSubtitle}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={openPromoFromBanner}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-extrabold text-sm px-5 py-2.5 transition-colors shrink-0 shadow-lg shadow-amber-500/20"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm px-5 py-2.5 transition-all shrink-0 shadow-lg shadow-amber-950/30"
               >
                 <Sparkles className="h-4 w-4" />
                 <span>{t.promoBannerCta}</span>
@@ -421,23 +421,23 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
       {comboSummary.count >= 2 && (
         <div
           data-testid="combo-bar"
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-4xl rounded-2xl border border-cyan-400/40 bg-[#111827]/95 backdrop-blur-md px-4 py-3.5 sm:px-6 shadow-2xl shadow-black/70"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-4xl rounded-2xl border border-cyan-400/60 bg-[#1e293b]/95 backdrop-blur-md px-4 py-3.5 sm:px-6 shadow-2xl shadow-slate-950/80"
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="rounded-full bg-cyan-500/20 border border-cyan-400/40 px-2.5 py-0.5 text-xs font-bold text-cyan-200">
+              <span className="rounded-full bg-cyan-500/25 border border-cyan-300/50 px-2.5 py-0.5 text-xs font-bold text-cyan-100">
                 {comboSummary.discountPct === 25 ? t.comboBarFullBadge : t.comboBarPartialBadge}
               </span>
               <span className="text-sm font-semibold text-white">
                 {comboSummary.count} {t.comboBarSelected}
               </span>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-slate-300">
                 {t.comboBarOf}{' '}
-                <span className="line-through">
+                <span className="line-through text-slate-400">
                   {formatCurrency(comboSummary.subtotal, storeCurrency, lang)}
                 </span>{' '}
                 {t.comboBarFor}{' '}
-                <strong className="text-base font-extrabold text-amber-400">
+                <strong className="text-base font-extrabold text-amber-300">
                   {formatCurrency(comboSummary.total, storeCurrency, lang)}
                 </strong>
               </span>
@@ -457,7 +457,7 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
                   discountPct: comboSummary.discountPct,
                 });
               }}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-bold text-sm px-5 py-2.5 transition-colors shrink-0 shadow-lg shadow-amber-500/20"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm px-5 py-2.5 transition-all shrink-0 shadow-lg shadow-amber-950/30"
             >
               <Unlock className="h-4 w-4" />
               <span>{t.comboBarUnlockBtn}</span>

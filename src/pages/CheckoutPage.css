@@ -29,8 +29,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  color: #2563eb
+.wrap a {
+  color: #2563eb;
 }
 
 .sr-only {
@@ -1263,13 +1263,13 @@ header {
   font-size: 1.05rem
 }
 
-.grid {
+.modal .grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px
 }
 
-.grid img {
+.modal .grid img {
   width: 100%;
   border-radius: 8px;
   border: 1px solid var(--border)
@@ -1285,7 +1285,7 @@ header {
     padding: 12px
   }
 
-  .grid {
+  .modal .grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 6px
   }

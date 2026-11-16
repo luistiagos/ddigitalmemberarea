@@ -6,25 +6,18 @@ import { TRANSLATIONS } from '@/pages/translations';
 import { formatCurrency, normalizeCurrency } from '@/utils/memberAreaPricing';
 import { getEffectiveProductImage, MULTIGAMES_FALLBACK } from '@/utils/productImages';
 
-function AmbientArtwork({ imgSrc, title, onImageError, dim = false, children }) {
+function ProductArtworkStage({ imgSrc, title, onImageError, children }) {
   return (
-    <div className="relative w-full aspect-[16/10] bg-gray-950 overflow-hidden shrink-0">
-      <img
-        src={imgSrc}
-        alt=""
-        aria-hidden="true"
-        data-ambient-backdrop="true"
-        className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-45"
-      />
+    <div
+      data-artwork-stage="true"
+      className="relative w-full aspect-[16/10] bg-white border-b border-slate-200/80 overflow-hidden shrink-0"
+    >
       <img
         src={imgSrc}
         alt={title}
         onError={onImageError}
-        className={`relative z-10 w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.03] ${
-          dim ? 'opacity-90' : ''
-        }`}
+        className="w-full h-full object-contain p-3 transition-transform duration-300 group-hover:scale-[1.03]"
       />
-      <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#111827]/90 via-transparent to-transparent pointer-events-none" />
       {children}
     </div>
   );
@@ -67,20 +60,20 @@ export function ProductCard({
       return (
         <article
           data-featured-owned="true"
-          className="group flex flex-col md:flex-row rounded-2xl border border-emerald-500/30 bg-[#111827]/95 overflow-hidden animate-fade-in transition-all duration-200 hover:border-emerald-400/60 shadow-xl shadow-emerald-950/20"
+          className="group flex flex-col md:flex-row rounded-2xl border border-emerald-400/50 bg-[#1e293b] overflow-hidden animate-fade-in transition-all duration-200 hover:border-emerald-300/80 shadow-xl shadow-slate-950/50"
         >
           <div className="md:w-80 lg:w-96 shrink-0">
-            <AmbientArtwork imgSrc={imgSrc} title={title} onImageError={handleImgError} />
+            <ProductArtworkStage imgSrc={imgSrc} title={title} onImageError={handleImgError} />
           </div>
 
           <div className="flex flex-col flex-1 p-5 sm:p-6 justify-between gap-4">
             <div className="space-y-2.5">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-200">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 {t.ownedLifetimeBadge}
               </span>
               <h2 className="font-bold text-white text-lg sm:text-xl leading-snug">{title}</h2>
-              <p className="text-sm text-gray-400">{t.ownedSingleTagline}</p>
+              <p className="text-sm text-slate-200">{t.ownedSingleTagline}</p>
             </div>
 
             <div>
@@ -90,13 +83,13 @@ export function ProductCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => onAccess?.(product)}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-gray-950 font-bold text-sm py-3 px-7 transition-colors w-full sm:w-auto no-underline shadow-lg shadow-emerald-500/20"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 active:from-emerald-700 active:to-green-700 text-white font-bold text-sm py-3 px-7 transition-all w-full sm:w-auto no-underline shadow-lg shadow-emerald-950/40"
                 >
-                  <ExternalLink className="h-4 w-4 shrink-0" />
+                  <ExternalLink className="h-4 w-4 shrink-0 text-white" />
                   <span>{t.accessBtn}</span>
                 </a>
               ) : (
-                <span className="text-xs text-gray-500 italic">{t.noAccessLink}</span>
+                <span className="text-xs text-slate-300 italic">{t.noAccessLink}</span>
               )}
             </div>
           </div>
@@ -105,17 +98,17 @@ export function ProductCard({
     }
 
     return (
-      <article className="group flex flex-col rounded-2xl border border-white/10 bg-[#111827]/90 overflow-hidden animate-fade-in transition-all duration-200 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10">
-        <AmbientArtwork imgSrc={imgSrc} title={title} onImageError={handleImgError}>
-          <span className="absolute top-3 left-3 z-20 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-gray-950/80 backdrop-blur-md px-2.5 py-0.5 text-[11px] font-semibold text-emerald-300">
+      <article className="group flex flex-col rounded-2xl border border-slate-600/80 bg-[#1e293b] overflow-hidden animate-fade-in transition-all duration-200 hover:border-emerald-400/70 shadow-lg shadow-slate-950/40">
+        <ProductArtworkStage imgSrc={imgSrc} title={title} onImageError={handleImgError}>
+          <span className="absolute top-3 left-3 z-20 inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-slate-900/90 backdrop-blur-md px-2.5 py-0.5 text-[11px] font-semibold text-emerald-300 shadow">
             <CheckCircle2 className="h-3 w-3" />
             {t.ownedLifetimeBadge}
           </span>
-        </AmbientArtwork>
+        </ProductArtworkStage>
 
         <div className="flex flex-col flex-1 p-4 gap-3">
           <h2 className="font-semibold text-white text-sm leading-tight line-clamp-2">{title}</h2>
-          <p className="text-xs text-gray-400">{t.enjoyMsg}</p>
+          <p className="text-xs text-slate-200">{t.enjoyMsg}</p>
           <div className="mt-auto">
             {deliverlink ? (
               <a
@@ -123,13 +116,13 @@ export function ProductCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => onAccess?.(product)}
-                className="inline-flex items-center gap-2 justify-center rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-gray-950 font-bold text-sm py-2.5 px-6 transition-colors w-full no-underline shadow-md"
+                className="inline-flex items-center gap-2 justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 active:from-emerald-700 active:to-green-700 text-white font-bold text-sm py-2.5 px-6 transition-all w-full no-underline shadow-md"
               >
-                <ExternalLink className="h-4 w-4 shrink-0" />
+                <ExternalLink className="h-4 w-4 shrink-0 text-white" />
                 <span>{t.accessBtn}</span>
               </a>
             ) : (
-              <span className="text-xs text-gray-500 italic">{t.noAccessLink}</span>
+              <span className="text-xs text-slate-300 italic">{t.noAccessLink}</span>
             )}
           </div>
         </div>
@@ -156,10 +149,10 @@ export function ProductCard({
   return (
     <>
       <article
-        className={`group flex flex-col rounded-2xl border overflow-hidden animate-fade-in transition-all duration-200 bg-[#111827]/90 ${
+        className={`group flex flex-col rounded-2xl border overflow-hidden animate-fade-in transition-all duration-200 bg-[#1e293b] shadow-lg shadow-slate-950/40 ${
           isInCombo
-            ? 'border-cyan-400/70 shadow-lg shadow-cyan-500/10'
-            : 'border-white/10 hover:border-amber-500/45 hover:shadow-lg hover:shadow-amber-500/10'
+            ? 'border-cyan-400 shadow-cyan-500/15'
+            : 'border-slate-600/80 hover:border-amber-400/80 hover:shadow-amber-500/10'
         }`}
       >
         <div
@@ -170,26 +163,26 @@ export function ProductCard({
           aria-label={`${t.previewDetailsHint}: ${title}`}
           className="cursor-pointer focus:outline-none"
         >
-          <AmbientArtwork imgSrc={imgSrc} title={title} onImageError={handleImgError} dim>
-            {/* Selo discreto no canto superior esquerdo (sem cadeado gigante central) */}
-            <span className="absolute top-3 left-3 z-20 inline-flex items-center gap-1 rounded-full border border-white/15 bg-gray-950/80 backdrop-blur-md px-2.5 py-0.5 text-[11px] font-medium text-gray-200">
+          <ProductArtworkStage imgSrc={imgSrc} title={title} onImageError={handleImgError}>
+            {/* Selo discreto no canto superior esquerdo */}
+            <span className="absolute top-3 left-3 z-20 inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/90 backdrop-blur-md px-2.5 py-0.5 text-[11px] font-medium text-slate-100 shadow">
               <Lock className="h-3 w-3 text-amber-400" />
               <span>{t.lockedBadge}</span>
             </span>
 
             {/* Badge de desconto no canto superior direito */}
             {discount && (
-              <span className="absolute top-3 right-3 z-20 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-extrabold text-gray-950 shadow">
+              <span className="absolute top-3 right-3 z-20 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-0.5 text-xs font-extrabold text-slate-950 shadow">
                 -{discount}%
               </span>
             )}
 
             {/* Indicador discreto de Preview ao passar o mouse */}
-            <span className="absolute bottom-2.5 right-3 z-20 inline-flex items-center gap-1 rounded-md bg-gray-950/75 px-2 py-0.5 text-[11px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="absolute bottom-2.5 right-3 z-20 inline-flex items-center gap-1 rounded-md bg-slate-900/90 px-2 py-0.5 text-[11px] text-slate-100 opacity-0 group-hover:opacity-100 transition-opacity shadow">
               <Eye className="h-3 w-3 text-cyan-300" />
               <span>{t.previewDetailsHint}</span>
             </span>
-          </AmbientArtwork>
+          </ProductArtworkStage>
         </div>
 
         <div className="flex flex-col flex-1 p-4 gap-3">
@@ -209,8 +202,8 @@ export function ProductCard({
                 aria-pressed={isInCombo}
                 className={`shrink-0 inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
                   isInCombo
-                    ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200'
-                    : 'border-white/15 bg-gray-800/80 text-gray-300 hover:border-cyan-400/50 hover:text-white'
+                    ? 'border-cyan-300 bg-cyan-500/25 text-cyan-100'
+                    : 'border-slate-500/70 bg-slate-900/70 text-slate-100 hover:border-cyan-400 hover:text-white'
                 }`}
               >
                 {isInCombo ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
@@ -220,13 +213,13 @@ export function ProductCard({
           </div>
 
           {description && (
-            <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">{description}</p>
+            <p className="text-xs text-slate-200 leading-relaxed line-clamp-2">{description}</p>
           )}
 
           {displayPrice != null && (
             <div className="flex items-baseline gap-2 flex-wrap mt-auto">
               {displayRelPrice && displayRelPrice > displayPrice && (
-                <span className="text-xs text-gray-400 line-through">
+                <span className="text-xs text-slate-400 line-through">
                   {formatCurrency(displayRelPrice, currency, lang)}
                 </span>
               )}
@@ -234,7 +227,7 @@ export function ProductCard({
                 {formatCurrency(displayPrice, currency, lang)}
               </span>
               {discount && (
-                <span className="text-xs text-emerald-400 font-semibold">
+                <span className="text-xs text-emerald-300 font-semibold">
                   {t.economyLabel} {formatCurrency(displayRelPrice - displayPrice, currency, lang)}
                 </span>
               )}
@@ -250,7 +243,7 @@ export function ProductCard({
                 setLocalPayOpen(true);
               }
             }}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-bold text-sm py-2.5 px-4 transition-colors shadow-md shadow-amber-500/10"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm py-2.5 px-4 transition-all shadow-md shadow-amber-950/30"
           >
             <Unlock className="h-4 w-4" />
             <span>

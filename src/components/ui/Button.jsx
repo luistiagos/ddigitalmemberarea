@@ -19,7 +19,7 @@ export function Button({
 
   const variants = {
     primary:
-      'bg-green-500 hover:bg-green-400 active:bg-green-600 text-white focus:ring-green-500 shadow-lg hover:shadow-green-500/25',
+      'bg-green-700 hover:bg-green-600 active:bg-green-800 text-white focus:ring-green-500 shadow-lg hover:shadow-green-500/25',
     danger:
       'bg-red-600 hover:bg-red-500 active:bg-red-700 text-white focus:ring-red-500',
     ghost:
