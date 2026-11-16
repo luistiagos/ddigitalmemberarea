@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import {
   inferInitialStageStyle,
   probeArtworkStageStyle,
+  resolveTransparentBoxCutout,
 } from '@/utils/artworkStage';
 
 /**
- * Container de exibicao de capa que adapta o fundo ao estilo real da imagem:
- * - Artes com studio branco permanecem em fundo branco limpo.
- * - Artes com fundo escuro adotam gradiente amostrado das bordas + suavizacao lateral
- *   para eliminar faixas brancas ou recortes contrastantes nos cards bloqueados.
+ * Container de exibicao de capa:
+ * - Usa recortes transparentes locais (/images/boxes/*.webp) quando disponiveis,
+ *   aplicando iluminacao suave e drop-shadow 3D direto sobre o card.
+ * - Para imagens externas sem recorte (ex: papelaria/figurinhas), adapta o palco
+ *   por amostragem de bordas para evitar contrastes abruptos.
  */
 export default function ProductArtworkStage({
   imgSrc,
@@ -18,22 +20,37 @@ export default function ProductArtworkStage({
   aspectClass = 'aspect-[16/10]',
   children,
 }) {
-  const [stage, setStage] = useState(() => inferInitialStageStyle(imgSrc));
+  const cutoutUrl = resolveTransparentBoxCutout(imgSrc);
+  const [activeSrc, setActiveSrc] = useState(() => cutoutUrl || imgSrc);
+  const [stage, setStage] = useState(() => inferInitialStageStyle(cutoutUrl || imgSrc));
 
   useEffect(() => {
     let active = true;
+    const initialUrl = cutoutUrl || imgSrc;
+    setActiveSrc(initialUrl);
     setStage(inferInitialStageStyle(imgSrc));
 
-    probeArtworkStageStyle(imgSrc).then((detected) => {
-      if (active && detected) {
-        setStage(detected);
-      }
-    });
+    if (!cutoutUrl) {
+      probeArtworkStageStyle(initialUrl).then((detected) => {
+        if (active && detected) {
+          setStage(detected);
+        }
+      });
+    }
 
     return () => {
       active = false;
     };
-  }, [imgSrc]);
+  }, [imgSrc, cutoutUrl]);
+
+  const handleError = () => {
+    if (cutoutUrl && activeSrc === cutoutUrl && imgSrc !== cutoutUrl) {
+      setActiveSrc(imgSrc);
+      setStage(inferInitialStageStyle(imgSrc));
+      return;
+    }
+    onImageError?.();
+  };
 
   return (
     <div
@@ -45,14 +62,13 @@ export default function ProductArtworkStage({
       }`}
     >
       <img
-        src={imgSrc}
+        src={activeSrc}
         alt={title}
-        onError={onImageError}
-        style={
-          stage.maskImage
-            ? { WebkitMaskImage: stage.maskImage, maskImage: stage.maskImage }
-            : undefined
-        }
+        onError={handleError}
+        style={{
+          ...(stage.maskImage ? { WebkitMaskImage: stage.maskImage, maskImage: stage.maskImage } : {}),
+          ...(stage.dropShadow ? { filter: stage.dropShadow } : {}),
+        }}
         className={`w-full h-full object-contain ${imagePaddingClass} transition-transform duration-300 group-hover:scale-[1.03]`}
       />
       {children}

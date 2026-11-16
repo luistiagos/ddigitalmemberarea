@@ -9,7 +9,11 @@ import api from '../services/api.js';
 import { storeUser, clearAuth } from '../utils/auth.js';
 import PromoModal from '../components/PromoModal.jsx';
 import { CustomerArea } from '../pages/CustomerArea.jsx';
-import { classifyCornerSamples, inferInitialStageStyle } from '../utils/artworkStage.js';
+import {
+  classifyCornerSamples,
+  inferInitialStageStyle,
+  resolveTransparentBoxCutout,
+} from '../utils/artworkStage.js';
 
 const PROMO_ITEMS = [
   { productid: 101, title: 'Sistema PlayStation 2 Edicao Completa Definitiva', image: 'https://img/ps2.png', price: 40, price_25: 30, price_50: 20, currency: 'BRL' },
@@ -601,18 +605,32 @@ test('contraste_rodape_legivel_botoes_verdes_texto_branco_e_fundo_branco_nos_pro
   const accessBtn = screen.getByRole('link', { name: /Acessar/i });
   assert.match(accessBtn.className, /\btext-white\b/);
 
-  // 3) Showcase das imagens adapta fundo ao estilo da capa: claro para multigames e escuro para artes escuras
+  // 3) Showcase das imagens usa recortes transparentes locais em public/images/boxes/*.webp
   const stages = container.querySelectorAll('div[data-artwork-stage="true"]');
   assert.ok(stages.length >= 3);
-  assert.equal(stages[0].getAttribute('data-stage-tone'), 'light');
-  assert.match(stages[0].className, /\bbg-white\b/);
-  assert.equal(stages[1].getAttribute('data-stage-tone'), 'dark');
-  assert.equal(stages[1].className.includes('bg-white'), false);
-  assert.equal(container.querySelector('img[data-ambient-backdrop="true"]'), null);
+  assert.equal(stages[0].getAttribute('data-stage-tone'), 'transparent');
+  assert.equal(stages[0].className.includes('bg-white'), false);
+  const renderedImgs = container.querySelectorAll('div[data-artwork-stage="true"] img');
+  assert.match(renderedImgs[0].getAttribute('src'), /^\/images\/boxes\/multigames\.webp$/);
 
-  // Classificacao real de bordas (clara vs escura para caixas bloqueadas)
-  assert.equal(inferInitialStageStyle('https://cdn/images/multigames.png').tone, 'light');
-  assert.equal(inferInitialStageStyle('https://cdn/images/switchbox.webp').tone, 'dark');
+  // Recortes transparentes resolvidos e presentes no public/images/boxes
+  for (const rawUrl of [
+    'https://emulators.digitalstoregames.com/images/multigames.png',
+    'https://emulators.digitalstoregames.com/images/plataformamultigames.jpeg',
+    'https://emulators.digitalstoregames.com/52emul/checkout2/images/switchbox.webp',
+    'https://emulators.digitalstoregames.com/52emul/checkout2/images/saturnbox.webp',
+    'https://emulators.digitalstoregames.com/52emul/checkout2/images/xboxclassicbox.webp',
+    'https://emulators.digitalstoregames.com/52emul/checkout2/images/xbox360.webp',
+    'https://emulators.digitalstoregames.com/images/psvita.png',
+  ]) {
+    const mapped = resolveTransparentBoxCutout(rawUrl);
+    assert.ok(mapped, `Deveria mapear recorte transparente para ${rawUrl}`);
+    assert.ok(fs.existsSync(new URL(`../../public${mapped}`, import.meta.url)), `Arquivo ausente: public${mapped}`);
+    assert.equal(inferInitialStageStyle(rawUrl).tone, 'transparent');
+  }
+
+  // Fallback por amostragem continua valido para imagens externas fora do mapa
+  assert.equal(inferInitialStageStyle('https://cdn/images/album_externo.webp').tone, 'dark');
   const lightSample = classifyCornerSamples([
     { r: 245, g: 245, b: 248, a: 255 },
     { r: 245, g: 245, b: 248, a: 255 },
