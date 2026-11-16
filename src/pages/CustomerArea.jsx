@@ -192,6 +192,14 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
     () => availableProducts.filter((p) => p.price != null && Number(p.price) > 0).length,
     [availableProducts],
   );
+  const promoWindowActive = Boolean(promoData?.show && promoData.products?.length > 0);
+  const comboEnabled = promoWindowActive && purchasableCount >= 2;
+
+  useEffect(() => {
+    if (!promoWindowActive) {
+      setSelectedComboIds((prev) => (prev.length > 0 ? [] : prev));
+    }
+  }, [promoWindowActive]);
   const storeCurrency = useMemo(
     () => resolveCatalogCurrency(products, promoData?.currency),
     [products, promoData],
@@ -390,7 +398,7 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
                     <Sparkles className="h-4 w-4 text-amber-400" />
                     {t.unlockSpecial}
                   </h2>
-                  {purchasableCount >= 2 && (
+                  {comboEnabled && (
                     <p className="text-xs text-cyan-300/90 font-medium">{t.comboSubtitleHint}</p>
                   )}
                 </div>
@@ -403,8 +411,8 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
                       storeId={effectiveStoreId ?? 1}
                       lang={lang}
                       storeCurrency={storeCurrency}
-                      isInCombo={selectedComboSet.has(product.productid)}
-                      onToggleCombo={purchasableCount >= 2 ? toggleComboItem : undefined}
+                      isInCombo={comboEnabled && selectedComboSet.has(product.productid)}
+                      onToggleCombo={comboEnabled ? toggleComboItem : undefined}
                       onPreview={openPreviewWithCancel}
                       onUnlock={(p) => openCheckoutWithCancel({ items: [p], discountPct: 0 })}
                       onPaymentFlowClosed={triggerPageReload}
@@ -417,8 +425,8 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
         )}
       </div>
 
-      {/* Barra Flutuante de Combo Permanente (15% para 2+ itens / 25% para todos) */}
-      {comboSummary.count >= 2 && (
+      {/* Barra Flutuante de Combo (15% para 2+ itens / 25% para todos, apenas na janela promo de 24h) */}
+      {comboEnabled && comboSummary.count >= 2 && (
         <div
           data-testid="combo-bar"
           className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-4xl rounded-2xl border border-cyan-400/60 bg-[#1e293b]/95 backdrop-blur-md px-4 py-3.5 sm:px-6 shadow-2xl shadow-slate-950/80"
@@ -472,8 +480,8 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
         product={previewProduct}
         currency={storeCurrency}
         lang={lang}
-        isInCombo={Boolean(previewProduct && selectedComboSet.has(previewProduct.productid))}
-        onToggleCombo={purchasableCount >= 2 ? toggleComboItem : undefined}
+        isInCombo={Boolean(comboEnabled && previewProduct && selectedComboSet.has(previewProduct.productid))}
+        onToggleCombo={comboEnabled ? toggleComboItem : undefined}
         onUnlock={(p) => {
           setPreviewProduct(null);
           openCheckoutWithCancel({ items: [p], discountPct: 0 });

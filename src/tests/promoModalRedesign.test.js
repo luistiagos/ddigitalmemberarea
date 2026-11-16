@@ -659,3 +659,47 @@ test('contraste_rodape_legivel_botoes_verdes_texto_branco_e_fundo_branco_nos_pro
   assert.match(waLink.className, /text-emerald-300/);
   assert.match(mailLink.className, /text-sky-300/);
 });
+
+test('oculta_combo_e_banner_quando_fora_da_janela_promo_24h', async (t) => {
+  const timerSpy = setup5sTimerSpy();
+  t.after(() => resetAreaTestState(timerSpy));
+
+  const postCalls = installAreaMocks({
+    promoResponse: { show: false },
+    postOverride: async (url) => {
+      if (url === '/create_pix_payment') {
+        return { data: { qr_code: 'PIXCHEIO101', qr_code_base64: 'AAA=' } };
+      }
+      return undefined;
+    },
+  });
+
+  render(h(MemoryRouter, { initialEntries: ['/area-cliente?store_id=600004'] }, h(CustomerArea)));
+
+  await waitFor(() => {
+    assert.ok(screen.getByRole('link', { name: /Acessar/i }));
+    assert.ok(screen.getAllByRole('button', { name: /Desbloquear/i }).length >= 2);
+  });
+
+  assert.equal(screen.queryByTestId('vip-promo-banner'), null);
+  assert.equal(screen.queryByRole('button', { name: /\+ Combo/i }), null);
+  assert.equal(screen.queryByTestId('combo-bar'), null);
+
+  // Compra normal pelo preco cheio continua funcionando via /create_pix_payment (sem desconto promo)
+  fireEvent.click(screen.getAllByRole('button', { name: /Desbloquear/i })[0]);
+  await waitFor(() => {
+    assert.ok(screen.getByText('PIXCHEIO101'));
+  });
+  assert.ok(
+    postCalls.some(
+      (c) =>
+        c.url === '/create_pix_payment' &&
+        c.body?.sids === '101' &&
+        c.body?.storeid === 600004,
+    ),
+  );
+  assert.equal(
+    postCalls.some((c) => c.url === '/area-cliente/promo-checkout-pix'),
+    false,
+  );
+});
