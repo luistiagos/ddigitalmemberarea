@@ -1,3 +1,5 @@
+export const MULTIGAMES_FALLBACK = 'https://emulators.digitalstoregames.com/images/multigames.png';
+
 /**
  * Retorna a URL da imagem de capa do produto/pacote.
  * Caso o produto venha com imagem vazia ou nula do backend (ex: id 1000003 - Sega Saturn),
@@ -32,6 +34,6 @@ export function getEffectiveProductImage(title, image) {
   if (t.includes('vita')) {
     return 'https://emulators.digitalstoregames.com/images/psvita.png';
   }
-  return 'https://emulators.digitalstoregames.com/images/multigames.png';
+  return MULTIGAMES_FALLBACK;
 }
 

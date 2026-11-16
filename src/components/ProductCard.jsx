@@ -1,387 +1,127 @@
-import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Gamepad2, ExternalLink, Lock, Loader2, X, CreditCard, QrCode, Wallet } from 'lucide-react';
-import CardModal from '@/components/ui/CardModal';
-import api from '@/services/api';
+import { useEffect, useState } from 'react';
+import { ExternalLink, Lock, Unlock, Plus, Check, CheckCircle2, Eye } from 'lucide-react';
+import ProductPreviewModal from '@/components/ProductPreviewModal';
 import { TRANSLATIONS } from '@/pages/translations';
+import { formatCurrency, normalizeCurrency } from '@/utils/memberAreaPricing';
+import { getEffectiveProductImage, MULTIGAMES_FALLBACK } from '@/utils/productImages';
 
-const CUSTOMER_AREA_REFRESH_KEY = 'customerAreaNeedsRefresh';
-const MP_PUBLIC_KEY = 'APP_USR-747cf787-a851-4ed5-971c-62041281ed91';
-
-function formatBRL(val, lang = 'ptbr') {
-  const locale = lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'pt-BR';
-  return Number(val).toLocaleString(locale, { style: 'currency', currency: 'BRL' });
+function AmbientArtwork({ imgSrc, title, onImageError, dim = false, children }) {
+  return (
+    <div className="relative w-full aspect-[16/10] bg-gray-950 overflow-hidden shrink-0">
+      <img
+        src={imgSrc}
+        alt=""
+        aria-hidden="true"
+        data-ambient-backdrop="true"
+        className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-45"
+      />
+      <img
+        src={imgSrc}
+        alt={title}
+        onError={onImageError}
+        className={`relative z-10 w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.03] ${
+          dim ? 'opacity-90' : ''
+        }`}
+      />
+      <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#111827]/90 via-transparent to-transparent pointer-events-none" />
+      {children}
+    </div>
+  );
 }
 
-import { getEffectiveProductImage } from '../utils/productImages.js';
-
 /**
- * Card de produto para a área do cliente.
- * - owned=true  → imagem + "Aqui está o que você comprou, divirta-se!" + botão verde Acessar
- * - owned=false → imagem em cinza com cadeado + badge de preço + botão neon Desbloquear
- *
- * @param {{ product, userEmail, storeId, onPaymentFlowClosed }}
+ * Card de produto para a área do cliente (Dark Gaming Premium).
  */
-export function ProductCard({ product, userEmail, storeId, lang, onPaymentFlowClosed }) {
-  const t = TRANSLATIONS[lang] || TRANSLATIONS['ptbr'];
+export function ProductCard({
+  product,
+  lang = 'ptbr',
+  storeCurrency = 'BRL',
+  featuredHorizontal = false,
+  isInCombo = false,
+  onToggleCombo,
+  onPreview,
+  onUnlock,
+}) {
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.ptbr;
   const { productid, title, image, owned, price, relprice, description, deliverlink } = product;
+  const currency = normalizeCurrency(product.currency || storeCurrency);
   const effectiveImage = getEffectiveProductImage(title, image);
   const [imgSrc, setImgSrc] = useState(effectiveImage);
+  const [localPreviewOpen, setLocalPreviewOpen] = useState(false);
 
   useEffect(() => {
     setImgSrc(effectiveImage);
   }, [effectiveImage]);
 
-  const displayPrice = price != null ? Number(price) : null;
-  const [buying, setBuying] = useState(false);
-  const [buyError, setBuyError] = useState(null);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [pixModalOpen, setPixModalOpen] = useState(false);
-  const [pixData, setPixData] = useState(null);
-  const [pixCopyMsg, setPixCopyMsg] = useState('');
-  const [isMounted, setIsMounted] = useState(false);
-  const [paymentModalLoading, setPaymentModalLoading] = useState(false);
-  const [paymentActionLabel, setPaymentActionLabel] = useState('');
-  const checkoutUrlRef = useRef(null);
-  const checkoutUrlPromiseRef = useRef(null);
-  const [cardModalOpen, setCardModalOpen] = useState(false);
-  const [cardStatus, setCardStatus] = useState('');
-  const [cardStatusMsg, setCardStatusMsg] = useState('');
-  const mpBricksCtrl = useRef(null);
-  const pixPollingRef = useRef(null);
-
-  const clearPixPolling = () => {
-    if (pixPollingRef.current) {
-      clearInterval(pixPollingRef.current);
-      pixPollingRef.current = null;
-    }
-  };
-
-  // Ensure component is mounted before rendering portals
-  useEffect(() => {
-    setIsMounted(true);
-    return () => clearPixPolling();
-  }, []);
-
-  // Mount / unmount MP CardPayment Brick for card payment
-  useEffect(() => {
-    if (!cardModalOpen) {
-      if (mpBricksCtrl.current) {
-        try { mpBricksCtrl.current.unmount(); } catch (_) {}
-        mpBricksCtrl.current = null;
-      }
-      return;
-    }
-    setCardStatus('');
-    setCardStatusMsg('');
-    const containerId = `card-brick-product-${productid}`;
-
-    // Guard: never initialise the Brick with amount = 0 — MP returns
-    // 'no_payment_method_for_provided_bin' for every BIN when amount is 0.
-    if (!displayPrice || displayPrice <= 0) {
-      const el = document.getElementById(containerId);
-      if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.invalidPriceError}</p>`;
-      return;
-    }
-
-    function initBrick() {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      container.innerHTML = '';
-      try {
-        const mp = new window.MercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });
-        console.log('[CardBrick] Initializing with amount:', displayPrice, 'email:', userEmail);
-        mp.bricks().create('cardPayment', containerId, {
-          initialization: { amount: displayPrice, payer: { email: userEmail || '' } },
-          customization: {
-            paymentMethods: {
-              creditCard: 'all',
-              debitCard: 'all',
-            },
-          },
-          callbacks: {
-            onReady: () => { console.log('[CardBrick] Ready'); },
-            onSubmit: async (cardData) => {
-              setCardStatus('');
-              setCardStatusMsg('');
-              const body = {
-                sids: String(productid),
-                token: cardData.token,
-                installments: cardData.installments,
-                payment_method_id: cardData.payment_method_id,
-                email: cardData.payer?.email || userEmail,
-                storeid: storeId,
-              };
-              if (cardData.payer?.identification?.number) {
-                body.identification_type = cardData.payer.identification.type || 'CPF';
-                body.identification_number = cardData.payer.identification.number;
-              }
-              try {
-                const res = await api.post('/create_card_payment', body);
-                const data = res.data;
-                if (data.error) {
-                  setCardStatus('error');
-                  setCardStatusMsg(data.error);
-                } else if (data.status === 'approved') {
-                  setCardStatus('success');
-                  setCardStatusMsg(t.paymentApprovedMsg);
-                  if (mpBricksCtrl.current) {
-                    try { mpBricksCtrl.current.unmount(); } catch (_) {}
-                    mpBricksCtrl.current = null;
-                  }
-                  setTimeout(() => {
-                    setCardModalOpen(false);
-                    onPaymentFlowClosed?.();
-                  }, 2000);
-                } else if (data.status === 'in_process' || data.status === 'pending') {
-                  setCardStatus('pending');
-                  setCardStatusMsg(t.paymentPendingMsg);
-                  setTimeout(() => { setCardModalOpen(false); onPaymentFlowClosed?.(); }, 3000);
-                } else {
-                  setCardStatus('error');
-                  setCardStatusMsg(`${t.paymentDeclinedMsg} (${data.status_detail || data.status})`);
-                }
-              } catch {
-                setCardStatus('error');
-                setCardStatusMsg(t.paymentErrMsg);
-              }
-            },
-            onError: (err) => {
-              // Log full error object for diagnosis
-              console.error('[CardBrick] onError:', JSON.stringify(err, null, 2), err);
-              // Only surface critical errors — non_critical fires during BIN typing and is expected
-              if (err?.type !== 'non_critical') {
-                setCardStatus('error');
-                setCardStatusMsg(t.cardFormErrMsg);
-              }
-            },
-          },
-        }).then(ctrl => { mpBricksCtrl.current = ctrl; });
-      } catch (e) {
-        console.error('ProductCard initBrick error:', e);
-        const el = document.getElementById(containerId);
-        if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.cardFormLoadError}</p>`;
-      }
-    }
-
-    if (window.MercadoPago) {
-      initBrick();
-    } else {
-      const script = document.createElement('script');
-      script.src = 'https://sdk.mercadopago.com/js/v2';
-      script.onload = initBrick;
-      script.onerror = () => {
-        const el = document.getElementById(containerId);
-        if (el) el.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px">${t.cardFormLoadError}</p>`;
-      };
-      document.head.appendChild(script);
-    }
-
-    return () => {
-      if (mpBricksCtrl.current) {
-        try { mpBricksCtrl.current.unmount(); } catch (_) {}
-        mpBricksCtrl.current = null;
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardModalOpen, displayPrice, userEmail]);
-
-  const getSids = () => String(productid);
-
-  const createCheckoutLink = async () => {
-    const params = new URLSearchParams({ sids: getSids() });
-    if (userEmail) params.set('email', userEmail);
-    if (storeId) params.set('storeid', storeId);
-    const res = await api.get(`/createMLlink_v2?${params}`);
-    return res.data?.checkout_url || null;
-  };
-
-  const ensureCheckoutLink = async () => {
-    if (checkoutUrlRef.current) {
-      return checkoutUrlRef.current;
-    }
-
-    if (!checkoutUrlPromiseRef.current) {
-      checkoutUrlPromiseRef.current = createCheckoutLink()
-        .then((checkoutUrl) => {
-          checkoutUrlRef.current = checkoutUrl;
-          return checkoutUrl;
-        })
-        .finally(() => {
-          checkoutUrlPromiseRef.current = null;
-        });
-    }
-
-    return checkoutUrlPromiseRef.current;
-  };
-
-  const openPaymentModal = () => {
-    setBuyError(null);
-    setPaymentModalOpen(true);
-    setPaymentModalLoading(true);
-    setPaymentActionLabel(t.preparingPayments);
-
-    ensureCheckoutLink()
-      .catch(() => {
-        // O fluxo ainda pode seguir com nova tentativa ao clicar em Cartao/Link.
-      })
-      .finally(() => {
-        setPaymentModalLoading(false);
-        setPaymentActionLabel('');
-      });
-  };
-
-  const handleBuyMercadoPago = async () => {
-    setBuying(true);
-    setBuyError(null);
-    setPaymentModalLoading(true);
-    setPaymentActionLabel(t.redirectingToMP);
-    try {
-      const checkoutUrl = await ensureCheckoutLink();
-      if (checkoutUrl) {
-        // Mark that customer area should force a refresh when user returns from external checkout.
-        sessionStorage.setItem(CUSTOMER_AREA_REFRESH_KEY, '1');
-        window.location.href = checkoutUrl;
-      } else {
-        checkoutUrlRef.current = null;
-        setBuyError(t.noLinkError);
-      }
-    } catch {
-      checkoutUrlRef.current = null;
-      setBuyError(t.processError);
-    } finally {
-      setPaymentModalLoading(false);
-      setPaymentActionLabel('');
-      setBuying(false);
-    }
-  };
-
-  const handleBuyCard = () => {
-    setPaymentModalOpen(false);
-    setCardModalOpen(true);
-  };
-
-  const closeCardModal = () => {
-    setCardModalOpen(false);
-    onPaymentFlowClosed?.();
-  };
-
-  const handleBuyPix = async () => {
-    setBuying(true);
-    setBuyError(null);
-    setPixCopyMsg('');
-    setPaymentModalLoading(true);
-    setPaymentActionLabel(t.generatingQRCode);
-    try {
-      const body = { sids: getSids(), email: userEmail, storeid: storeId };
-      const res = await api.post('/create_pix_payment', body);
-      if (res.data?.error) {
-        setBuyError(res.data.error || t.pixGenError);
-      } else if (res.data?.qr_code) {
-        setPaymentModalOpen(false);
-        setPixData(res.data);
-        setPixModalOpen(true);
-
-        if (res.data.payment_id) {
-          clearPixPolling();
-          pixPollingRef.current = setInterval(async () => {
-            try {
-              const statusRes = await api.get(`/payment_status?payment_id=${res.data.payment_id}`);
-              const d = statusRes.data;
-              if (d.status === 'approved') {
-                clearPixPolling();
-                setPixCopyMsg(t.paymentApprovedMsg);
-                setTimeout(() => {
-                  setPixModalOpen(false);
-                  onPaymentFlowClosed?.();
-                }, 2500);
-              } else if (['rejected', 'cancelled', 'expired'].includes(d.status)) {
-                clearPixPolling();
-                setPixCopyMsg(t.pixExpiredMsg);
-              }
-            } catch (err) { /* silent */ }
-          }, 5000);
-        }
-      } else {
-        setBuyError(t.pixUnavailable);
-      }
-    } catch {
-      setBuyError(t.pixGenError);
-    } finally {
-      setPaymentModalLoading(false);
-      setPaymentActionLabel('');
-      setBuying(false);
-    }
-  };
-
-  const copyPixCode = async () => {
-    if (!pixData?.qr_code) return;
-    try {
-      await navigator.clipboard.writeText(pixData.qr_code);
-      setPixCopyMsg(t.pixCopiedMsg);
-    } catch {
-      setPixCopyMsg(t.pixCopiedFallback);
-    }
-  };
-
-  const closePaymentModal = (shouldRefresh = true) => {
-    if (paymentModalLoading || buying) {
-      return;
-    }
-
-    setPaymentModalOpen(false);
-    setPaymentActionLabel('');
-    if (shouldRefresh) {
-      onPaymentFlowClosed?.();
-    }
-  };
-
-  const closePixModal = () => {
-    setPixModalOpen(false);
-    clearPixPolling();
-    onPaymentFlowClosed?.();
-  };
+  const handleImgError = () => setImgSrc(MULTIGAMES_FALLBACK);
 
   /* ── Produto adquirido ── */
   if (owned) {
+    if (featuredHorizontal) {
+      return (
+        <article
+          data-featured-owned="true"
+          className="group flex flex-col md:flex-row rounded-2xl border border-emerald-500/30 bg-[#111827]/95 overflow-hidden animate-fade-in transition-all duration-200 hover:border-emerald-400/60 shadow-xl shadow-emerald-950/20"
+        >
+          <div className="md:w-80 lg:w-96 shrink-0">
+            <AmbientArtwork imgSrc={imgSrc} title={title} onImageError={handleImgError} />
+          </div>
+
+          <div className="flex flex-col flex-1 p-5 sm:p-6 justify-between gap-4">
+            <div className="space-y-2.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {t.ownedLifetimeBadge}
+              </span>
+              <h2 className="font-bold text-white text-lg sm:text-xl leading-snug">{title}</h2>
+              <p className="text-sm text-gray-400">{t.ownedSingleTagline}</p>
+            </div>
+
+            <div>
+              {deliverlink ? (
+                <a
+                  href={deliverlink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-gray-950 font-bold text-sm py-3 px-7 transition-colors w-full sm:w-auto no-underline shadow-lg shadow-emerald-500/20"
+                >
+                  <ExternalLink className="h-4 w-4 shrink-0" />
+                  <span>{t.accessBtn}</span>
+                </a>
+              ) : (
+                <span className="text-xs text-gray-500 italic">{t.noAccessLink}</span>
+              )}
+            </div>
+          </div>
+        </article>
+      );
+    }
+
     return (
-      <article className="flex flex-col rounded-xl border border-gray-700/60 bg-gray-800/50 overflow-hidden animate-fade-in transition-all duration-200 hover:border-green-500/40 hover:shadow-lg hover:shadow-green-500/5">
-        {/* Imagem full-width */}
-        <div className="relative w-full h-44 bg-gray-900 overflow-hidden shrink-0">
-          <img
-            src={imgSrc}
-            alt={title}
-            className="w-full h-full object-cover"
-            onError={() => setImgSrc('https://emulators.digitalstoregames.com/images/multigames.png')}
-          />
-          <div className="absolute inset-0 bg-linear-to-t from-gray-900/70 via-transparent to-transparent" />
-        </div>
+      <article className="group flex flex-col rounded-2xl border border-white/10 bg-[#111827]/90 overflow-hidden animate-fade-in transition-all duration-200 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10">
+        <AmbientArtwork imgSrc={imgSrc} title={title} onImageError={handleImgError}>
+          <span className="absolute top-3 left-3 z-20 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-gray-950/80 backdrop-blur-md px-2.5 py-0.5 text-[11px] font-semibold text-emerald-300">
+            <CheckCircle2 className="h-3 w-3" />
+            {t.ownedLifetimeBadge}
+          </span>
+        </AmbientArtwork>
 
-        {/* Conteúdo */}
         <div className="flex flex-col flex-1 p-4 gap-3">
-          {/* Título */}
           <h2 className="font-semibold text-white text-sm leading-tight line-clamp-2">{title}</h2>
-
-          {/* Tagline */}
           <p className="text-xs text-gray-400">{t.enjoyMsg}</p>
-
-          {/* Botão Acessar */}
           <div className="mt-auto">
             {deliverlink ? (
               <a
                 href={deliverlink}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: '#ffffff' }}
-                className="inline-flex items-center gap-2 justify-center rounded-lg bg-green-500 hover:bg-green-400 active:bg-green-600 !text-white text-white font-bold text-sm py-2.5 px-6 transition-colors w-full no-underline shadow-md"
+                className="inline-flex items-center gap-2 justify-center rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-gray-950 font-bold text-sm py-2.5 px-6 transition-colors w-full no-underline shadow-md"
               >
-                <ExternalLink className="h-4 w-4 !text-white text-white shrink-0" style={{ stroke: '#ffffff', color: '#ffffff' }} />
-                <span className="!text-white text-white font-bold" style={{ color: '#ffffff' }}>
-                  {t.accessBtn}
-                </span>
+                <ExternalLink className="h-4 w-4 shrink-0" />
+                <span>{t.accessBtn}</span>
               </a>
             ) : (
-              <span className="text-xs text-gray-600 italic">{t.noAccessLink}</span>
+              <span className="text-xs text-gray-500 italic">{t.noAccessLink}</span>
             )}
           </div>
         </div>
@@ -390,182 +130,137 @@ export function ProductCard({ product, userEmail, storeId, lang, onPaymentFlowCl
   }
 
   /* ── Produto não adquirido ── */
+  const displayPrice = price != null ? Number(price) : null;
   const displayRelPrice = relprice != null ? Number(relprice) : null;
   const discount =
     displayRelPrice && displayPrice && displayRelPrice > displayPrice
       ? Math.round((1 - displayPrice / displayRelPrice) * 100)
       : null;
 
+  const openPreview = () => {
+    if (onPreview) {
+      onPreview(product);
+    } else {
+      setLocalPreviewOpen(true);
+    }
+  };
+
   return (
     <>
-      <article className="flex flex-col rounded-xl border border-gray-700/60 bg-gray-800/50 overflow-hidden animate-fade-in transition-all duration-200 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/5">
-        {/* Imagem com overlay e cadeado */}
-        <div className="relative w-full h-44 bg-gray-900 overflow-hidden shrink-0">
-          <img
-            src={imgSrc}
-            alt={title}
-            className="w-full h-full object-cover opacity-55"
-            onError={() => setImgSrc('https://emulators.digitalstoregames.com/images/multigames.png')}
-          />
-          {/* Gradiente escuro na base */}
-          <div className="absolute inset-0 bg-linear-to-t from-gray-900/70 via-transparent to-transparent" />
-          {/* Cadeado central */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Lock className="h-12 w-12 text-white/75 drop-shadow-lg" />
-          </div>
-          {/* Badge de desconto */}
-          {discount && (
-            <span className="absolute top-3 right-3 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-gray-900">
-              -{discount}%
+      <article
+        className={`group flex flex-col rounded-2xl border overflow-hidden animate-fade-in transition-all duration-200 bg-[#111827]/90 ${
+          isInCombo
+            ? 'border-cyan-400/70 shadow-lg shadow-cyan-500/10'
+            : 'border-white/10 hover:border-amber-500/45 hover:shadow-lg hover:shadow-amber-500/10'
+        }`}
+      >
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={openPreview}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPreview(); } }}
+          aria-label={`${t.previewDetailsHint}: ${title}`}
+          className="cursor-pointer focus:outline-none"
+        >
+          <AmbientArtwork imgSrc={imgSrc} title={title} onImageError={handleImgError} dim>
+            {/* Selo discreto no canto superior esquerdo (sem cadeado gigante central) */}
+            <span className="absolute top-3 left-3 z-20 inline-flex items-center gap-1 rounded-full border border-white/15 bg-gray-950/80 backdrop-blur-md px-2.5 py-0.5 text-[11px] font-medium text-gray-200">
+              <Lock className="h-3 w-3 text-amber-400" />
+              <span>{t.lockedBadge}</span>
             </span>
-          )}
+
+            {/* Badge de desconto no canto superior direito */}
+            {discount && (
+              <span className="absolute top-3 right-3 z-20 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-extrabold text-gray-950 shadow">
+                -{discount}%
+              </span>
+            )}
+
+            {/* Indicador discreto de Preview ao passar o mouse */}
+            <span className="absolute bottom-2.5 right-3 z-20 inline-flex items-center gap-1 rounded-md bg-gray-950/75 px-2 py-0.5 text-[11px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Eye className="h-3 w-3 text-cyan-300" />
+              <span>{t.previewDetailsHint}</span>
+            </span>
+          </AmbientArtwork>
         </div>
 
-        {/* Conteúdo textual */}
         <div className="flex flex-col flex-1 p-4 gap-3">
-          {/* Título */}
-          <h2 className="font-semibold text-white text-sm leading-tight line-clamp-2">{title}</h2>
+          <div className="flex items-start justify-between gap-2">
+            <button
+              type="button"
+              onClick={openPreview}
+              className="text-left font-semibold text-white hover:text-amber-300 text-sm leading-tight line-clamp-2 transition-colors"
+            >
+              {title}
+            </button>
 
-          {/* Descrição */}
+            {onToggleCombo && (
+              <button
+                type="button"
+                onClick={() => onToggleCombo(product)}
+                aria-pressed={isInCombo}
+                className={`shrink-0 inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                  isInCombo
+                    ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200'
+                    : 'border-white/15 bg-gray-800/80 text-gray-300 hover:border-cyan-400/50 hover:text-white'
+                }`}
+              >
+                {isInCombo ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                <span>{isInCombo ? t.inComboBtn : t.addToComboBtn}</span>
+              </button>
+            )}
+          </div>
+
           {description && (
-            <p className="text-xs text-gray-400 leading-relaxed line-clamp-3">{description}</p>
+            <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">{description}</p>
           )}
 
-          {/* Preços */}
           {displayPrice != null && (
             <div className="flex items-baseline gap-2 flex-wrap mt-auto">
               {displayRelPrice && displayRelPrice > displayPrice && (
-                <span className="text-xs text-gray-500 line-through">{formatBRL(displayRelPrice, lang)}</span>
+                <span className="text-xs text-gray-400 line-through">
+                  {formatCurrency(displayRelPrice, currency, lang)}
+                </span>
               )}
-              <span className="text-base font-bold text-white">{formatBRL(displayPrice, lang)}</span>
+              <span className="text-lg font-extrabold text-white">
+                {formatCurrency(displayPrice, currency, lang)}
+              </span>
               {discount && (
-                <span className="text-xs text-green-400 font-medium">
-                  {t.economyLabel} {formatBRL(displayRelPrice - displayPrice, lang)}
+                <span className="text-xs text-emerald-400 font-semibold">
+                  {t.economyLabel} {formatCurrency(displayRelPrice - displayPrice, currency, lang)}
                 </span>
               )}
             </div>
           )}
 
-          {/* Botão */}
           <button
-            onClick={openPaymentModal}
-            disabled={buying}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-900 font-bold text-sm py-2.5 px-4 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            type="button"
+            onClick={() => onUnlock?.(product)}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-bold text-sm py-2.5 px-4 transition-colors shadow-md shadow-amber-500/10"
           >
-            {buying
-              ? <Loader2 className="h-4 w-4 animate-spin" />
-              : <Lock className="h-4 w-4" />}
-            {buying ? t.waitBtn : t.payBtn}
+            <Unlock className="h-4 w-4" />
+            <span>
+              {t.unlockBtn}
+              {displayPrice != null ? ` — ${formatCurrency(displayPrice, currency, lang)}` : ''}
+            </span>
           </button>
-          {buyError && (
-            <p className="text-xs text-red-400 text-center mt-1">{buyError}</p>
-          )}
         </div>
       </article>
 
-      {isMounted && paymentModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
-              <h3 className="text-white font-semibold">{t.choosePayment}</h3>
-              <button onClick={() => closePaymentModal()} disabled={paymentModalLoading || buying} className="text-gray-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-3">
-              {paymentModalLoading ? (
-                <div className="flex flex-col items-center justify-center rounded-xl border border-gray-700 bg-gray-900/60 px-4 py-8 text-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
-                  <p className="mt-4 text-sm font-medium text-white">{paymentActionLabel || t.preparingPayments}</p>
-                  <p className="mt-1 text-xs text-gray-400">
-                    {paymentActionLabel === t.generatingQRCode
-                      ? t.preparingPixInfo
-                      : t.takesFewSeconds}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={handleBuyMercadoPago}
-                    disabled={buying}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
-                  >
-                    <Wallet className="h-4 w-4" />
-                    {t.mpLinkBtn}
-                  </button>
-
-                  <button
-                    onClick={handleBuyPix}
-                    disabled={buying}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
-                  >
-                    <QrCode className="h-4 w-4" />
-                    {t.pixBtn}
-                  </button>
-
-                  <button
-                    onClick={handleBuyCard}
-                    disabled={buying}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-sm py-2.5 px-4 transition-colors disabled:opacity-60"
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    {t.cardBtn}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {isMounted && (
-        <CardModal
-          isOpen={cardModalOpen}
-          onClose={closeCardModal}
-          containerId={`card-brick-product-${productid}`}
-          status={cardStatus}
-          statusMsg={cardStatusMsg}
+      {!onPreview && (
+        <ProductPreviewModal
+          isOpen={localPreviewOpen}
+          onClose={() => setLocalPreviewOpen(false)}
+          product={product}
+          currency={currency}
+          lang={lang}
+          isInCombo={isInCombo}
+          onToggleCombo={onToggleCombo}
+          onUnlock={(p) => {
+            setLocalPreviewOpen(false);
+            onUnlock?.(p);
+          }}
         />
-      )}
-
-      {isMounted && pixModalOpen && pixData && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-gray-900 font-semibold">{t.payWithPixTitle}</h3>
-              <button onClick={closePixModal} className="text-gray-500 hover:text-gray-700">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {pixData.qr_code_base64 && (
-              <img
-                src={pixData.qr_code_base64.startsWith('data:') ? pixData.qr_code_base64 : `data:image/png;base64,${pixData.qr_code_base64}`}
-                alt="QR Code PIX"
-                className="mx-auto w-48 h-48 border border-emerald-500 rounded-lg"
-              />
-            )}
-
-            {pixData.amount != null && (
-              <p className="text-center text-gray-900 font-bold text-lg mt-3">{formatBRL(pixData.amount, lang)}</p>
-            )}
-
-            <p className="text-[11px] text-gray-600 mt-3 break-all bg-gray-100 rounded-lg p-2.5">
-              {pixData.qr_code}
-            </p>
-
-            <button
-              onClick={copyPixCode}
-              className="mt-3 w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-semibold text-sm py-2.5"
-            >
-              {t.copyPixBtn}
-            </button>
-            {pixCopyMsg && <p className="text-xs text-center text-gray-600 mt-2">{pixCopyMsg}</p>}
-          </div>
-        </div>,
-        document.body
       )}
     </>
   );

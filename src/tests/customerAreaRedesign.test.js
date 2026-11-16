@@ -3,10 +3,11 @@ import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, within, cleanup, fireEvent } from '@testing-library/react';
 import api from '../services/api.js';
 import { storeUser, clearAuth } from '../utils/auth.js';
 import { Navbar } from '../components/Navbar.jsx';
+import { ProductCard } from '../components/ProductCard.jsx';
 import {
   formatCurrency,
   roundDiscountedItemPrice,
@@ -61,4 +62,88 @@ test('navbar_exibe_atalhos_para_acesso_e_ativar', (t) => {
   const hrefs = links.map((a) => a.getAttribute('href'));
   assert.ok(hrefs.includes('/acesso'), 'Navbar deve expor link para /acesso');
   assert.ok(hrefs.includes('/ativar'), 'Navbar deve expor link para /ativar');
+});
+
+// --- T2: ProductCard e ProductPreviewModal ---
+
+test('card_unico_adquirido_usa_layout_horizontal_focado_no_deliverlink', (t) => {
+  t.after(() => { cleanup(); });
+  const owned = {
+    productid: 1,
+    title: 'Sistema Multigames',
+    image: 'https://emulators.digitalstoregames.com/images/multigames.png',
+    owned: true,
+    deliverlink: 'https://digitalmemberarea.digitalstoregames.com/acesso?token=abc',
+  };
+
+  const { container } = render(
+    h(MemoryRouter, null, h(ProductCard, { product: owned, lang: 'ptbr', featuredHorizontal: true })),
+  );
+
+  const article = container.querySelector('article[data-featured-owned="true"]');
+  assert.ok(article, 'Deve renderizar card destaque horizontal');
+  assert.ok(container.querySelector('img[data-ambient-backdrop="true"]'), 'Deve aplicar ambient backdrop na capa');
+
+  const links = screen.getAllByRole('link');
+  assert.equal(links.length, 1);
+  assert.equal(links[0].getAttribute('href'), owned.deliverlink);
+  assert.equal(screen.queryByText(/\/acesso|Ativar App/i), null);
+});
+
+test('card_nao_adquirido_exibe_moeda_e_cta_sem_cadeado_central', (t) => {
+  t.after(() => { cleanup(); });
+  const itemUsd = {
+    productid: 12,
+    title: 'Xbox 360 Pack',
+    image: 'https://emulators.digitalstoregames.com/images/xbox360.png',
+    owned: false,
+    price: 19.90,
+    relprice: 39.90,
+    currency: 'USD',
+    description: 'Mais de 3000 jogos prontos.',
+  };
+
+  const { container } = render(
+    h(ProductCard, { product: itemUsd, lang: 'en', storeCurrency: 'USD' }),
+  );
+
+  // Nao existe cadeado gigante (h-12 w-12) cobrindo a capa nem o termo Pagar/Pay
+  assert.equal(container.querySelector('.h-12.w-12'), null);
+  assert.equal(screen.queryByRole('button', { name: /\b(Pagar|Pay)\b/i }), null);
+
+  const unlockBtn = screen.getByRole('button', { name: /Unlock — \$19\.90/i });
+  assert.ok(unlockBtn);
+});
+
+test('clique_no_card_abre_modal_preview_com_descricao_e_idioma', (t) => {
+  t.after(() => { cleanup(); });
+  const item = {
+    productid: 22,
+    title: 'Sistema PS2 Completo',
+    image: 'https://emulators.digitalstoregames.com/images/ps2.png',
+    owned: false,
+    price: 30,
+    relprice: 60,
+    currency: 'BRL',
+    description: 'Biblioteca completa PS2 com configuracao automatica.',
+  };
+
+  for (const [lang, expectedBullet] of [
+    ['ptbr', /Garantia incondicional de 30 dias/],
+    ['en', /30-day money-back guarantee/],
+    ['es', /Garantía de 30 días/],
+  ]) {
+    const { unmount } = render(h(ProductCard, { product: item, lang, storeCurrency: 'BRL' }));
+    fireEvent.click(screen.getAllByRole('button', { name: /Sistema PS2 Completo/i })[0]);
+
+    const dialog = screen.getByRole('dialog', { name: 'Sistema PS2 Completo' });
+    assert.ok(dialog);
+    assert.ok(within(dialog).getByText('Biblioteca completa PS2 com configuracao automatica.'));
+    assert.ok(within(dialog).getByText(expectedBullet));
+
+    // Fecha por Esc
+    fireEvent.keyDown(window, { key: 'Escape' });
+    assert.equal(screen.queryByRole('dialog'), null);
+    unmount();
+  }
 });
