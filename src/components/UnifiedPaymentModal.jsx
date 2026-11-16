@@ -10,6 +10,10 @@ import {
   round2,
   roundDiscountedItemPrice,
 } from '@/utils/memberAreaPricing';
+import {
+  MEMBER_AREA_TELEMETRY_EVENTS,
+  trackMemberAreaEvent,
+} from '@/utils/memberAreaTelemetry';
 
 const CUSTOMER_AREA_REFRESH_KEY = 'customerAreaNeedsRefresh';
 const MP_PUBLIC_KEY = 'APP_USR-747cf787-a851-4ed5-971c-62041281ed91';
@@ -23,6 +27,8 @@ export default function UnifiedPaymentModal({
   userEmail = '',
   storeId = null,
   lang = 'ptbr',
+  origin = 'catalog',
+  downsellVariant = null,
   onPaymentComplete,
   onRedirect,
 }) {
@@ -80,6 +86,18 @@ export default function UnifiedPaymentModal({
       window.location.href = url;
     }
   }, [onRedirect]);
+
+  const emitPaymentMethod = useCallback((method) => {
+    trackMemberAreaEvent(MEMBER_AREA_TELEMETRY_EVENTS.PAYMENT_METHOD_SELECTED, {
+      store_id: storeId,
+      method,
+      discount_pct: Number(discountPct || 0),
+      currency: activeCurrency,
+      item_count: productIds.length,
+      origin,
+      downsell_variant: downsellVariant,
+    });
+  }, [storeId, discountPct, activeCurrency, productIds.length, origin, downsellVariant]);
 
   // Reset modal state whenever opened for new selection or closed
   useEffect(() => {
@@ -285,6 +303,7 @@ export default function UnifiedPaymentModal({
   }, [isOpen, isUSD, activeTab, summary.total, userEmail, isCombo, productIds, discountPct, storeId, t, unmountCardBrick, onPaymentComplete]);
 
   const handlePayStripe = async () => {
+    emitPaymentMethod('stripe');
     setSubmitting(true);
     setErrorMsg(null);
     try {
@@ -320,6 +339,7 @@ export default function UnifiedPaymentModal({
   };
 
   const handlePayMercadoPagoLink = async () => {
+    emitPaymentMethod('mp_link');
     setSubmitting(true);
     setErrorMsg(null);
     try {
@@ -461,7 +481,7 @@ export default function UnifiedPaymentModal({
               <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-950 p-1 border border-white/10">
                 <button
                   type="button"
-                  onClick={() => { setErrorMsg(null); setActiveTab('pix'); }}
+                  onClick={() => { emitPaymentMethod('pix'); setErrorMsg(null); setActiveTab('pix'); }}
                   className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors ${
                     activeTab === 'pix'
                       ? 'bg-emerald-500 text-gray-950'
@@ -473,7 +493,7 @@ export default function UnifiedPaymentModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setErrorMsg(null); setActiveTab('card'); }}
+                  onClick={() => { emitPaymentMethod('card'); setErrorMsg(null); setActiveTab('card'); }}
                   className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors ${
                     activeTab === 'card'
                       ? 'bg-amber-500 text-gray-950'

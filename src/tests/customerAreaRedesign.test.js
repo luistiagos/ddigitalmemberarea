@@ -251,9 +251,10 @@ test('modal_unificado_usd_chama_stripe_e_oculta_pix_e_cartao_mp', async (t) => {
   await waitFor(() => {
     assert.equal(redirects.length, 1);
   });
-  assert.equal(apiCalls[0].url, '/createStripeLink');
-  assert.equal(apiCalls[0].params.from_member_area, '1');
-  assert.equal(apiCalls[0].params.base_currency, 'usd');
+  const firstCheckoutCalls = apiCalls.filter((c) => c.url !== '/area-cliente/telemetry');
+  assert.equal(firstCheckoutCalls[0].url, '/createStripeLink');
+  assert.equal(firstCheckoutCalls[0].params.from_member_area, '1');
+  assert.equal(firstCheckoutCalls[0].params.base_currency, 'usd');
   assert.equal(redirects[0], 'https://checkout.stripe.com/pay/single');
 
   // 2) Compra combo 25% em loja USD -> POST /area-cliente/promo-checkout
@@ -278,9 +279,10 @@ test('modal_unificado_usd_chama_stripe_e_oculta_pix_e_cartao_mp', async (t) => {
   await waitFor(() => {
     assert.equal(redirects.length, 2);
   });
-  assert.equal(apiCalls[1].method, 'POST');
-  assert.equal(apiCalls[1].url, '/area-cliente/promo-checkout');
-  assert.deepEqual(apiCalls[1].body, {
+  const allCheckoutCalls = apiCalls.filter((c) => c.url !== '/area-cliente/telemetry');
+  assert.equal(allCheckoutCalls[1].method, 'POST');
+  assert.equal(allCheckoutCalls[1].url, '/area-cliente/promo-checkout');
+  assert.deepEqual(allCheckoutCalls[1].body, {
     product_ids: [10, 11],
     discount_pct: 25,
     store_id: 600010,
