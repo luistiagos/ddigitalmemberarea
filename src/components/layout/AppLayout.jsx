@@ -40,7 +40,7 @@ function SupportFooter({ t }) {
 export function AppLayout({ children }) {
   const { t } = useLang();
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col">
+    <div className="min-h-screen bg-[#090d16] text-gray-100 flex flex-col">
       <Navbar />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
         {children}

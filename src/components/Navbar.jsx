@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Download, Tv } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLang } from '@/hooks/useLang';
 import api from '@/services/api';
@@ -115,11 +117,27 @@ export function Navbar() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {user && (
             <>
+              <nav aria-label="Navegação rápida" className="flex items-center gap-1.5 mr-1">
+                <Link
+                  to="/acesso"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-gray-800/70 px-2.5 py-1.5 text-xs font-medium text-gray-300 hover:border-amber-500/40 hover:text-white transition-colors"
+                >
+                  <Download className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="hidden md:inline">{t.navDownloads}</span>
+                </Link>
+                <Link
+                  to="/ativar"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-gray-800/70 px-2.5 py-1.5 text-xs font-medium text-gray-300 hover:border-cyan-500/40 hover:text-white transition-colors"
+                >
+                  <Tv className="h-3.5 w-3.5 text-cyan-400" />
+                  <span className="hidden md:inline">{t.navActivateApp}</span>
+                </Link>
+              </nav>
               <UserAvatar email={user.email} />
-              <span className="hidden sm:block text-sm text-gray-400 max-w-45 truncate">
+              <span className="hidden lg:block text-sm text-gray-400 max-w-45 truncate">
                 {user.email}
               </span>
             </>
