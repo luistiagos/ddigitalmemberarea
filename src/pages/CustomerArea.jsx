@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Package, Gamepad2, Sparkles, Unlock, Trophy } from 'lucide-react';
+import { Package, Gamepad2, Sparkles, Unlock, Trophy, Tag } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProductCard } from '@/components/ProductCard';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
@@ -16,6 +16,10 @@ import {
   formatCurrency,
   resolveCatalogCurrency,
 } from '@/utils/memberAreaPricing';
+import {
+  MEMBER_AREA_TELEMETRY_EVENTS,
+  trackMemberAreaEvent,
+} from '@/utils/memberAreaTelemetry';
 import api from '@/services/api';
 import PromoModal from '@/components/PromoModal';
 
@@ -34,7 +38,7 @@ function EmptyState({ t }) {
   );
 }
 
-export function CustomerArea({ onRedirect } = {}) {
+export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
   const [searchParams] = useSearchParams();
   const { lang, t } = useLang();
   const rawStoreId = searchParams.get('store_id') || searchParams.get('storeid');
@@ -50,11 +54,25 @@ export function CustomerArea({ onRedirect } = {}) {
   const { products, loading, error, refetch } = useProducts(user?.email, effectiveStoreId);
 
   const [promoData, setPromoData] = useState(null);
+  const [promoModalOpen, setPromoModalOpen] = useState(false);
+  const [promoOpenSource, setPromoOpenSource] = useState('auto_timer');
   const [promoSeen, setPromoSeen] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [selectedComboIds, setSelectedComboIds] = useState([]);
   const [previewProduct, setPreviewProduct] = useState(null);
   const [checkoutTarget, setCheckoutTarget] = useState(null);
+
+  const promoTimerRef = useRef(null);
+  const promoAutoCancelledRef = useRef(false);
+  const viewTelemetrySentRef = useRef(false);
+
+  const cancelPromoAutoOpen = useCallback(() => {
+    promoAutoCancelledRef.current = true;
+    if (promoTimerRef.current) {
+      clearTimeout(promoTimerRef.current);
+      promoTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (user?.storeId) return;
@@ -86,17 +104,54 @@ export function CustomerArea({ onRedirect } = {}) {
     api.post('/area-cliente/access', body).catch(() => {});
   }, [effectiveStoreId]);
 
+  // Busca elegibilidade sempre (mesmo se ja abriu antes), mantendo Banner Persistente VIP disponivel
   useEffect(() => {
-    if (sessionStorage.getItem(PROMO_MODAL_SHOWN_KEY)) return;
     const params = effectiveStoreId ? { store_id: effectiveStoreId } : {};
     api.get('/area-cliente/promo', { params })
       .then(({ data }) => {
         if (data?.show && data.products?.length > 0) {
           setPromoData(data);
+        } else {
+          setPromoData(null);
         }
       })
       .catch(() => {});
   }, [effectiveStoreId]);
+
+  // Timer inteligente de 5s: nunca reabre quando already_shown_in_window === true e cancela ao interagir
+  useEffect(() => {
+    if (promoTimerRef.current) {
+      clearTimeout(promoTimerRef.current);
+      promoTimerRef.current = null;
+    }
+
+    const alreadyShownInTab =
+      typeof sessionStorage !== 'undefined' && Boolean(sessionStorage.getItem(PROMO_MODAL_SHOWN_KEY));
+
+    if (
+      !promoData?.show ||
+      !(promoData.products?.length > 0) ||
+      promoData.already_shown_in_window ||
+      promoAutoCancelledRef.current ||
+      alreadyShownInTab
+    ) {
+      return undefined;
+    }
+
+    promoTimerRef.current = setTimeout(() => {
+      promoTimerRef.current = null;
+      if (promoAutoCancelledRef.current) return;
+      setPromoOpenSource('auto_timer');
+      setPromoModalOpen(true);
+    }, promoDelayMs);
+
+    return () => {
+      if (promoTimerRef.current) {
+        clearTimeout(promoTimerRef.current);
+        promoTimerRef.current = null;
+      }
+    };
+  }, [promoData, promoDelayMs]);
 
   useEffect(() => {
     if (sessionStorage.getItem(CUSTOMER_AREA_REFRESH_KEY) === '1') {
@@ -142,6 +197,17 @@ export function CustomerArea({ onRedirect } = {}) {
     [products, promoData],
   );
 
+  // Dispara telemetria member_area_view uma unica vez quando o catalogo termina de carregar
+  useEffect(() => {
+    if (loading || error || viewTelemetrySentRef.current) return;
+    viewTelemetrySentRef.current = true;
+    trackMemberAreaEvent(MEMBER_AREA_TELEMETRY_EVENTS.MEMBER_AREA_VIEW, {
+      store_id: effectiveStoreId,
+      currency: storeCurrency,
+      item_count: products.length,
+    });
+  }, [loading, error, effectiveStoreId, storeCurrency, products.length]);
+
   // Filtra selectedComboIds para garantir que apenas itens atualmente nao adquiridos permanecem
   const availableMap = useMemo(() => {
     const map = new Map();
@@ -173,6 +239,28 @@ export function CustomerArea({ onRedirect } = {}) {
     );
   }, []);
 
+  const openPreviewWithCancel = useCallback((product) => {
+    cancelPromoAutoOpen();
+    setPreviewProduct(product);
+  }, [cancelPromoAutoOpen]);
+
+  const openCheckoutWithCancel = useCallback((target) => {
+    cancelPromoAutoOpen();
+    setCheckoutTarget(target);
+  }, [cancelPromoAutoOpen]);
+
+  const openPromoFromBanner = useCallback(() => {
+    cancelPromoAutoOpen();
+    trackMemberAreaEvent(MEMBER_AREA_TELEMETRY_EVENTS.PROMO_BANNER_CLICK, {
+      store_id: effectiveStoreId,
+      downsell_variant: promoData?.downsell_variant || 'single_50',
+      currency: storeCurrency,
+      item_count: promoData?.products?.length || 0,
+    });
+    setPromoOpenSource('banner');
+    setPromoModalOpen(true);
+  }, [cancelPromoAutoOpen, effectiveStoreId, promoData, storeCurrency]);
+
   const totalCount = products.length;
   const ownedCount = ownedProducts.length;
   const progressPct = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
@@ -197,7 +285,7 @@ export function CustomerArea({ onRedirect } = {}) {
 
         {/* Barra de progresso da biblioteca */}
         {!loading && !error && totalCount > 0 && (
-          <div className="mb-8 rounded-2xl border border-white/10 bg-[#111827]/90 p-4 sm:p-5 shadow-lg">
+          <div className="mb-6 rounded-2xl border border-white/10 bg-[#111827]/90 p-4 sm:p-5 shadow-lg">
             <div className="flex items-center justify-between gap-3 flex-wrap mb-2.5">
               <div className="flex items-center gap-2 text-sm font-semibold text-white">
                 <Trophy className="h-4 w-4 text-amber-400" />
@@ -221,6 +309,37 @@ export function CustomerArea({ onRedirect } = {}) {
                 className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-500 transition-all duration-500"
                 style={{ width: `${progressPct}%` }}
               />
+            </div>
+          </div>
+        )}
+
+        {/* Banner Persistente VIP (mantido disponivel mesmo apos fechar o PromoModal ou em already_shown_in_window) */}
+        {promoData?.show && promoData.products?.length > 0 && (
+          <div
+            data-testid="vip-promo-banner"
+            className="mb-8 rounded-2xl border border-amber-500/35 bg-gradient-to-r from-amber-500/15 via-[#111827] to-cyan-500/15 p-4 sm:p-5 shadow-lg animate-fade-in"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-400/40 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                  <Tag className="h-3 w-3" />
+                  <span>{t.promoBannerBadge}</span>
+                </span>
+                <h2 className="text-base sm:text-lg font-extrabold text-white">
+                  {t.promoBannerTitle}
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-300">
+                  {t.promoBannerSubtitle}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={openPromoFromBanner}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-extrabold text-sm px-5 py-2.5 transition-colors shrink-0 shadow-lg shadow-amber-500/20"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>{t.promoBannerCta}</span>
+              </button>
             </div>
           </div>
         )}
@@ -256,6 +375,7 @@ export function CustomerArea({ onRedirect } = {}) {
                       lang={lang}
                       storeCurrency={storeCurrency}
                       featuredHorizontal={ownedProducts.length === 1}
+                      onAccess={cancelPromoAutoOpen}
                       onPaymentFlowClosed={triggerPageReload}
                     />
                   ))}
@@ -285,8 +405,8 @@ export function CustomerArea({ onRedirect } = {}) {
                       storeCurrency={storeCurrency}
                       isInCombo={selectedComboSet.has(product.productid)}
                       onToggleCombo={purchasableCount >= 2 ? toggleComboItem : undefined}
-                      onPreview={setPreviewProduct}
-                      onUnlock={(p) => setCheckoutTarget({ items: [p], discountPct: 0 })}
+                      onPreview={openPreviewWithCancel}
+                      onUnlock={(p) => openCheckoutWithCancel({ items: [p], discountPct: 0 })}
                       onPaymentFlowClosed={triggerPageReload}
                     />
                   ))}
@@ -325,10 +445,18 @@ export function CustomerArea({ onRedirect } = {}) {
 
             <button
               type="button"
-              onClick={() => setCheckoutTarget({
-                items: comboSummary.items,
-                discountPct: comboSummary.discountPct,
-              })}
+              onClick={() => {
+                trackMemberAreaEvent(MEMBER_AREA_TELEMETRY_EVENTS.COMBO_BAR_CHECKOUT_CLICK, {
+                  store_id: effectiveStoreId,
+                  discount_pct: comboSummary.discountPct,
+                  item_count: comboSummary.count,
+                  currency: storeCurrency,
+                });
+                openCheckoutWithCancel({
+                  items: comboSummary.items,
+                  discountPct: comboSummary.discountPct,
+                });
+              }}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-bold text-sm px-5 py-2.5 transition-colors shrink-0 shadow-lg shadow-amber-500/20"
             >
               <Unlock className="h-4 w-4" />
@@ -348,7 +476,7 @@ export function CustomerArea({ onRedirect } = {}) {
         onToggleCombo={purchasableCount >= 2 ? toggleComboItem : undefined}
         onUnlock={(p) => {
           setPreviewProduct(null);
-          setCheckoutTarget({ items: [p], discountPct: 0 });
+          openCheckoutWithCancel({ items: [p], discountPct: 0 });
         }}
       />
 
@@ -361,6 +489,7 @@ export function CustomerArea({ onRedirect } = {}) {
         userEmail={user?.email || ''}
         storeId={effectiveStoreId ?? 1}
         lang={lang}
+        origin="combo_or_catalog"
         onRedirect={onRedirect}
         onPaymentComplete={() => {
           setCheckoutTarget(null);
@@ -371,28 +500,43 @@ export function CustomerArea({ onRedirect } = {}) {
 
       {promoData && (
         <PromoModal
+          isOpen={promoModalOpen}
           products={promoData.products}
           storeId={effectiveStoreId ?? null}
+          userEmail={user?.email || ''}
+          currency={storeCurrency}
+          downsellVariant={promoData.downsell_variant || 'single_50'}
           lang={lang}
+          openSource={promoOpenSource}
+          onRedirect={onRedirect}
           onShown={() => {
             if (!promoSeen) {
               setPromoSeen(true);
-              sessionStorage.setItem(PROMO_MODAL_SHOWN_KEY, '1');
+              if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.setItem(PROMO_MODAL_SHOWN_KEY, '1');
+              }
             }
             const body = effectiveStoreId ? { store_id: effectiveStoreId } : {};
             api.post('/area-cliente/promo-seen', body).catch(() => {});
           }}
           onClose={() => {
-            setPromoData(null);
+            setPromoModalOpen(false);
           }}
           onPaymentComplete={() => {
+            setPromoModalOpen(false);
             setPromoData(null);
             triggerPageReload();
           }}
           onAccepted={(url) => {
-            setPromoData(null);
-            sessionStorage.setItem(CUSTOMER_AREA_REFRESH_KEY, '1');
-            window.location.href = url;
+            setPromoModalOpen(false);
+            if (typeof sessionStorage !== 'undefined') {
+              sessionStorage.setItem(CUSTOMER_AREA_REFRESH_KEY, '1');
+            }
+            if (onRedirect) {
+              onRedirect(url);
+            } else if (typeof window !== 'undefined') {
+              window.location.href = url;
+            }
           }}
         />
       )}

@@ -44,6 +44,7 @@ export function ProductCard({
   onToggleCombo,
   onPreview,
   onUnlock,
+  onAccess,
   onPaymentFlowClosed,
 }) {
   const t = TRANSLATIONS[lang] || TRANSLATIONS.ptbr;
@@ -88,6 +89,7 @@ export function ProductCard({
                   href={deliverlink}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => onAccess?.(product)}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-gray-950 font-bold text-sm py-3 px-7 transition-colors w-full sm:w-auto no-underline shadow-lg shadow-emerald-500/20"
                 >
                   <ExternalLink className="h-4 w-4 shrink-0" />
@@ -120,6 +122,7 @@ export function ProductCard({
                 href={deliverlink}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => onAccess?.(product)}
                 className="inline-flex items-center gap-2 justify-center rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-gray-950 font-bold text-sm py-2.5 px-6 transition-colors w-full no-underline shadow-md"
               >
                 <ExternalLink className="h-4 w-4 shrink-0" />
