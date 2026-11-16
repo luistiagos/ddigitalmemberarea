@@ -149,11 +149,10 @@ export function ProductCard({
   return (
     <>
       <article
-        className={`group flex flex-col rounded-2xl border overflow-hidden animate-fade-in transition-all duration-200 bg-[#1e293b] shadow-lg shadow-slate-950/40 ${
-          isInCombo
-            ? 'border-cyan-400 shadow-cyan-500/15'
-            : 'border-slate-600/80 hover:border-amber-400/80 hover:shadow-amber-500/10'
-        }`}
+        className={`group flex flex-col rounded-2xl border overflow-hidden animate-fade-in transition-all duration-200 bg-[#1e293b] shadow-lg shadow-slate-950/40 ${isInCombo
+          ? 'border-cyan-400 shadow-cyan-500/15'
+          : 'border-slate-600/80 hover:border-amber-400/80 hover:shadow-amber-500/10'
+          }`}
       >
         <div
           role="button"
@@ -200,11 +199,10 @@ export function ProductCard({
                 type="button"
                 onClick={() => onToggleCombo(product)}
                 aria-pressed={isInCombo}
-                className={`shrink-0 inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                  isInCombo
-                    ? 'border-cyan-300 bg-cyan-500/25 text-cyan-100'
-                    : 'border-slate-500/70 bg-slate-900/70 text-slate-100 hover:border-cyan-400 hover:text-white'
-                }`}
+                className={`shrink-0 inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${isInCombo
+                  ? 'border-cyan-300 bg-cyan-500/25 text-cyan-100'
+                  : 'border-slate-500/70 bg-slate-900/70 text-slate-100 hover:border-cyan-400 hover:text-white'
+                  }`}
               >
                 {isInCombo ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
                 <span>{isInCombo ? t.inComboBtn : t.addToComboBtn}</span>

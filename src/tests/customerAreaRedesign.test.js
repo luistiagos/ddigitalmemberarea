@@ -182,7 +182,7 @@ test('modal_unificado_brl_exibe_pix_dark_cartao_e_mp_link', async (t) => {
   render(
     h(UnifiedPaymentModal, {
       isOpen: true,
-      onClose: () => {},
+      onClose: () => { },
       items,
       discountPct: 15,
       currency: 'BRL',
@@ -234,7 +234,7 @@ test('modal_unificado_usd_chama_stripe_e_oculta_pix_e_cartao_mp', async (t) => {
   const { rerender } = render(
     h(UnifiedPaymentModal, {
       isOpen: true,
-      onClose: () => {},
+      onClose: () => { },
       items: [{ productid: 10, title: 'World Cup Pack', price: 19.90 }],
       discountPct: 0,
       currency: 'USD',
@@ -262,7 +262,7 @@ test('modal_unificado_usd_chama_stripe_e_oculta_pix_e_cartao_mp', async (t) => {
   rerender(
     h(UnifiedPaymentModal, {
       isOpen: true,
-      onClose: () => {},
+      onClose: () => { },
       items: [
         { productid: 10, title: 'Pack 1', price: 20 },
         { productid: 11, title: 'Pack 2', price: 10 },
@@ -309,7 +309,7 @@ test('modal_unificado_exibe_erro_e_libera_nova_tentativa', async (t) => {
   render(
     h(UnifiedPaymentModal, {
       isOpen: true,
-      onClose: () => {},
+      onClose: () => { },
       items: [{ productid: 10, title: 'Pack USD', price: 19.90 }],
       discountPct: 0,
       currency: 'USD',
