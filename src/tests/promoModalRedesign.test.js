@@ -605,11 +605,12 @@ test('contraste_rodape_legivel_botoes_verdes_texto_branco_e_fundo_branco_nos_pro
   const accessBtn = screen.getByRole('link', { name: /Acessar/i });
   assert.match(accessBtn.className, /\btext-white\b/);
 
-  // 3) Showcase das imagens usa recortes transparentes locais em public/images/boxes/*.webp
+  // 3) Showcase das imagens usa recortes transparentes locais em public/images/boxes/*.webp com moldura estilo Checkout
   const stages = container.querySelectorAll('div[data-artwork-stage="true"]');
   assert.ok(stages.length >= 3);
   assert.equal(stages[0].getAttribute('data-stage-tone'), 'transparent');
   assert.equal(stages[0].className.includes('bg-white'), false);
+  assert.ok(container.querySelector('div[data-checkout-frame="true"]'));
   const renderedImgs = container.querySelectorAll('div[data-artwork-stage="true"] img');
   assert.match(renderedImgs[0].getAttribute('src'), /^\/images\/boxes\/multigames\.webp$/);
 

@@ -90,6 +90,7 @@ function PromoProductRow({
           onImageError={() => setImgSrc(MULTIGAMES_FALLBACK)}
           aspectClass="h-14 w-20 rounded-lg border border-white/15"
           imagePaddingClass="p-1"
+          framed={false}
         />
       </div>
 

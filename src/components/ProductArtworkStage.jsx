@@ -6,18 +6,18 @@ import {
 } from '@/utils/artworkStage';
 
 /**
- * Container de exibicao de capa:
- * - Usa recortes transparentes locais (/images/boxes/*.webp) quando disponiveis,
- *   aplicando iluminacao suave e drop-shadow 3D direto sobre o card.
- * - Para imagens externas sem recorte (ex: papelaria/figurinhas), adapta o palco
- *   por amostragem de bordas para evitar contrastes abruptos.
+ * Container de exibicao de capa estilo Checkout (.order-thumb / .bump-thumb):
+ * - Moldura interna quadrada arredondada (#0f172a com borda sutil slate-600/80)
+ *   centralizada dentro do palco do card, preservando a caixa 3D completa com lombada
+ *   e evitando sobreposicao com os selos de status/desconto nos cantos.
  */
 export default function ProductArtworkStage({
   imgSrc,
   title,
   onImageError,
-  imagePaddingClass = 'p-2.5',
-  aspectClass = 'aspect-[16/10]',
+  imagePaddingClass = 'p-2',
+  aspectClass = 'aspect-[16/10] p-3',
+  framed = true,
   children,
 }) {
   const cutoutUrl = resolveTransparentBoxCutout(imgSrc);
@@ -52,25 +52,43 @@ export default function ProductArtworkStage({
     onImageError?.();
   };
 
+  const imgEl = (
+    <img
+      src={activeSrc}
+      alt={title}
+      onError={handleError}
+      style={{
+        ...(stage.maskImage ? { WebkitMaskImage: stage.maskImage, maskImage: stage.maskImage } : {}),
+        ...(stage.dropShadow ? { filter: stage.dropShadow } : {}),
+      }}
+      className={`w-full h-full object-contain ${imagePaddingClass} transition-transform duration-300 group-hover:scale-[1.03]`}
+    />
+  );
+
   return (
     <div
       data-artwork-stage="true"
       data-stage-tone={stage.tone}
-      style={{ background: stage.background }}
-      className={`relative w-full ${aspectClass} overflow-hidden shrink-0 ${
-        stage.tone === 'light' ? 'bg-white border-b border-slate-200/80' : 'border-b border-white/10'
+      style={{ background: framed ? '#1e293b' : stage.background }}
+      className={`relative w-full ${aspectClass} flex items-center justify-center overflow-hidden shrink-0 ${
+        stage.tone === 'light' && !framed ? 'bg-white border-b border-slate-200/80' : 'border-b border-white/10'
       }`}
     >
-      <img
-        src={activeSrc}
-        alt={title}
-        onError={handleError}
-        style={{
-          ...(stage.maskImage ? { WebkitMaskImage: stage.maskImage, maskImage: stage.maskImage } : {}),
-          ...(stage.dropShadow ? { filter: stage.dropShadow } : {}),
-        }}
-        className={`w-full h-full object-contain ${imagePaddingClass} transition-transform duration-300 group-hover:scale-[1.03]`}
-      />
+      {framed ? (
+        <div
+          data-checkout-frame="true"
+          style={stage.tone === 'light' ? { background: '#ffffff' } : undefined}
+          className={`h-full aspect-square max-w-full rounded-xl border shadow-lg shadow-slate-950/60 flex items-center justify-center overflow-hidden ${
+            stage.tone === 'light'
+              ? 'border-slate-300 bg-white'
+              : 'border-slate-600/80 bg-[#0f172a]'
+          }`}
+        >
+          {imgEl}
+        </div>
+      ) : (
+        imgEl
+      )}
       {children}
     </div>
   );

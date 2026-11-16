@@ -30,6 +30,7 @@ const BOX_CUTOUT_MAP = Object.freeze({
   'moder.webp': '/images/boxes/moder.webp',
   'multigames.png': '/images/boxes/multigames.webp',
   'multigames.webp': '/images/boxes/multigames.webp',
+  'multigamesbox.webp': '/images/boxes/plataformamultigames.webp',
   'nintendocollection.webp': '/images/boxes/nintendocollection.webp',
   'nintendocollection.png': '/images/boxes/nintendocollection.webp',
   'plataformamultigames.jpeg': '/images/boxes/plataformamultigames.webp',
