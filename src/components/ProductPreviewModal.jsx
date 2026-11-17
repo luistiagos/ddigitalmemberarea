@@ -124,11 +124,10 @@ export default function ProductPreviewModal({
                 type="button"
                 onClick={() => onToggleCombo(product)}
                 aria-pressed={isInCombo}
-                className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
-                  isInCombo
-                    ? 'border-cyan-300 bg-cyan-500/20 text-cyan-200'
-                    : 'border-slate-500/70 bg-slate-900/75 text-slate-100 hover:border-cyan-400 hover:text-white'
-                }`}
+                className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${isInCombo
+                  ? 'border-cyan-300 bg-cyan-500/20 text-cyan-200'
+                  : 'border-slate-500/70 bg-slate-900/75 text-slate-100 hover:border-cyan-400 hover:text-white'
+                  }`}
               >
                 <span
                   aria-hidden="true"
@@ -144,15 +143,15 @@ export default function ProductPreviewModal({
               </button>
             )}
 
-                                  <button
-                                    type="button"
-                                    onClick={() => onUnlock?.(product)}
-                                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm py-3 px-5 transition-all shadow-lg shadow-amber-950/30"
-                                  >
-                                    <Unlock className="h-4 w-4" />
-                                    <span>{t.unlockBtn}</span>
-                                  </button>
-                                </div>
+            <button
+              type="button"
+              onClick={() => onUnlock?.(product)}
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm py-3 px-5 transition-all shadow-lg shadow-amber-950/30"
+            >
+              <Unlock className="h-4 w-4" />
+              <span>{t.unlockBtn}</span>
+            </button>
+          </div>
 
           <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-300">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
