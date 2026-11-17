@@ -275,7 +275,7 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
 
   return (
     <AppLayout>
-      <div className={comboSummary.count >= 2 ? 'pb-28' : 'pb-6'}>
+      <div className={comboEnabled && comboSummary.count >= 1 ? 'pb-28' : 'pb-6'}>
         <div className="flex items-center justify-between mb-6 gap-4 flex-wrap animate-fade-in">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
@@ -426,50 +426,84 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
       </div>
 
       {/* Barra Flutuante de Combo (15% para 2+ itens / 25% para todos, apenas na janela promo de 24h) */}
-      {comboEnabled && comboSummary.count >= 2 && (
+      {comboEnabled && comboSummary.count >= 1 && (
         <div
           data-testid="combo-bar"
           className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-4xl rounded-2xl border border-cyan-400/60 bg-[#1e293b]/95 backdrop-blur-md px-4 py-3.5 sm:px-6 shadow-2xl shadow-slate-950/80"
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="rounded-full bg-cyan-500/25 border border-cyan-300/50 px-2.5 py-0.5 text-xs font-bold text-cyan-100">
-                {comboSummary.discountPct === 25 ? t.comboBarFullBadge : t.comboBarPartialBadge}
-              </span>
-              <span className="text-sm font-semibold text-white">
-                {comboSummary.count} {t.comboBarSelected}
-              </span>
-              <span className="text-xs text-slate-300">
-                {t.comboBarOf}{' '}
-                <span className="line-through text-slate-400">
-                  {formatCurrency(comboSummary.subtotal, storeCurrency, lang)}
-                </span>{' '}
-                {t.comboBarFor}{' '}
-                <strong className="text-base font-extrabold text-amber-300">
-                  {formatCurrency(comboSummary.total, storeCurrency, lang)}
-                </strong>
-              </span>
-            </div>
+            {comboSummary.count === 1 ? (
+              <>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="rounded-full bg-cyan-500/25 border border-cyan-300/50 px-2.5 py-0.5 text-xs font-bold text-cyan-100">
+                    {t.comboBarOneMissingBadge}
+                  </span>
+                  <span className="text-sm font-semibold text-white">
+                    {comboSummary.count} {t.comboBarSelected}
+                  </span>
+                  <span className="text-xs text-cyan-200 font-medium">
+                    {t.comboBarOneMissingHint}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedComboIds([])}
+                  className="inline-flex items-center justify-center rounded-xl border border-slate-500/70 bg-slate-900/70 hover:bg-slate-800 text-slate-200 text-xs font-semibold px-3.5 py-2 transition-colors shrink-0"
+                >
+                  {t.comboBarClearBtn}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="rounded-full bg-cyan-500/25 border border-cyan-300/50 px-2.5 py-0.5 text-xs font-bold text-cyan-100">
+                    {comboSummary.discountPct === 25 ? t.comboBarFullBadge : t.comboBarPartialBadge}
+                  </span>
+                  <span className="text-sm font-semibold text-white">
+                    {comboSummary.count} {t.comboBarSelected}
+                  </span>
+                  <span className="text-xs text-slate-300">
+                    {t.comboBarOf}{' '}
+                    <span className="line-through text-slate-400">
+                      {formatCurrency(comboSummary.subtotal, storeCurrency, lang)}
+                    </span>{' '}
+                    {t.comboBarFor}{' '}
+                    <strong className="text-base font-extrabold text-amber-300">
+                      {formatCurrency(comboSummary.total, storeCurrency, lang)}
+                    </strong>
+                  </span>
+                </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                trackMemberAreaEvent(MEMBER_AREA_TELEMETRY_EVENTS.COMBO_BAR_CHECKOUT_CLICK, {
-                  store_id: effectiveStoreId,
-                  discount_pct: comboSummary.discountPct,
-                  item_count: comboSummary.count,
-                  currency: storeCurrency,
-                });
-                openCheckoutWithCancel({
-                  items: comboSummary.items,
-                  discountPct: comboSummary.discountPct,
-                });
-              }}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm px-5 py-2.5 transition-all shrink-0 shadow-lg shadow-amber-950/30"
-            >
-              <Unlock className="h-4 w-4" />
-              <span>{t.comboBarUnlockBtn}</span>
-            </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedComboIds([])}
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-500/70 bg-slate-900/70 hover:bg-slate-800 text-slate-200 text-xs font-semibold px-3 py-2.5 transition-colors"
+                  >
+                    {t.comboBarClearBtn}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trackMemberAreaEvent(MEMBER_AREA_TELEMETRY_EVENTS.COMBO_BAR_CHECKOUT_CLICK, {
+                        store_id: effectiveStoreId,
+                        discount_pct: comboSummary.discountPct,
+                        item_count: comboSummary.count,
+                        currency: storeCurrency,
+                      });
+                      openCheckoutWithCancel({
+                        items: comboSummary.items,
+                        discountPct: comboSummary.discountPct,
+                      });
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm px-5 py-2.5 transition-all shadow-lg shadow-amber-950/30"
+                  >
+                    <Unlock className="h-4 w-4" />
+                    <span>{t.comboBarUnlockBtn}</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

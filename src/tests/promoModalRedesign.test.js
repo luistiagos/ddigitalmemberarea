@@ -542,7 +542,7 @@ test('telemetria_dispara_eventos_de_funil_sem_bloquear_fluxo', async (t) => {
   });
 
   // 1) Clique no ComboBar checkout funciona mesmo com telemetria rejeitando
-  const comboBtns = screen.getAllByRole('button', { name: /\+ Combo/i });
+  const comboBtns = screen.getAllByRole('button', { name: /Incluir no combo/i });
   fireEvent.click(comboBtns[0]);
   fireEvent.click(comboBtns[1]);
   fireEvent.click(within(screen.getByTestId('combo-bar')).getByRole('button', { name: /Desbloquear Combo/i }));
@@ -682,7 +682,7 @@ test('oculta_combo_e_banner_quando_fora_da_janela_promo_24h', async (t) => {
   });
 
   assert.equal(screen.queryByTestId('vip-promo-banner'), null);
-  assert.equal(screen.queryByRole('button', { name: /\+ Combo/i }), null);
+  assert.equal(screen.queryByRole('button', { name: /Incluir no combo/i }), null);
   assert.equal(screen.queryByTestId('combo-bar'), null);
 
   // Compra normal pelo preco cheio continua funcionando via /create_pix_payment (sem desconto promo)

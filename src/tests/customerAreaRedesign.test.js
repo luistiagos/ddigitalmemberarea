@@ -425,13 +425,21 @@ test('combo_vitrine_aplica_15_para_parcial_e_25_para_todos_arredondado', async (
   );
 
   await waitFor(() => {
-    assert.equal(screen.getAllByRole('button', { name: /\+ Combo/i }).length, 3);
+    assert.equal(screen.getAllByRole('button', { name: /Incluir no combo/i }).length, 3);
   });
 
-  // 1 item: barra nao aparece
-  const comboBtns = screen.getAllByRole('button', { name: /\+ Combo/i });
+  // 1 item: barra aparece orientando que falta 1 sistema para 15% OFF (sem CTA de checkout)
+  const comboBtns = screen.getAllByRole('button', { name: /Incluir no combo/i });
   fireEvent.click(comboBtns[0]);
+  const barFirst = screen.getByTestId('combo-bar');
+  assert.ok(within(barFirst).getByText(/Combo 1\/2/i));
+  assert.ok(within(barFirst).getByText(/Selecione mais 1 sistema para ganhar 15% OFF/i));
+  assert.equal(within(barFirst).queryByRole('button', { name: /Desbloquear Combo/i }), null);
+
+  // Botao Limpar zera a selecao e oculta a barra; selecionar de novo reabre
+  fireEvent.click(within(barFirst).getByRole('button', { name: /Limpar/i }));
   assert.equal(screen.queryByTestId('combo-bar'), null);
+  fireEvent.click(comboBtns[0]);
 
   // 2 itens de 3: 15% OFF -> 25.42 + 16.99 = 42.41
   fireEvent.click(comboBtns[1]);

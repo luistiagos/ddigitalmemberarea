@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ExternalLink, Lock, Unlock, Plus, Check, CheckCircle2, Eye } from 'lucide-react';
+import { ExternalLink, Lock, Unlock, Check, CheckCircle2, Eye } from 'lucide-react';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
 import UnifiedPaymentModal from '@/components/UnifiedPaymentModal';
 import ProductArtworkStage from '@/components/ProductArtworkStage';
@@ -169,30 +169,13 @@ export function ProductCard({
         </div>
 
         <div className="flex flex-col flex-1 p-4 gap-3">
-          <div className="flex items-start justify-between gap-2">
-            <button
-              type="button"
-              onClick={openPreview}
-              className="text-left font-semibold text-white hover:text-amber-300 text-sm leading-tight line-clamp-2 transition-colors"
-            >
-              {title}
-            </button>
-
-            {onToggleCombo && (
-              <button
-                type="button"
-                onClick={() => onToggleCombo(product)}
-                aria-pressed={isInCombo}
-                className={`shrink-0 inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${isInCombo
-                  ? 'border-cyan-300 bg-cyan-500/25 text-cyan-100'
-                  : 'border-slate-500/70 bg-slate-900/70 text-slate-100 hover:border-cyan-400 hover:text-white'
-                  }`}
-              >
-                {isInCombo ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                <span>{isInCombo ? t.inComboBtn : t.addToComboBtn}</span>
-              </button>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={openPreview}
+            className="text-left font-semibold text-white hover:text-amber-300 text-sm leading-tight line-clamp-2 transition-colors"
+          >
+            {title}
+          </button>
 
           {description && (
             <p className="text-xs text-slate-200 leading-relaxed line-clamp-2">{description}</p>
@@ -216,20 +199,50 @@ export function ProductCard({
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => {
-              if (onUnlock) {
-                onUnlock(product);
-              } else {
-                setLocalPayOpen(true);
-              }
-            }}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm py-2.5 px-4 transition-all shadow-md shadow-amber-950/30"
-          >
-            <Unlock className="h-4 w-4" />
-            <span>{t.unlockBtn}</span>
-          </button>
+          <div className={displayPrice != null ? 'space-y-2' : 'mt-auto space-y-2'}>
+            {onToggleCombo && (
+              <button
+                type="button"
+                onClick={() => onToggleCombo(product)}
+                aria-pressed={isInCombo}
+                className={`w-full inline-flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${isInCombo
+                  ? 'border-cyan-400 bg-cyan-500/20 text-cyan-100 shadow-sm shadow-cyan-950/30'
+                  : 'border-slate-500/80 bg-slate-900/75 text-slate-100 hover:border-cyan-400/80 hover:bg-slate-900'
+                  }`}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors ${isInCombo
+                      ? 'border-cyan-300 bg-cyan-400 text-slate-950'
+                      : 'border-slate-400 bg-slate-950/70'
+                      }`}
+                  >
+                    {isInCombo && <Check className="h-3 w-3 stroke-[3]" />}
+                  </span>
+                  <span>{isInCombo ? t.inComboBtn : t.addToComboBtn}</span>
+                </span>
+                <span className={`text-[11px] font-bold ${isInCombo ? 'text-cyan-200' : 'text-cyan-300/90'}`}>
+                  15%–25% OFF
+                </span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (onUnlock) {
+                  onUnlock(product);
+                } else {
+                  setLocalPayOpen(true);
+                }
+              }}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-extrabold text-sm py-2.5 px-4 transition-all shadow-md shadow-amber-950/30"
+            >
+              <Unlock className="h-4 w-4" />
+              <span>{t.unlockBtn}</span>
+            </button>
+          </div>
         </div>
       </article>
 

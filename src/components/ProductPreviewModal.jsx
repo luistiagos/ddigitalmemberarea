@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, CheckCircle2, Unlock, Check, Plus, ShieldCheck } from 'lucide-react';
+import { X, CheckCircle2, Unlock, Check, ShieldCheck } from 'lucide-react';
 import ProductArtworkStage from '@/components/ProductArtworkStage';
 import { TRANSLATIONS } from '@/pages/translations';
 import { formatCurrency } from '@/utils/memberAreaPricing';
@@ -123,14 +123,24 @@ export default function ProductPreviewModal({
               <button
                 type="button"
                 onClick={() => onToggleCombo(product)}
+                aria-pressed={isInCombo}
                 className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
                   isInCombo
                     ? 'border-cyan-300 bg-cyan-500/20 text-cyan-200'
                     : 'border-slate-500/70 bg-slate-900/75 text-slate-100 hover:border-cyan-400 hover:text-white'
                 }`}
               >
-                {isInCombo ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                {isInCombo ? t.inComboBtn : t.addToComboBtn}
+                <span
+                  aria-hidden="true"
+                  className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                    isInCombo
+                      ? 'border-cyan-300 bg-cyan-400 text-slate-950'
+                      : 'border-slate-400 bg-slate-950/70'
+                  }`}
+                >
+                  {isInCombo && <Check className="h-3 w-3 stroke-[3]" />}
+                </span>
+                <span>{isInCombo ? t.inComboBtn : t.addToComboBtn}</span>
               </button>
             )}
 
