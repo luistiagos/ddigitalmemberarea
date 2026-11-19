@@ -660,7 +660,7 @@ test('contraste_rodape_legivel_botoes_verdes_texto_branco_e_fundo_branco_nos_pro
   assert.match(mailLink.className, /text-sky-300/);
 });
 
-test('oculta_combo_e_banner_quando_fora_da_janela_promo_24h', async (t) => {
+test('mantem_combo_vitrine_quando_fora_da_janela_promo_24h', async (t) => {
   const timerSpy = setup5sTimerSpy();
   t.after(() => resetAreaTestState(timerSpy));
 
@@ -681,8 +681,18 @@ test('oculta_combo_e_banner_quando_fora_da_janela_promo_24h', async (t) => {
     assert.ok(screen.getAllByRole('button', { name: /Desbloquear/i }).length >= 2);
   });
 
+  // Fora da janela de 24h: Banner VIP e PromoModal permanecem ocultos, mas o combo da vitrine continua ativo
   assert.equal(screen.queryByTestId('vip-promo-banner'), null);
-  assert.equal(screen.queryByRole('button', { name: /Incluir no combo/i }), null);
+  assert.equal(screen.queryByTestId('promo-modal-dialog'), null);
+  assert.equal(timerSpy.scheduled.length, 0);
+
+  const comboBtns = screen.getAllByRole('button', { name: /Incluir no combo/i });
+  assert.equal(comboBtns.length, 2);
+  fireEvent.click(comboBtns[0]);
+  fireEvent.click(comboBtns[1]);
+  const bar = screen.getByTestId('combo-bar');
+  assert.ok(within(bar).getByText(/25% OFF/i));
+  fireEvent.click(within(bar).getByRole('button', { name: /Limpar/i }));
   assert.equal(screen.queryByTestId('combo-bar'), null);
 
   // Compra normal pelo preco cheio continua funcionando via /create_pix_payment (sem desconto promo)

@@ -338,7 +338,7 @@ test('modal_unificado_exibe_erro_e_libera_nova_tentativa', async (t) => {
   });
 });
 
-// --- T4: CustomerArea (barra de progresso + combo 15% / 25% na janela promo de 24h) ---
+// --- T4: CustomerArea (barra de progresso + combo permanente 15% / 25%) ---
 
 function installCustomerAreaMocks(catalog, promoResponse = { show: false }) {
   localStorage.setItem('storeLogoLabel_600004', 'Loja Teste');
@@ -412,13 +412,7 @@ test('combo_vitrine_aplica_15_para_parcial_e_25_para_todos_arredondado', async (
     { productid: 3, title: 'Pack B', image: 'https://img/b.png', owned: false, price: 19.99, relprice: 40, currency: 'BRL', store_id: 600004 },
     { productid: 4, title: 'Pack C', image: 'https://img/c.png', owned: false, price: 15.05, relprice: 30, currency: 'BRL', store_id: 600004 },
   ];
-  const postCalls = installCustomerAreaMocks(catalog, {
-    show: true,
-    already_shown_in_window: true,
-    currency: 'BRL',
-    downsell_variant: 'single_50',
-    products: catalog.filter((p) => !p.owned),
-  });
+  const postCalls = installCustomerAreaMocks(catalog, { show: false });
 
   render(
     h(MemoryRouter, { initialEntries: ['/area-cliente?store_id=600004'] }, h(CustomerArea)),

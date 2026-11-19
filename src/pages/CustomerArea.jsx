@@ -193,13 +193,13 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
     [availableProducts],
   );
   const promoWindowActive = Boolean(promoData?.show && promoData.products?.length > 0);
-  const comboEnabled = promoWindowActive && purchasableCount >= 2;
+  const comboEnabled = purchasableCount >= 2;
 
   useEffect(() => {
-    if (!promoWindowActive) {
+    if (!comboEnabled) {
       setSelectedComboIds((prev) => (prev.length > 0 ? [] : prev));
     }
-  }, [promoWindowActive]);
+  }, [comboEnabled]);
   const storeCurrency = useMemo(
     () => resolveCatalogCurrency(products, promoData?.currency),
     [products, promoData],
@@ -425,7 +425,7 @@ export function CustomerArea({ onRedirect, promoDelayMs = 5000 } = {}) {
         )}
       </div>
 
-      {/* Barra Flutuante de Combo (15% para 2+ itens / 25% para todos, apenas na janela promo de 24h) */}
+      {/* Barra Flutuante Permanente de Combo (15% para 2+ itens / 25% para todos) */}
       {comboEnabled && comboSummary.count >= 1 && (
         <div
           data-testid="combo-bar"
